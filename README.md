@@ -1,18 +1,11 @@
-# The Kite Connect API Java client
-The official Java client for communicating with [Kite Connect API](https://kite.trade).
+# The TradeOptimizer API Java client
+The Java client for communicating with [Kite Connect API](https://kite.trade).
 
-Kite Connect is a set of REST-like APIs that expose many capabilities required to build a complete investment and trading platform. Execute orders in real time, manage user portfolio, stream live market data (WebSockets), and more, with the simple HTTP API collection.
-
-[Rainmatter](http://rainmatter.com) (c) 2016. Licensed under the MIT License.
+It is a set of REST-like APIs that expose many capabilities required to build a complete investment and trading platform. Execute orders in real time, manage user portfolio, stream live market data (WebSockets), and more, with the simple HTTP API collection.
 
 ##Documentation
-- [Kite Connect HTTP API documentation](https://kite.trade/docs/connect/v1)
+- [HTTP API documentation](https://kite.trade/docs/connect/v1)
 - [Java library documentation](https://kite.trade/docs/javakiteconnect)
-
-##Usage
-- [Download jar file](https://github.com/rainmattertech/kiteconnectjava/raw/master/dist/kiteconnectjava.jar) and include it in your build path.
-
-- Include com.trade.optimizer.kiteconnect into build path from maven. Use version 1.4.3
 
 ## API usage
 ```java

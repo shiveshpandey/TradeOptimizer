@@ -8,7 +8,7 @@ import org.json.JSONException;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
-import com.trade.optimizer.kiteconnect.http.SessionExpiryHook;
+import com.trade.optimizer.kiteconnect.SessionExpiryHook;
 import com.trade.optimizer.models.UserModel;
 
 /**

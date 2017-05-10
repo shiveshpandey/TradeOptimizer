@@ -1,4 +1,4 @@
-package com.trade.optimizer.kiteconnect.http;
+package com.trade.optimizer.kiteconnect;
 
 /**
  * A callback whenever there is a token expiry

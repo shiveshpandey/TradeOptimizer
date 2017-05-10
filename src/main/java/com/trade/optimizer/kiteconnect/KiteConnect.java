@@ -25,8 +25,6 @@ import org.supercsv.io.ICsvBeanReader;
 import org.supercsv.prefs.CsvPreference;
 
 import com.trade.optimizer.exceptions.KiteException;
-import com.trade.optimizer.kiteconnect.http.KiteRequest;
-import com.trade.optimizer.kiteconnect.http.SessionExpiryHook;
 import com.trade.optimizer.models.HistoricalData;
 import com.trade.optimizer.models.Holding;
 import com.trade.optimizer.models.IndicesQuote;

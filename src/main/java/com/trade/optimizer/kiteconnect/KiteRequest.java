@@ -1,4 +1,4 @@
-package com.trade.optimizer.kiteconnect.http;
+package com.trade.optimizer.kiteconnect;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -23,7 +23,6 @@ import com.trade.optimizer.exceptions.KiteOrderException;
 import com.trade.optimizer.exceptions.KitePermissionException;
 import com.trade.optimizer.exceptions.KiteTokenException;
 import com.trade.optimizer.exceptions.KiteUserException;
-import com.trade.optimizer.kiteconnect.KiteConnect;
 
 /**
  * A wrapper of Kite Connect for making http calls.
