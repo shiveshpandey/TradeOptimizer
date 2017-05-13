@@ -2,7 +2,6 @@ package com.trade.optimizer.main;
 
 import java.io.IOException;
 
-import org.apache.http.HttpHost;
 import org.json.JSONException;
 
 import com.neovisionaries.ws.client.WebSocketException;
@@ -24,13 +23,13 @@ public class Test {
             // login and then use request_token, public_token, api_secret to
             // make any kiteconnect api call.
             // Initialize KiteSdk with your apiKey.
-            KiteConnect kiteconnect = new KiteConnect("your_apiKey");
+            KiteConnect kiteconnect = new KiteConnect("nwjyiweq@m6z4pmii");
 
             // set userId
-            kiteconnect.setUserId("your_userId");
+            kiteconnect.setUserId("RS4216");
 
             // set proxy is optional, if you want to set proxy.
-            kiteconnect.setProxy(new HttpHost("host_name"));
+            // kiteconnect.setProxy(new HttpHost("host_name"));
 
             // Get login url
             @SuppressWarnings("unused")
@@ -46,47 +45,48 @@ public class Test {
 
             // Set request token and public token which are obtained from login
             // process.
-            UserModel userModel = kiteconnect.requestAccessToken("request_token", "your_apiSecret");
+            UserModel userModel = kiteconnect.requestAccessToken("z45ui9l8qgewru3bokx52eh35zg@jmg7p",
+                    "67s1q1k5yl9il439f80nrv6@fbunmwhq6");
 
             kiteconnect.setAccessToken(userModel.accessToken);
             kiteconnect.setPublicToken(userModel.publicToken);
 
             Examples examples = new Examples();
-            examples.getMargins(kiteconnect);
-
-            examples.placeOrder(kiteconnect);
-
-            examples.placeBracketOrder(kiteconnect);
-
-            examples.getTriggerRange(kiteconnect);
-
-            examples.placeCoverOrder(kiteconnect);
-
-            examples.getOrders(kiteconnect);
-
-            examples.getTrades(kiteconnect);
-
-            examples.getTradesWithOrderId(kiteconnect);
-
-            examples.modifyOrder(kiteconnect);
-
-            examples.cancelOrder(kiteconnect);
-
-            examples.getPositions(kiteconnect);
-
-            examples.getHoldings(kiteconnect);
-
-            examples.modifyProduct(kiteconnect);
-
-            examples.getAllInstruments(kiteconnect);
-
-            examples.getInstrumentsForExchange(kiteconnect);
-
-            examples.getQuote(kiteconnect);
-
+            // examples.getMargins(kiteconnect);
+            //
+            // examples.placeOrder(kiteconnect);
+            //
+            // examples.placeBracketOrder(kiteconnect);
+            //
+            // examples.getTriggerRange(kiteconnect);
+            //
+            // examples.placeCoverOrder(kiteconnect);
+            //
+            // examples.getOrders(kiteconnect);
+            //
+            // examples.getTrades(kiteconnect);
+            //
+            // examples.getTradesWithOrderId(kiteconnect);
+            //
+            // examples.modifyOrder(kiteconnect);
+            //
+            // examples.cancelOrder(kiteconnect);
+            //
+            // examples.getPositions(kiteconnect);
+            //
+            // examples.getHoldings(kiteconnect);
+            //
+            // examples.modifyProduct(kiteconnect);
+            //
+            // examples.getAllInstruments(kiteconnect);
+            //
+            // examples.getInstrumentsForExchange(kiteconnect);
+            //
+            // examples.getQuote(kiteconnect);
+            //
             examples.getHistoricalData(kiteconnect);
-
-            examples.logout(kiteconnect);
+            //
+            // examples.logout(kiteconnect);
 
             examples.tickerUsage(kiteconnect);
 
