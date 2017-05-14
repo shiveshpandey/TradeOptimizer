@@ -1,14 +1,11 @@
 package com.streamquote.parser;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 
 import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
 
-public class StreamingQuoteParserModeQuote implements IStreamingQuoteParser {
+public class StreamingQuoteParserImpl implements StreamingQuoteParser {
 
 	@Override
 	public StreamingQuote parse(ByteBuffer pktBuffer, String time) {
@@ -24,15 +21,11 @@ public class StreamingQuoteParserModeQuote implements IStreamingQuoteParser {
 		int lowPrice = pktBuffer.getInt();
 		int closePrice = pktBuffer.getInt();
 
-		StreamingQuote streamingQuote = new StreamingQuoteModeQuote(time,
-				convertIntToIntString(instrumentToken),
-				convertIntToBigDecimal(ltp), convertIntToLong(lastTradedQty),
-				convertIntToBigDecimal(avgTradedPrice), convertIntToLong(vol),
-				convertIntToLong(buyQty), convertIntToLong(sellQty),
-				convertIntToBigDecimal(openPrice),
-				convertIntToBigDecimal(highPrice),
-				convertIntToBigDecimal(lowPrice),
-				convertIntToBigDecimal(closePrice));
+		StreamingQuote streamingQuote = new StreamingQuoteModeQuote(time, convertIntToIntString(instrumentToken),
+				convertIntToDouble(ltp), convertIntToLong(lastTradedQty), convertIntToDouble(avgTradedPrice),
+				convertIntToLong(vol), convertIntToLong(buyQty), convertIntToLong(sellQty),
+				convertIntToDouble(openPrice), convertIntToDouble(highPrice), convertIntToDouble(lowPrice),
+				convertIntToDouble(closePrice));
 
 		return streamingQuote;
 	}
@@ -50,16 +43,13 @@ public class StreamingQuoteParserModeQuote implements IStreamingQuoteParser {
 	}
 
 	/**
-	 * convertIntToBigDecimal - private method to convert int to BigDecimal
+	 * convertIntToDouble - private method to convert int to Double
 	 * 
 	 * @param quoteParam
-	 * @return BigDecimal value
+	 * @return Double value
 	 */
-	private BigDecimal convertIntToBigDecimal(int quoteParam) {
-		BigDecimal quoteParamBigDecimal = new BigDecimal(quoteParam)
-				.divide(new BigDecimal(100), new MathContext(8,
-						RoundingMode.HALF_DOWN));
-		return quoteParamBigDecimal;
+	private Double convertIntToDouble(int quoteParam) {
+		return Double.valueOf(quoteParam);
 	}
 
 	/**

@@ -1,10 +1,8 @@
 package com.streamquote.model;
 
-import java.math.BigDecimal;
-
 public class MarketDepth {
 	public Long qty;
-	public BigDecimal price;
+	public Double price;
 	public Integer orders;
 
 	/**
@@ -14,7 +12,7 @@ public class MarketDepth {
 	 * @param price
 	 * @param orders
 	 */
-	public MarketDepth(Long qty, BigDecimal price, Integer orders) {
+	public MarketDepth(Long qty, Double price, Integer orders) {
 		super();
 		this.qty = qty;
 		this.price = price;
@@ -29,11 +27,11 @@ public class MarketDepth {
 		this.qty = qty;
 	}
 
-	public BigDecimal getPrice() {
+	public Double getPrice() {
 		return price;
 	}
 
-	public void setPrice(BigDecimal price) {
+	public void setPrice(Double price) {
 		this.price = price;
 	}
 
@@ -47,7 +45,6 @@ public class MarketDepth {
 
 	@Override
 	public String toString() {
-		return "MarketDepth [qty=" + qty + ", price=" + price + ", orders="
-				+ orders + "]";
+		return "MarketDepth [qty=" + qty + ", price=" + price + ", orders=" + orders + "]";
 	}
 }

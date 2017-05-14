@@ -9,5 +9,5 @@ import com.trade.optimizer.models.Tick;
  */
 
 public interface OnTick {
-    void onTick(ArrayList<Tick> ticks);
+	void onTick(ArrayList<Tick> ticks);
 }

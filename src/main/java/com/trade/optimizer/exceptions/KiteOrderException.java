@@ -6,9 +6,9 @@ package com.trade.optimizer.exceptions;
 
 public class KiteOrderException extends KiteException {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    public KiteOrderException(String message, int code) {
-        super(message, code);
-    }
+	public KiteOrderException(String message, int code) {
+		super(message, code);
+	}
 }

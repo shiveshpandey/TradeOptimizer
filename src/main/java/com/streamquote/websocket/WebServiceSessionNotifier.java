@@ -1,6 +1,6 @@
 package com.streamquote.websocket;
 
-public interface IwsSessionNotifier {
+public interface WebServiceSessionNotifier {
 
 	public void notifyWsInitiateFailed();
 

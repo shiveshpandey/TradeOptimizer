@@ -5,8 +5,10 @@ import java.util.List;
 import com.streamquote.model.OHLCquote;
 import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
+import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.Order;
 
-public interface IStreamingQuoteStorage {
+public interface StreamingQuoteStorage {
 
 	public void initializeJDBCConn();
 
@@ -23,4 +25,10 @@ public interface IStreamingQuoteStorage {
 	void storeData(List<StreamingQuoteModeQuote> quoteList, String tickType);
 
 	public String[] getTopPrioritizedTokenList(int i);
+
+	public List<Order> getOrderListToPlace();
+
+	public void saveInstrumentDetails(List<Instrument> instrumentList, String string);
+
+	public String[] getInstrumentDetailsOnTokenId(String instrumentToken);
 }

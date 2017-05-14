@@ -1,4 +1,4 @@
-package com.streamquote.app;
+package com.streamquote.utils;
 
 public class StreamingConfig {
 	/**

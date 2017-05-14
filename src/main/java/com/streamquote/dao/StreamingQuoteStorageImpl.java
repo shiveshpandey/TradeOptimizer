@@ -1,6 +1,5 @@
 package com.streamquote.dao;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -10,12 +9,14 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.streamquote.app.StreamingConfig;
 import com.streamquote.model.OHLCquote;
 import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
+import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.Order;
 
-public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
+public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	// JDBC driver name and database URL
 	private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
 	private static final String DB_URL = StreamingConfig.getStreamingQuoteDbUrl();
@@ -33,7 +34,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 	/**
 	 * constructor
 	 */
-	public StreamingQuoteDAOModeQuote() {
+	public StreamingQuoteStorageImpl() {
 		//
 	}
 
@@ -44,17 +45,17 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 	public void initializeJDBCConn() {
 		try {
 			System.out.println(
-					"StreamingQuoteDAOModeQuote.initializeJDBCConn(): creating JDBC connection for Streaming Quote...");
+					"StreamingQuoteStorageImpl.initializeJDBCConn(): creating JDBC connection for Streaming Quote...");
 			// Register JDBC driver
 			Class.forName(JDBC_DRIVER);
 			// Open the connection
 			conn = DriverManager.getConnection(DB_URL, USER, PASS);
 		} catch (ClassNotFoundException e) {
 			System.out
-					.println("StreamingQuoteDAOModeQuote.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
+					.println("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
 			e.printStackTrace();
 		} catch (SQLException e) {
-			System.out.println("StreamingQuoteDAOModeQuote.initializeJDBCConn(): SQLException on getConnection");
+			System.out.println("StreamingQuoteStorageImpl.initializeJDBCConn(): SQLException on getConnection");
 			e.printStackTrace();
 		}
 	}
@@ -67,14 +68,14 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.closeJDBCConn(): Closing JDBC connection for Streaming Quote...");
+						"StreamingQuoteStorageImpl.closeJDBCConn(): Closing JDBC connection for Streaming Quote...");
 				conn.close();
 			} catch (SQLException e) {
-				System.out.println("StreamingQuoteDAOModeQuote.closeJDBCConn(): SQLException on conn close");
+				System.out.println("StreamingQuoteStorageImpl.closeJDBCConn(): SQLException on conn close");
 				e.printStackTrace();
 			}
 		} else {
-			System.out.println("StreamingQuoteDAOModeQuote.closeJDBCConn(): WARNING: DB connection already null");
+			System.out.println("StreamingQuoteStorageImpl.closeJDBCConn(): WARNING: DB connection already null");
 		}
 	}
 
@@ -116,17 +117,34 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 						+ " PRIMARY KEY (InstrumentToken)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
+				sql = "CREATE TABLE " + quoteTable + "_signal " + "(Time time NOT NULL, "
+						+ " InstrumentToken varchar(32) NOT NULL, " + " Quantity varchar(32) NOT NULL, "
+						+ " Signal varchar(32) NOT NULL, " + " Status varchar(32) NOT NULL, "
+						+ " PRIMARY KEY (Time, InstrumentToken, Signal)) "
+						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+				stmt.executeUpdate(sql);
+
+				sql = "CREATE TABLE " + quoteTable + "_instrumentDetails " + "(Time time NOT NULL, "
+						+ " instrumentToken varchar(32) NOT NULL,exchangeToken varchar(32) NOT NULL,"
+						+ "tradingsymbol varchar(32) NOT NULL,name varchar(32) NOT NULL,"
+						+ "last_price varchar(32) NOT NULL,tickSize varchar(32) NOT NULL,"
+						+ "expiry varchar(32) NOT NULL,instrumentType varchar(32) NOT NULL,"
+						+ "segment varchar(32) NOT NULL,exchange varchar(32) NOT NULL,"
+						+ "strike varchar(32) NOT NULL,lotSize varchar(32) NOT NULL,"
+						+ " PRIMARY KEY (time,instrumentToken)) "
+						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+				stmt.executeUpdate(sql);
+
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.createDaysStreamingQuoteTable(): SQL table for Streaming quote created, table name: ["
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): SQL table for Streaming quote created, table name: ["
 								+ quoteTable + "]");
 			} catch (SQLException e) {
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out
-					.println("StreamingQuoteDAOModeQuote.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
+			System.out.println("StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
 		}
 	}
 
@@ -150,16 +168,16 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 
 					prepStmt.setString(1, quoteModeQuote.getTime());
 					prepStmt.setString(2, quoteModeQuote.getInstrumentToken());
-					prepStmt.setBigDecimal(3, quoteModeQuote.getLtp());
+					prepStmt.setDouble(3, quoteModeQuote.getLtp());
 					prepStmt.setLong(4, quoteModeQuote.getLastTradedQty());
-					prepStmt.setBigDecimal(5, quoteModeQuote.getAvgTradedPrice());
+					prepStmt.setDouble(5, quoteModeQuote.getAvgTradedPrice());
 					prepStmt.setLong(6, quoteModeQuote.getVol());
 					prepStmt.setLong(7, quoteModeQuote.getBuyQty());
 					prepStmt.setLong(8, quoteModeQuote.getSellQty());
-					prepStmt.setBigDecimal(9, quoteModeQuote.getOpenPrice());
-					prepStmt.setBigDecimal(10, quoteModeQuote.getHighPrice());
-					prepStmt.setBigDecimal(11, quoteModeQuote.getLowPrice());
-					prepStmt.setBigDecimal(12, quoteModeQuote.getClosePrice());
+					prepStmt.setDouble(9, quoteModeQuote.getOpenPrice());
+					prepStmt.setDouble(10, quoteModeQuote.getHighPrice());
+					prepStmt.setDouble(11, quoteModeQuote.getLowPrice());
+					prepStmt.setDouble(12, quoteModeQuote.getClosePrice());
 					prepStmt.setString(13, tickType);
 					prepStmt.executeUpdate();
 				}
@@ -169,7 +187,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 
 				prepStmt.setString(1, quoteList.get(0).getTime());
 				prepStmt.setString(2, quoteList.get(0).getInstrumentToken());
-				prepStmt.setInt(3, 0);
+				prepStmt.setDouble(3, quoteList.get(0).ltp);
 
 				prepStmt.executeUpdate();
 				prepStmt.close();
@@ -178,10 +196,10 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteDAOModeQuote.storeData(): ERROR: DB conn is null !!!");
+				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
 			} else {
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
 	}
@@ -202,31 +220,31 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 				// prepare statement
 				prepStmt.setString(1, quoteModeQuote.getTime());
 				prepStmt.setString(2, quoteModeQuote.getInstrumentToken());
-				prepStmt.setBigDecimal(3, quoteModeQuote.getLtp());
+				prepStmt.setDouble(3, quoteModeQuote.getLtp());
 				prepStmt.setLong(4, quoteModeQuote.getLastTradedQty());
-				prepStmt.setBigDecimal(5, quoteModeQuote.getAvgTradedPrice());
+				prepStmt.setDouble(5, quoteModeQuote.getAvgTradedPrice());
 				prepStmt.setLong(6, quoteModeQuote.getVol());
 				prepStmt.setLong(7, quoteModeQuote.getBuyQty());
 				prepStmt.setLong(8, quoteModeQuote.getSellQty());
-				prepStmt.setBigDecimal(9, quoteModeQuote.getOpenPrice());
-				prepStmt.setBigDecimal(10, quoteModeQuote.getHighPrice());
-				prepStmt.setBigDecimal(11, quoteModeQuote.getLowPrice());
-				prepStmt.setBigDecimal(12, quoteModeQuote.getClosePrice());
+				prepStmt.setDouble(9, quoteModeQuote.getOpenPrice());
+				prepStmt.setDouble(10, quoteModeQuote.getHighPrice());
+				prepStmt.setDouble(11, quoteModeQuote.getLowPrice());
+				prepStmt.setDouble(12, quoteModeQuote.getClosePrice());
 				prepStmt.executeUpdate();
 				prepStmt.close();
 			} catch (SQLException e) {
-				System.out.println(
-						"StreamingQuoteDAOModeQuote.storeData(): ERROR: SQLException on Storing data to Table: "
+				System.out
+						.println("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 								+ quote);
-				System.out.println("StreamingQuoteDAOModeQuote.storeData(): [SQLException Cause]: " + e.getMessage());
+				System.out.println("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
 				// e.printStackTrace();
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteDAOModeQuote.storeData(): ERROR: DB conn is null !!!");
+				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
 			} else {
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
 	}
@@ -253,7 +271,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 						+ "' ORDER BY Time ASC LIMIT 1";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				openRs.next();
-				BigDecimal openQuote = openRs.getBigDecimal("LastTradedPrice");
+				Double openQuote = openRs.getDouble("LastTradedPrice");
 				// System.out.println("OPEN: " + openQuote);
 
 				// SQL query HIGH
@@ -261,7 +279,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken + "'";
 				ResultSet highRs = stmt.executeQuery(highSql);
 				highRs.next();
-				BigDecimal highQuote = highRs.getBigDecimal(1);
+				Double highQuote = highRs.getDouble(1);
 				// System.out.println("HIGH: " + highQuote);
 
 				// SQL query LOW
@@ -269,7 +287,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken + "'";
 				ResultSet lowRs = stmt.executeQuery(lowSql);
 				lowRs.next();
-				BigDecimal lowQuote = lowRs.getBigDecimal(1);
+				Double lowQuote = lowRs.getDouble(1);
 				// System.out.println("LOW: " + lowQuote);
 
 				// SQL query CLOSE
@@ -278,7 +296,7 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 						+ "' ORDER BY Time DESC LIMIT 1";
 				ResultSet closeRs = stmt.executeQuery(closeSql);
 				closeRs.next();
-				BigDecimal closeQuote = closeRs.getBigDecimal("LastTradedPrice");
+				Double closeQuote = closeRs.getDouble("LastTradedPrice");
 				// System.out.println("CLOSE: " + closeQuote);
 
 				// SQL query VOL
@@ -295,13 +313,13 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 			} catch (SQLException e) {
 				ohlcMap = null;
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.getOHLCDataByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
+						"StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 				// e.printStackTrace();
 			}
 		} else {
 			ohlcMap = null;
-			System.out.println("StreamingQuoteDAOModeQuote.getOHLCDataByTimeRange(): ERROR: DB conn is null !!!");
+			System.out.println("StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: DB conn is null !!!");
 		}
 
 		return ohlcMap;
@@ -330,16 +348,16 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 				while (openRs.next()) {
 					String time = openRs.getString("Time");
 					String instrument_Token = openRs.getString("InstrumentToken");
-					BigDecimal lastTradedPrice = openRs.getBigDecimal("LastTradedPrice");
+					Double lastTradedPrice = openRs.getDouble("LastTradedPrice");
 					Long lastTradedQty = openRs.getLong("LastTradedQty");
-					BigDecimal avgTradedPrice = openRs.getBigDecimal("AvgTradedPrice");
+					Double avgTradedPrice = openRs.getDouble("AvgTradedPrice");
 					Long volume = openRs.getLong("Volume");
 					Long buyQty = openRs.getLong("BuyQty");
 					Long sellQty = openRs.getLong("SellQty");
-					BigDecimal openPrice = openRs.getBigDecimal("OpenPrice");
-					BigDecimal highPrice = openRs.getBigDecimal("HighPrice");
-					BigDecimal lowPrice = openRs.getBigDecimal("LowPrice");
-					BigDecimal closePrice = openRs.getBigDecimal("ClosePrice");
+					Double openPrice = openRs.getDouble("OpenPrice");
+					Double highPrice = openRs.getDouble("HighPrice");
+					Double lowPrice = openRs.getDouble("LowPrice");
+					Double closePrice = openRs.getDouble("ClosePrice");
 
 					StreamingQuote streamingQuote = new StreamingQuoteModeQuote(time, instrument_Token, lastTradedPrice,
 							lastTradedQty, avgTradedPrice, volume, buyQty, sellQty, openPrice, highPrice, lowPrice,
@@ -352,13 +370,13 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 			} catch (SQLException e) {
 				streamingQuoteList = null;
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.getQuoteByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
+						"StreamingQuoteStorageImpl.getQuoteByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 				// e.printStackTrace();
 			}
 		} else {
 			streamingQuoteList = null;
-			System.out.println("StreamingQuoteDAOModeQuote.getQuoteByTimeRange(): ERROR: DB conn is null !!!");
+			System.out.println("StreamingQuoteStorageImpl.getQuoteByTimeRange(): ERROR: DB conn is null !!!");
 		}
 
 		return streamingQuoteList;
@@ -380,12 +398,122 @@ public class StreamingQuoteDAOModeQuote implements IStreamingQuoteStorage {
 				}
 			} catch (SQLException e) {
 				System.out.println(
-						"StreamingQuoteDAOModeQuote.getTopPrioritizedTokenList(): ERROR: SQLException on fetching data from Table, cause: "
+						"StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out.println("StreamingQuoteDAOModeQuote.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
+			System.out.println("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
 		}
 		return instrumentList;
+	}
+
+	@Override
+	public List<Order> getOrderListToPlace() {
+		List<Order> orders = new ArrayList<Order>();
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "SELECT InstrumentToken,Signal,Quantity Time FROM " + quoteTable
+						+ "_signal where status ='active'";
+				ResultSet openRs = stmt.executeQuery(openSql);
+
+				for (int index = 0; index < openRs.getFetchSize(); index++) {
+					openRs.next();
+					Order order = new Order();
+					order.symbol = String.valueOf(openRs.getString(1));
+					order.transactionType = String.valueOf(openRs.getString(2));
+					order.quantity = String.valueOf(openRs.getString(3));
+
+					orders.add(order);
+
+					stmt = conn.createStatement();
+					openSql = "update " + quoteTable + "_signal set status ='orderPlaced' where InstrumentToken= "
+							+ openRs.getString(1) + " and Signal= " + openRs.getString(2) + " and Time= "
+							+ openRs.getString(3) + "";
+					stmt.executeUpdate(openSql);
+
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				System.out.println(
+						"StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			System.out.println("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
+		}
+		return orders;
+	}
+
+	@Override
+	public void saveInstrumentDetails(List<Instrument> instrumentList, String time) {
+
+		if (conn != null) {
+
+			try {
+				String sql = "INSERT INTO " + quoteTable + "_instrumentDetails "
+						+ "(time,instrumentToken,exchangeToken,tradingsymbol,name,last_price,"
+						+ "tickSize,expiry,instrumentType,segment,exchange,strike,lotSize) "
+						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				for (int index = 0; index < instrumentList.size(); index++) {
+					Instrument instrument = instrumentList.get(index);
+
+					prepStmt.setString(1, time);
+					prepStmt.setString(2, String.valueOf(instrument.getInstrument_token()));
+					prepStmt.setString(3, String.valueOf(instrument.getExchange_token()));
+					prepStmt.setString(4, instrument.getTradingsymbol());
+					prepStmt.setString(5, instrument.getName());
+					prepStmt.setString(6, String.valueOf(instrument.getLast_price()));
+					prepStmt.setString(7, String.valueOf(instrument.getTick_size()));
+					prepStmt.setString(8, instrument.getExpiry());
+					prepStmt.setString(9, instrument.getInstrument_type());
+					prepStmt.setString(10, instrument.getSegment());
+					prepStmt.setString(11, instrument.getExchange());
+					prepStmt.setString(12, instrument.getStrike());
+					prepStmt.setString(13, String.valueOf(instrument.getLot_size()));
+					prepStmt.executeUpdate();
+				}
+				prepStmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		} else {
+			if (conn != null) {
+				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
+			} else {
+				System.out.println(
+						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+			}
+		}
+
+	}
+
+	@Override
+	public String[] getInstrumentDetailsOnTokenId(String instrumentToken) {
+		String[] param = new String[3];
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+
+				String openSql = "SELECT lotSize,tradingsymbol,,exchange FROM " + quoteTable
+						+ "_instrumentDetails WHERE instrumentToken='" + instrumentToken + "'";
+				ResultSet openRs = stmt.executeQuery(openSql);
+				while (openRs.next()) {
+					param[0] = openRs.getString(0);
+					param[1] = openRs.getString(1);
+					param[2] = openRs.getString(2);
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				System.out.println(
+						"StreamingQuoteStorageImpl.getQuoteByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			System.out.println("StreamingQuoteStorageImpl.getQuoteByTimeRange(): ERROR: DB conn is null !!!");
+		}
+
+		return param;
 	}
 }

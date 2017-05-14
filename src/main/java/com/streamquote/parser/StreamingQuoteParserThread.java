@@ -7,9 +7,9 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.BlockingQueue;
 
-import com.streamquote.app.StreamingConfig;
-import com.streamquote.dao.IStreamingQuoteStorage;
+import com.streamquote.dao.StreamingQuoteStorage;
 import com.streamquote.model.StreamingQuote;
+import com.streamquote.utils.StreamingConfig;
 
 public class StreamingQuoteParserThread implements Runnable {
 	// Quote Buffer Queue
@@ -23,10 +23,10 @@ public class StreamingQuoteParserThread implements Runnable {
 	private TimeZone timeZone = null;
 
 	// Quote Parser
-	private IStreamingQuoteParser streamingQuoteParser = null;
+	private StreamingQuoteParser streamingQuoteParser = null;
 
 	// Quote Storage
-	private IStreamingQuoteStorage streamingQuoteStorage = null;
+	private StreamingQuoteStorage streamingQuoteStorage = null;
 
 	/**
 	 * constructor
@@ -34,8 +34,7 @@ public class StreamingQuoteParserThread implements Runnable {
 	 * @param quoteBufferQ
 	 * @param streamingQuoteStorage
 	 */
-	public StreamingQuoteParserThread(BlockingQueue<Object> quoteBufferQ,
-			IStreamingQuoteStorage streamingQuoteStorage) {
+	public StreamingQuoteParserThread(BlockingQueue<Object> quoteBufferQ, StreamingQuoteStorage streamingQuoteStorage) {
 		this.quoteBufferQ = quoteBufferQ;
 		this.runStatus = true;
 

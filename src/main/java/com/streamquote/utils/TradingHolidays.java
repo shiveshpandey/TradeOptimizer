@@ -1,4 +1,4 @@
-package com.streamquote.app;
+package com.streamquote.utils;
 
 import java.text.DateFormat;
 import java.text.ParseException;

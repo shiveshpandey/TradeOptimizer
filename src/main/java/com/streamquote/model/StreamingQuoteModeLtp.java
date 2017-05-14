@@ -1,9 +1,7 @@
 package com.streamquote.model;
 
-import java.math.BigDecimal;
-
 public class StreamingQuoteModeLtp extends StreamingQuote {
-	public BigDecimal ltp;
+	public Double ltp;
 
 	/**
 	 * Constructor
@@ -12,23 +10,21 @@ public class StreamingQuoteModeLtp extends StreamingQuote {
 	 * @param instrumentToken
 	 * @param ltp
 	 */
-	public StreamingQuoteModeLtp(String time, String instrumentToken,
-			BigDecimal ltp) {
+	public StreamingQuoteModeLtp(String time, String instrumentToken, Double ltp) {
 		super(time, instrumentToken);
 		this.ltp = ltp;
 	}
 
-	public BigDecimal getLtp() {
+	public Double getLtp() {
 		return ltp;
 	}
 
-	public void setLtp(BigDecimal ltp) {
+	public void setLtp(Double ltp) {
 		this.ltp = ltp;
 	}
 
 	@Override
 	public String toString() {
-		return "StreamingQuoteModeLtp [ltp=" + ltp + ", time=" + time
-				+ ", instrumentToken=" + instrumentToken + "]";
+		return "StreamingQuoteModeLtp [ltp=" + ltp + ", time=" + time + ", instrumentToken=" + instrumentToken + "]";
 	}
 }

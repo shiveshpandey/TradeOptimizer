@@ -1,17 +1,15 @@
 package com.streamquote.model;
 
-import java.math.BigDecimal;
-
 public class StreamingQuoteModeQuote extends StreamingQuoteModeLtp {
 	public Long lastTradedQty;
-	public BigDecimal avgTradedPrice;
+	public Double avgTradedPrice;
 	public Long vol;
 	public Long buyQty;
 	public Long sellQty;
-	public BigDecimal openPrice;
-	public BigDecimal highPrice;
-	public BigDecimal lowPrice;
-	public BigDecimal closePrice;
+	public Double openPrice;
+	public Double highPrice;
+	public Double lowPrice;
+	public Double closePrice;
 
 	/**
 	 * Constructor
@@ -29,10 +27,9 @@ public class StreamingQuoteModeQuote extends StreamingQuoteModeLtp {
 	 * @param lowPrice
 	 * @param closePrice
 	 */
-	public StreamingQuoteModeQuote(String time, String instrumentToken,
-			BigDecimal ltp, Long lastTradedQty, BigDecimal avgTradedPrice,
-			Long vol, Long buyQty, Long sellQty, BigDecimal openPrice,
-			BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice) {
+	public StreamingQuoteModeQuote(String time, String instrumentToken, Double ltp, Long lastTradedQty,
+			Double avgTradedPrice, Long vol, Long buyQty, Long sellQty, Double openPrice, Double highPrice,
+			Double lowPrice, Double closePrice) {
 		super(time, instrumentToken, ltp);
 		this.lastTradedQty = lastTradedQty;
 		this.avgTradedPrice = avgTradedPrice;
@@ -53,11 +50,11 @@ public class StreamingQuoteModeQuote extends StreamingQuoteModeLtp {
 		this.lastTradedQty = lastTradedQty;
 	}
 
-	public BigDecimal getAvgTradedPrice() {
+	public Double getAvgTradedPrice() {
 		return avgTradedPrice;
 	}
 
-	public void setAvgTradedPrice(BigDecimal avgTradedPrice) {
+	public void setAvgTradedPrice(Double avgTradedPrice) {
 		this.avgTradedPrice = avgTradedPrice;
 	}
 
@@ -85,46 +82,43 @@ public class StreamingQuoteModeQuote extends StreamingQuoteModeLtp {
 		this.sellQty = sellQty;
 	}
 
-	public BigDecimal getOpenPrice() {
+	public Double getOpenPrice() {
 		return openPrice;
 	}
 
-	public void setOpenPrice(BigDecimal openPrice) {
+	public void setOpenPrice(Double openPrice) {
 		this.openPrice = openPrice;
 	}
 
-	public BigDecimal getHighPrice() {
+	public Double getHighPrice() {
 		return highPrice;
 	}
 
-	public void setHighPrice(BigDecimal highPrice) {
+	public void setHighPrice(Double highPrice) {
 		this.highPrice = highPrice;
 	}
 
-	public BigDecimal getLowPrice() {
+	public Double getLowPrice() {
 		return lowPrice;
 	}
 
-	public void setLowPrice(BigDecimal lowPrice) {
+	public void setLowPrice(Double lowPrice) {
 		this.lowPrice = lowPrice;
 	}
 
-	public BigDecimal getClosePrice() {
+	public Double getClosePrice() {
 		return closePrice;
 	}
 
-	public void setClosePrice(BigDecimal closePrice) {
+	public void setClosePrice(Double closePrice) {
 		this.closePrice = closePrice;
 	}
 
 	@Override
 	public String toString() {
-		return "StreamingQuoteModeQuote [lastTradedQty=" + lastTradedQty
-				+ ", avgTradedPrice=" + avgTradedPrice + ", vol=" + vol
-				+ ", buyQty=" + buyQty + ", sellQty=" + sellQty
-				+ ", openPrice=" + openPrice + ", highPrice=" + highPrice
-				+ ", lowPrice=" + lowPrice + ", closePrice=" + closePrice
-				+ ", ltp=" + ltp + ", time=" + time + ", instrumentToken="
-				+ instrumentToken + "]";
+		return "StreamingQuoteModeQuote [lastTradedQty=" + lastTradedQty + ", avgTradedPrice=" + avgTradedPrice
+				+ ", vol=" + vol + ", buyQty=" + buyQty + ", sellQty=" + sellQty + ", openPrice=" + openPrice
+				+ ", highPrice=" + highPrice + ", lowPrice=" + lowPrice + ", closePrice=" + closePrice + ", ltp=" + ltp
+				+ ", time=" + time + ", instrumentToken=" + instrumentToken + "]";
 	}
 }

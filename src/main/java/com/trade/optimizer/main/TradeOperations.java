@@ -9,6 +9,8 @@ import java.util.Map;
 import org.json.JSONObject;
 
 import com.neovisionaries.ws.client.WebSocketException;
+import com.streamquote.dao.StreamingQuoteStorage;
+import com.streamquote.dao.StreamingQuoteStorageImpl;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
 import com.trade.optimizer.models.HistoricalData;
@@ -28,6 +30,7 @@ import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
 
 public class TradeOperations {
+	private StreamingQuoteStorage streamingQuoteDAOModeQuote = new StreamingQuoteStorageImpl();
 
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteconnect) throws KiteException {
@@ -38,8 +41,13 @@ public class TradeOperations {
 		System.out.println(margins.utilised.debits);
 	}
 
-	/** Place order. */
-	public void placeOrder(KiteConnect kiteconnect) throws KiteException {
+	/**
+	 * Place order.
+	 * 
+	 * @param quantity
+	 */
+	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity)
+			throws KiteException {
 		/**
 		 * Place order method requires a map argument which contains,
 		 * tradingsymbol, exchange, transaction_type, order_type, quantity,
@@ -52,25 +60,21 @@ public class TradeOperations {
 		 * KiteException will have error message in it Success of this call
 		 * implies only order has been placed successfully, not order execution
 		 */
-		Map<String, Object> param = new HashMap<String, Object>() {
+		String[] instrumentDetails = streamingQuoteDAOModeQuote.getInstrumentDetailsOnTokenId(instrumentToken);
+		Map<String, Object> param = new HashMap<String, Object>();
 
-			private static final long serialVersionUID = 1L;
-
-			{
-				put("quantity", "1");
-				put("order_type", "SL");
-				put("tradingsymbol", "HINDALCO");
-				put("product", "CNC");
-				put("exchange", "NSE");
-				put("transaction_type", "BUY");
-				put("validity", "DAY");
-				put("price", "158.0");
-				put("trigger_price", "157.5");
-				put("tag", "myTag"); // tag is optional and it cannot be more
-										// than 8 characters and only
-										// alphanumeric is allowed
-			}
-		};
+		param.put("quantity", quantity);
+		param.put("order_type", "SL");
+		param.put("tradingsymbol", instrumentDetails[1]);
+		param.put("product", "CNC");
+		param.put("exchange", instrumentDetails[2]);
+		param.put("transaction_type", buyOrSell);
+		param.put("validity", "DAY");
+		param.put("price", "158.0");
+		param.put("trigger_price", "157.5");
+		param.put("tag", "myTag"); // tag is optional and it cannot be more
+									// than 8 characters and only
+									// alphanumeric is allowed
 		Order order = kiteconnect.placeOrder(param, "regular");
 		System.out.println(order.orderId);
 	}
@@ -263,13 +267,13 @@ public class TradeOperations {
 		System.out.println(order.orderId);
 	}
 
-	/** Cancel an order */
-	public void cancelOrder(KiteConnect kiteconnect) throws KiteException {
-		// Order modify request will return order model which will contain only
-		// order_id.
-		// Cancel order will return order model which will only have orderId.
-		Order order2 = kiteconnect.cancelOrder("161007000088484", "regular");
-		System.out.println(order2.orderId);
+	/**
+	 * Cancel an order
+	 * 
+	 * @param order
+	 */
+	public void cancelOrder(KiteConnect kiteconnect, Order order) throws KiteException {
+		kiteconnect.cancelOrder(order.orderId, "regular");
 	}
 
 	public void exitBracketOrder(KiteConnect kiteconnect) throws KiteException {
@@ -288,10 +292,8 @@ public class TradeOperations {
 	}
 
 	/** Get holdings. */
-	public void getHoldings(KiteConnect kiteconnect) throws KiteException {
-		// Get holdings returns holdings model which contains list of holdings.
-		Holding holding = kiteconnect.getHoldings();
-		System.out.println(holding.holdings);
+	public Holding getHoldings(KiteConnect kiteconnect) throws KiteException {
+		return kiteconnect.getHoldings();
 	}
 
 	/** Converts position */

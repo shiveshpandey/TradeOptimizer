@@ -1,7 +1,6 @@
 package com.trade.optimizer.main;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -14,21 +13,22 @@ import java.util.TimeZone;
 
 import org.json.JSONException;
 
-import com.streamquote.app.StreamingConfig;
-import com.streamquote.dao.IStreamingQuoteStorage;
-import com.streamquote.dao.StreamingQuoteDAOModeQuote;
+import com.streamquote.dao.StreamingQuoteStorage;
+import com.streamquote.dao.StreamingQuoteStorageImpl;
 import com.streamquote.model.StreamingQuoteModeQuote;
+import com.streamquote.utils.StreamingConfig;
 import com.streamquote.websocket.WebsocketThread;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
 import com.trade.optimizer.kiteconnect.SessionExpiryHook;
 import com.trade.optimizer.models.HistoricalData;
+import com.trade.optimizer.models.Holding;
 import com.trade.optimizer.models.Instrument;
 import com.trade.optimizer.models.Order;
 
 public class TradeOptimizer {
 
-	private static IStreamingQuoteStorage streamingQuoteDAOModeQuote = new StreamingQuoteDAOModeQuote();
+	private static StreamingQuoteStorage streamingQuoteDAOModeQuote = new StreamingQuoteStorageImpl();
 	private static StreamingQuoteModeQuote quote = null;
 	private static HistoricalData historicalData = null;
 	private static TimeZone timeZone = TimeZone.getTimeZone("IST");
@@ -37,7 +37,7 @@ public class TradeOptimizer {
 	private static boolean streamingQuoteStarted = false;
 	private static WebsocketThread websocketThread = null;
 
-	private static IStreamingQuoteStorage streamingQuoteStorage = null;
+	private static StreamingQuoteStorage streamingQuoteStorage = null;
 
 	public static void main(String[] args) {
 		try {
@@ -74,6 +74,8 @@ public class TradeOptimizer {
 
 			executeOrdersOnSignals(kiteconnect);
 
+			checkAndProcessPendingOrdersOnMarketQueue(kiteconnect);
+
 			closingDayRoundOffOperations(kiteconnect);
 
 		} catch (JSONException e) {
@@ -81,6 +83,10 @@ public class TradeOptimizer {
 		} catch (KiteException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static void checkAndProcessPendingOrdersOnMarketQueue(KiteConnect kiteconnect) {
+		// TODO Auto-generated method stub
 	}
 
 	private static void createInitialDayTables() {
@@ -102,7 +108,8 @@ public class TradeOptimizer {
 			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			private TimeZone timeZone = TimeZone.getTimeZone("IST");
 			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
-			List<Order> list = new TradeOperations().getOrders(kiteconnect);
+			List<Order> orderList = new TradeOperations().getOrders(kiteconnect);
+			List<Holding> holdings = new TradeOperations().getHoldings(kiteconnect).holdings;
 
 			@Override
 			public void run() {
@@ -113,27 +120,16 @@ public class TradeOptimizer {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeEnd) >= 0) {
 							runnable = false;
-							for (int index = 0; index < list.size(); index++) {
-								int rountOffRequired = 0;
-								if (list.get(index).status.equalsIgnoreCase("OPEN"))
-									rountOffRequired = 1;
-								if (list.get(index).status.equalsIgnoreCase("SELL"))
-									rountOffRequired = 2;
-								if (list.get(index).status.equalsIgnoreCase("BUY"))
-									rountOffRequired = 3;
-
-								if (rountOffRequired == 1) {
+							for (int index = 0; index < orderList.size(); index++) {
+								if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
 									TradeOperations ex = new TradeOperations();
-									ex.cancelOrder(kiteconnect);
+									ex.cancelOrder(kiteconnect, orderList.get(index));
 								}
-								if (rountOffRequired == 2) {// BUY Here
-									TradeOperations ex = new TradeOperations();
-									ex.placeOrder(kiteconnect);
-								}
-								if (rountOffRequired == 3) {// SELL Here
-									TradeOperations ex = new TradeOperations();
-									ex.placeOrder(kiteconnect);
-								}
+							}
+							for (int index = 0; index < holdings.size(); index++) {
+								TradeOperations ex = new TradeOperations();
+								ex.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
+										holdings.get(index).quantity);
 							}
 						} else {
 							Thread.sleep(1800000);
@@ -173,7 +169,8 @@ public class TradeOptimizer {
 							TradeOperations ex = new TradeOperations();
 							List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
 							for (int index = 0; index < signalList.size(); index++)
-								ex.placeOrder(kiteconnect);
+								ex.placeOrder(kiteconnect, signalList.get(index).symbol,
+										signalList.get(index).transactionType, signalList.get(index).quantity);
 							Thread.sleep(1000);
 						} else {
 							runnable = false;
@@ -192,8 +189,7 @@ public class TradeOptimizer {
 	}
 
 	private static List<Order> getOrderListToPlaceAsPerStrategySignals() {
-		// TODO Auto-generated method stub
-		return null;
+		return streamingQuoteStorage.getOrderListToPlace();
 	}
 
 	private static void startLiveStreamOfSelectedInstruments(final KiteConnect kiteconnect) {
@@ -257,24 +253,48 @@ public class TradeOptimizer {
 							instrumentList.addAll(tradeOperations.getInstrumentsForExchange(kiteconnect, "BFO"));
 
 							List<StreamingQuoteModeQuote> quoteList = new ArrayList<StreamingQuoteModeQuote>();
+
+							HistoricalData histData;
 							for (int index = 0; index < instrumentList.size(); index++) {
+
+								long dayHighVolume = 0, dayLowVolume = 1999999999, dayCloseVolume = 0;
+								double dayHighPrice = 0, dayLowPrice = 1999999999, dayClosePrice = 0;
+
 								historicalData = tradeOperations.getHistoricalData(kiteconnect, "2017-05-08",
 										"2017-05-12", "minute",
 										Long.toString(instrumentList.get(index).getInstrument_token()));
 								for (int count = 0; count < historicalData.dataArrayList.size(); count++) {
+									histData = historicalData.dataArrayList.get(count);
+
+									if (dayHighVolume < Long.valueOf(histData.volume))
+										dayHighVolume = Long.valueOf(histData.volume);
+									if (dayLowVolume > Long.valueOf(histData.volume))
+										dayLowVolume = Long.valueOf(histData.volume);
+									if (count == historicalData.dataArrayList.size() - 1)
+										dayCloseVolume = Long.valueOf(histData.volume);
+
+									if (dayHighPrice < Double.valueOf(histData.high))
+										dayHighPrice = Double.valueOf(histData.high);
+									if (dayLowPrice > Double.valueOf(histData.low))
+										dayLowPrice = Double.valueOf(histData.low);
+									if (count == historicalData.dataArrayList.size() - 1)
+										dayClosePrice = Double.valueOf(histData.close);
+
+									double priorityPoint = (dayClosePrice / (dayHighPrice - dayLowPrice)) * 100
+											* (dayCloseVolume / (dayHighVolume - dayLowVolume));
+
 									quote = new StreamingQuoteModeQuote(
 											historicalData.dataArrayList.get(count).timeStamp,
 											Long.toString(instrumentList.get(index).getInstrument_token()),
-											new BigDecimal(0), new Long(0), new BigDecimal(0),
-											Long.valueOf(historicalData.dataArrayList.get(count).volume), new Long(0),
-											new Long(0), new BigDecimal(historicalData.dataArrayList.get(count).open),
-											new BigDecimal(historicalData.dataArrayList.get(count).high),
-											new BigDecimal(historicalData.dataArrayList.get(count).low),
-											new BigDecimal(historicalData.dataArrayList.get(count).close));
+											new Double(priorityPoint), new Long(0), new Double(0),
+											Long.valueOf(histData.volume), new Long(0), new Long(0),
+											new Double(histData.open), new Double(histData.high),
+											new Double(histData.low), new Double(histData.close));
 									quoteList.add(quote);
 								}
 								streamingQuoteDAOModeQuote.storeData(quoteList, "minute");
 							}
+							streamingQuoteDAOModeQuote.saveInstrumentDetails(instrumentList, new Date().toString());
 
 							StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR = streamingQuoteDAOModeQuote
 									.getTopPrioritizedTokenList(10);
@@ -303,28 +323,25 @@ public class TradeOptimizer {
 
 	private static void roundOfNonPerformingBoughtStocks(String[] qUOTE_STREAMING_INSTRUMENTS_ARR, List<Order> list,
 			KiteConnect kiteconnect) throws KiteException {
+
 		for (int index = 0; index < list.size(); index++) {
-			int rountOffRequired = 0;
 			for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
 				if (list.get(index).tradingSymbol.equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count]))
-					if (list.get(index).status.equalsIgnoreCase("OPEN"))
-						rountOffRequired = 1;
-				if (list.get(index).status.equalsIgnoreCase("SELL"))
-					rountOffRequired = 2;
-				if (list.get(index).status.equalsIgnoreCase("BUY"))
-					rountOffRequired = 3;
+					if (list.get(index).status.equalsIgnoreCase("OPEN")) {
+						TradeOperations ex = new TradeOperations();
+						ex.cancelOrder(kiteconnect, list.get(index));
+					}
 			}
-			if (rountOffRequired == 1) {
-				TradeOperations ex = new TradeOperations();
-				ex.cancelOrder(kiteconnect);
-			}
-			if (rountOffRequired == 2) {// BUY Here
-				TradeOperations ex = new TradeOperations();
-				ex.placeOrder(kiteconnect);
-			}
-			if (rountOffRequired == 3) {// SELL Here
-				TradeOperations ex = new TradeOperations();
-				ex.placeOrder(kiteconnect);
+		}
+		List<Holding> holdings = new TradeOperations().getHoldings(kiteconnect).holdings;
+
+		for (int index = 0; index < holdings.size(); index++) {
+			for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
+				if (holdings.get(index).instrumentToken.equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count])) {
+					TradeOperations ex = new TradeOperations();
+					ex.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
+							holdings.get(index).quantity);
+				}
 			}
 		}
 	}

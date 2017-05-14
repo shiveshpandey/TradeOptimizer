@@ -1,6 +1,6 @@
 package com.streamquote.dao;
 
-import com.streamquote.app.StreamingConfig;
+import com.streamquote.utils.StreamingConfig;
 
 public class StreamingQuoteStorageFactory {
 
@@ -10,23 +10,15 @@ public class StreamingQuoteStorageFactory {
 	 * 
 	 * @return StreamingQuoteStorage Instance
 	 */
-	public static IStreamingQuoteStorage getStreamingQuoteStorage() {
-		IStreamingQuoteStorage streamingQuoteStorage = null;
+	public static StreamingQuoteStorage getStreamingQuoteStorage() {
+		StreamingQuoteStorage streamingQuoteStorage = null;
 
-		if (StreamingConfig.getStreamingQuoteMode().equals(
-				StreamingConfig.QUOTE_STREAMING_MODE_LTP)) {
-			streamingQuoteStorage = new StreamingQuoteDAOModeLtp();
-		} else if (StreamingConfig.getStreamingQuoteMode().equals(
-				StreamingConfig.QUOTE_STREAMING_MODE_QUOTE)) {
-			streamingQuoteStorage = new StreamingQuoteDAOModeQuote();
-		} else if (StreamingConfig.getStreamingQuoteMode().equals(
-				StreamingConfig.QUOTE_STREAMING_MODE_FULL)) {
-			streamingQuoteStorage = new StreamingQuoteDAOModeFull();
+		if (StreamingConfig.getStreamingQuoteMode().equals(StreamingConfig.QUOTE_STREAMING_MODE_QUOTE)) {
+			streamingQuoteStorage = new StreamingQuoteStorageImpl();
 		} else {
-			System.out
-					.println("StreamingQuoteStorageFactory.getStreamingQuoteStorage(): ERROR: "
-							+ "Current DB storage type not supported for Quote type ["
-							+ StreamingConfig.getStreamingQuoteMode() + "]");
+			System.out.println("StreamingQuoteStorageFactory.getStreamingQuoteStorage(): ERROR: "
+					+ "Current DB storage type not supported for Quote type [" + StreamingConfig.getStreamingQuoteMode()
+					+ "]");
 		}
 
 		return streamingQuoteStorage;

@@ -1,7 +1,5 @@
 package com.streamquote.model;
 
-import java.math.BigDecimal;
-
 public class StreamingQuoteModeFull extends StreamingQuoteModeQuote {
 	public MarketDepth bidEntry1;
 	public MarketDepth bidEntry2;
@@ -40,17 +38,13 @@ public class StreamingQuoteModeFull extends StreamingQuoteModeQuote {
 	 * @param offerEntry4
 	 * @param offerEntry5
 	 */
-	public StreamingQuoteModeFull(String time, String instrumentToken,
-			BigDecimal ltp, Long lastTradedQty, BigDecimal avgTradedPrice,
-			Long vol, Long buyQty, Long sellQty, BigDecimal openPrice,
-			BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice,
-			MarketDepth bidEntry1, MarketDepth bidEntry2,
-			MarketDepth bidEntry3, MarketDepth bidEntry4,
-			MarketDepth bidEntry5, MarketDepth offerEntry1,
-			MarketDepth offerEntry2, MarketDepth offerEntry3,
-			MarketDepth offerEntry4, MarketDepth offerEntry5) {
-		super(time, instrumentToken, ltp, lastTradedQty, avgTradedPrice, vol,
-				buyQty, sellQty, openPrice, highPrice, lowPrice, closePrice);
+	public StreamingQuoteModeFull(String time, String instrumentToken, Double ltp, Long lastTradedQty,
+			Double avgTradedPrice, Long vol, Long buyQty, Long sellQty, Double openPrice, Double highPrice,
+			Double lowPrice, Double closePrice, MarketDepth bidEntry1, MarketDepth bidEntry2, MarketDepth bidEntry3,
+			MarketDepth bidEntry4, MarketDepth bidEntry5, MarketDepth offerEntry1, MarketDepth offerEntry2,
+			MarketDepth offerEntry3, MarketDepth offerEntry4, MarketDepth offerEntry5) {
+		super(time, instrumentToken, ltp, lastTradedQty, avgTradedPrice, vol, buyQty, sellQty, openPrice, highPrice,
+				lowPrice, closePrice);
 		this.bidEntry1 = bidEntry1;
 		this.bidEntry2 = bidEntry2;
 		this.bidEntry3 = bidEntry3;
@@ -145,18 +139,12 @@ public class StreamingQuoteModeFull extends StreamingQuoteModeQuote {
 
 	@Override
 	public String toString() {
-		return "StreamingQuoteModeFull [bidEntry1=" + bidEntry1
-				+ ", bidEntry2=" + bidEntry2 + ", bidEntry3=" + bidEntry3
-				+ ", bidEntry4=" + bidEntry4 + ", bidEntry5=" + bidEntry5
-				+ ", offerEntry1=" + offerEntry1 + ", offerEntry2="
-				+ offerEntry2 + ", offerEntry3=" + offerEntry3
-				+ ", offerEntry4=" + offerEntry4 + ", offerEntry5="
-				+ offerEntry5 + ", lastTradedQty=" + lastTradedQty
-				+ ", avgTradedPrice=" + avgTradedPrice + ", vol=" + vol
-				+ ", buyQty=" + buyQty + ", sellQty=" + sellQty
-				+ ", openPrice=" + openPrice + ", highPrice=" + highPrice
-				+ ", lowPrice=" + lowPrice + ", closePrice=" + closePrice
-				+ ", ltp=" + ltp + ", time=" + time + ", instrumentToken="
-				+ instrumentToken + "]";
+		return "StreamingQuoteModeFull [bidEntry1=" + bidEntry1 + ", bidEntry2=" + bidEntry2 + ", bidEntry3="
+				+ bidEntry3 + ", bidEntry4=" + bidEntry4 + ", bidEntry5=" + bidEntry5 + ", offerEntry1=" + offerEntry1
+				+ ", offerEntry2=" + offerEntry2 + ", offerEntry3=" + offerEntry3 + ", offerEntry4=" + offerEntry4
+				+ ", offerEntry5=" + offerEntry5 + ", lastTradedQty=" + lastTradedQty + ", avgTradedPrice="
+				+ avgTradedPrice + ", vol=" + vol + ", buyQty=" + buyQty + ", sellQty=" + sellQty + ", openPrice="
+				+ openPrice + ", highPrice=" + highPrice + ", lowPrice=" + lowPrice + ", closePrice=" + closePrice
+				+ ", ltp=" + ltp + ", time=" + time + ", instrumentToken=" + instrumentToken + "]";
 	}
 }

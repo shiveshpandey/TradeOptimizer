@@ -12,16 +12,16 @@ import com.google.gson.annotations.SerializedName;
  */
 public class TriggerRange {
 
-    @SerializedName("start")
-    public double start;
-    @SerializedName("end")
-    public double end;
-    @SerializedName("percent")
-    public double percent;
+	@SerializedName("start")
+	public double start;
+	@SerializedName("end")
+	public double end;
+	@SerializedName("percent")
+	public double percent;
 
-    public TriggerRange parseResponse(JSONObject response) throws JSONException {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        Gson gson = gsonBuilder.create();
-        return gson.fromJson(String.valueOf(response.get("data")), TriggerRange.class);
-    }
+	public TriggerRange parseResponse(JSONObject response) throws JSONException {
+		GsonBuilder gsonBuilder = new GsonBuilder();
+		Gson gson = gsonBuilder.create();
+		return gson.fromJson(String.valueOf(response.get("data")), TriggerRange.class);
+	}
 }

@@ -1,12 +1,10 @@
 package com.streamquote.model;
 
-import java.math.BigDecimal;
-
 public class OHLCquote {
-	private BigDecimal openPrice;
-	private BigDecimal highPrice;
-	private BigDecimal lowPrice;
-	private BigDecimal closePrice;
+	private Double openPrice;
+	private Double highPrice;
+	private Double lowPrice;
+	private Double closePrice;
 	private Long vol;
 
 	/**
@@ -18,8 +16,7 @@ public class OHLCquote {
 	 * @param closePrice
 	 * @param vol
 	 */
-	public OHLCquote(BigDecimal openPrice, BigDecimal highPrice,
-			BigDecimal lowPrice, BigDecimal closePrice, Long vol) {
+	public OHLCquote(Double openPrice, Double highPrice, Double lowPrice, Double closePrice, Long vol) {
 		super();
 		this.openPrice = openPrice;
 		this.highPrice = highPrice;
@@ -28,35 +25,35 @@ public class OHLCquote {
 		this.vol = vol;
 	}
 
-	public BigDecimal getOpenPrice() {
+	public Double getOpenPrice() {
 		return openPrice;
 	}
 
-	public void setOpenPrice(BigDecimal openPrice) {
+	public void setOpenPrice(Double openPrice) {
 		this.openPrice = openPrice;
 	}
 
-	public BigDecimal getHighPrice() {
+	public Double getHighPrice() {
 		return highPrice;
 	}
 
-	public void setHighPrice(BigDecimal highPrice) {
+	public void setHighPrice(Double highPrice) {
 		this.highPrice = highPrice;
 	}
 
-	public BigDecimal getLowPrice() {
+	public Double getLowPrice() {
 		return lowPrice;
 	}
 
-	public void setLowPrice(BigDecimal lowPrice) {
+	public void setLowPrice(Double lowPrice) {
 		this.lowPrice = lowPrice;
 	}
 
-	public BigDecimal getClosePrice() {
+	public Double getClosePrice() {
 		return closePrice;
 	}
 
-	public void setClosePrice(BigDecimal closePrice) {
+	public void setClosePrice(Double closePrice) {
 		this.closePrice = closePrice;
 	}
 
@@ -70,8 +67,7 @@ public class OHLCquote {
 
 	@Override
 	public String toString() {
-		return "OHLCquote [openPrice=" + openPrice + ", highPrice=" + highPrice
-				+ ", lowPrice=" + lowPrice + ", closePrice=" + closePrice
-				+ ", vol=" + vol + "]";
+		return "OHLCquote [openPrice=" + openPrice + ", highPrice=" + highPrice + ", lowPrice=" + lowPrice
+				+ ", closePrice=" + closePrice + ", vol=" + vol + "]";
 	}
 }
