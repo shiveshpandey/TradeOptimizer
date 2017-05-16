@@ -26,11 +26,6 @@ public class WebsocketClientEndpoint {
 	private static final int hbTimeDelay = StreamingConfig.QUOTE_STREAMING_WS_HEARTBIT_CHECK_TIME;
 	private boolean terminate = false;
 
-	/**
-	 * constructor
-	 * 
-	 * @param endpointURI
-	 */
 	public WebsocketClientEndpoint(URI endpointURI, WebServiceSessionNotifier sessionNotifier) {
 		try {
 			this.sessionNotifier = sessionNotifier;
@@ -41,35 +36,18 @@ public class WebsocketClientEndpoint {
 			System.out.println(
 					"WebsocketClientEndpoint.WebsocketClientEndpoint(): ERROR: Exception on container connectToServer, reason: "
 							+ e.getMessage());
-			// throw new RuntimeException(e);
-			// notify initiate failed
 			this.sessionNotifier.notifyWsInitiateFailed();
 		}
 	}
 
-	/**
-	 * Callback hook for Connection open events.
-	 * 
-	 * @param userSession
-	 *            the userSession which is opened.
-	 */
 	@OnOpen
 	public void onOpen(Session userSession) {
 		System.out.println("WebsocketClientEndpoint.onOpen(): Opening WebSocket...");
 		this.userSession = userSession;
 
-		// Notify session opened
 		sessionNotifier.notifyWsSessionOpened();
 	}
 
-	/**
-	 * Callback hook for Connection close events.
-	 * 
-	 * @param userSession
-	 *            the userSession which is getting closed.
-	 * @param reason
-	 *            the reason for connection close
-	 */
 	@OnClose
 	public void onClose(Session userSession, CloseReason reason) {
 		System.out.println(
@@ -82,70 +60,38 @@ public class WebsocketClientEndpoint {
 		}
 		this.userSession = null;
 
-		// stop timer if running
 		if (hbTimer != null) {
 			hbTimer.cancel();
 			hbTimer = null;
 		}
 
-		// Notify session closed
 		sessionNotifier.notifyWsSessionClosed(terminate);
 	}
 
-	/**
-	 * Callback hook for Message Events. This method will be invoked when a
-	 * server send a binary message.
-	 * 
-	 * @param message
-	 *            The binary message
-	 */
 	@OnMessage
 	public void onMessage(ByteBuffer buffer) {
-		// System.out.println("WebsocketClientEndpoint.onMessage(): buffer
-		// recieved");
 		if (messageHandler != null) {
 			messageHandler.handleMessage(buffer);
 		}
 
-		// Start timer for WS heart bit monitoring
 		fireWSHeartBitMonitorTimer();
 	}
 
-	/**
-	 * Callback hook for Message Events. This method will be invoked when a
-	 * server send a text message.
-	 * 
-	 * @param message
-	 *            The text message
-	 */
 	@OnMessage
 	public void onMessage(String message) {
 		System.out.println("WebsocketClientEndpoint.onMessage(): [String Message]: \n" + message);
 	}
 
-	/**
-	 * register message handler
-	 * 
-	 * @param msgHandler
-	 */
 	public void addMessageHandler(MessageHandler msgHandler) {
 		System.out.println("WebsocketClientEndpoint.addMessageHandler(): Adding MessageHandler...");
 		this.messageHandler = msgHandler;
 	}
 
-	/**
-	 * Send a message.
-	 * 
-	 * @param message
-	 */
 	public void sendMessage(String message) {
 		System.out.println("WebsocketClientEndpoint.sendMessage(): sending message");
 		this.userSession.getAsyncRemote().sendText(message);
 	}
 
-	/**
-	 * forceClose - Force closing a websocket
-	 */
 	public void forceClose(boolean terminate) {
 		System.out.println("WebsocketClientEndpoint.forceClose(): Force Closing Websocket....");
 		try {
@@ -159,19 +105,11 @@ public class WebsocketClientEndpoint {
 		this.userSession = null;
 	}
 
-	/**
-	 * Message handler Interface.
-	 */
 	public static interface MessageHandler {
 		public void handleMessage(ByteBuffer buffer);
 	}
 
-	/**
-	 * fireWSHeartBitMonitorTimer - private method to start WS heart bit monitor
-	 * timer
-	 */
 	private void fireWSHeartBitMonitorTimer() {
-		// start Timer for Web Socket Heart Bit Check
 		if (hbTimer != null) {
 			hbTimer.cancel();
 		}
@@ -181,7 +119,6 @@ public class WebsocketClientEndpoint {
 			public void run() {
 				System.out.println(
 						"WebsocketClientEndpoint.onMessage().new TimerTask().run(): ERROR: Streaming Quote WS HeartBit Timer Fired, notifying session notifier !!!");
-				// Notify Heart bit Expired
 				sessionNotifier.notifyWsHeartBitExpired();
 			}
 		}, hbTimeDelay);

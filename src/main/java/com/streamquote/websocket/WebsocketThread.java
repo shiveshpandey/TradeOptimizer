@@ -27,28 +27,17 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 
 	private static int wsSessionRetry = 0;
 
-	// Quote Storage
 	private StreamingQuoteStorage streamingQuoteStorage = null;
 
 	private enum WSstate {
 		WS_INITIATED, WS_OPENED, WS_SUBSCRIBED, WS_MODE_SWITCHED, WS_DATA_MISSED, WS_MSG_RECEIVED, WS_UNSUBSCRIBED, WS_HEARTBIT_EXPIRED, WS_CLOSED
 	}
 
-	// current WS state
 	WSstate currWSstate = null;
-	// WS state maintaining lock
 	private Lock currWSstateLock = null;
 
-	// running status
 	private boolean runStatus = false;
 
-	/**
-	 * Constructor
-	 * 
-	 * @param URIstring
-	 * @param instrumentList
-	 * @param streamingQuoteStorage
-	 */
 	public WebsocketThread(String URIstring, List<String> instrumentList, StreamingQuoteStorage streamingQuoteStorage) {
 		this.URIstring = URIstring;
 		this.instrumentList = instrumentList;
@@ -60,11 +49,6 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 		this.currWSstateLock = new ReentrantLock();
 	}
 
-	/**
-	 * startWS - public method to initiate the websocket
-	 * 
-	 * @return websocket creation status
-	 */
 	public boolean startWS() {
 		boolean status = false;
 

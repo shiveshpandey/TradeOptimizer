@@ -22,17 +22,13 @@ public class StreamingConfig {
 	public static final Boolean QUOTE_STREAMING_DB_STORE_REQD = true;
 
 	public static final Boolean QUOTE_STREAMING_HEART_BIT_MSG_PRINT = true;
-	public static final Boolean QUOTE_STREAMING_QUOTE_FLOW_MSG_PRINT = true;
-	public static final Boolean QUOTE_STREAMING_WEB_SERVICE_MSG_PRINT = true;
 
 	public static String[] QUOTE_STREAMING_INSTRUMENTS_ARR = { "121345", "1793" };
 	public static final String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "26-01-2016", "07-03-2016", "24-03-2016",
 			"25-03-2016", "14-04-2016", "15-04-2016", "19-04-2016", "06-07-2016", "15-08-2016", "05-09-2016",
 			"13-09-2016", "11-10-2016", "12-10-2016", "31-10-2016", "14-11-2016" };
 
-	public static final String QUOTE_STREAMING_MODE_LTP = "ltp";
 	public static final String QUOTE_STREAMING_MODE_QUOTE = "quote";
-	public static final String QUOTE_STREAMING_MODE_FULL = "full";
 	public static final String QUOTE_STREAMING_DEFAULT_MODE = QUOTE_STREAMING_MODE_QUOTE;
 
 	public static final String USER_ID = "TNRS4216";
