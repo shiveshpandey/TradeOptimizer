@@ -23,7 +23,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 	private StreamingQuoteParserThread quoteParserThread = null;
 
 	private static Timer dataTimer = null;
-	private static final int dataTimeDelay = StreamingConfig.getStreamingQuoteDataCheckTimeOnSubscribe();
+	private static final int dataTimeDelay = StreamingConfig.QUOTE_STREAMING_WS_DATA_CHECK_TIME_ON_SUBSCRIBE;
 
 	private static int wsSessionRetry = 0;
 
@@ -53,7 +53,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 		this.URIstring = URIstring;
 		this.instrumentList = instrumentList;
 
-		if (StreamingConfig.isStreamingQuoteStoringRequired()) {
+		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD) {
 			this.streamingQuoteStorage = streamingQuoteStorage;
 		}
 
@@ -191,7 +191,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 
 		String instrumentString = getInstrumentString(instrumentList);
 		// send message to websocket e.g. INFY (408065) and TATAMOTORS (884737)
-		String msg = "{\"a\": \"mode\", \"v\": [\"" + StreamingConfig.getStreamingQuoteMode() + "\", ["
+		String msg = "{\"a\": \"mode\", \"v\": [\"" + StreamingConfig.QUOTE_STREAMING_DEFAULT_MODE + "\", ["
 				+ instrumentString + "]]}";
 		System.out.println("WebsocketThread.sendModeMessage(): WS mode msg: " + msg);
 		clientEndPoint.sendMessage(msg);
@@ -242,7 +242,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 	public void notifyWsInitiateFailed() {
 		try {
 			// delay before re initiating
-			Thread.sleep(StreamingConfig.getStreamingQuoteReinitiateDelayOnInitiateFail());
+			Thread.sleep(StreamingConfig.QUOTE_STREAMING_REINITIATE_DELAY_ON_INITIATE_FAIL);
 		} catch (InterruptedException e1) {
 			System.out.println("WebsocketThread.notifyWsInitiateFailure(): ERROR: InterruptedException on sleep !!!");
 		}
@@ -370,7 +370,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 	 */
 	private void subscribeWSwithMsgHandler() {
 		try {
-			Thread.sleep(StreamingConfig.getStreamingQuoteSubscribeDelayAfterInitiate());
+			Thread.sleep(StreamingConfig.QUOTE_STREAMING_WS_SUBSCRIBE_DELAY_ON_INITIATE);
 		} catch (InterruptedException e) {
 			System.out.println(
 					"WebsocketThread.subscribeWSwithMsgHandler(): ERROR: InterruptedException on sleep before subscribe !!!");
@@ -387,7 +387,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 			sendModeMessage();
 		} else {
 			// WebSocket Did not get Opened even on delay after initiation
-			if (wsSessionRetry < StreamingConfig.getStreamingQuoteMaxInitiateRetryCount()) {
+			if (wsSessionRetry < StreamingConfig.QUOTE_STREAMING_REINITIATE_RETRY_LIMIT) {
 				// Reinitiate WS session
 				System.out.println(
 						"WebsocketThread.subscribeWSwithMsgHandler(): WARNING: WS Open FAILED On Initiation, Retrying !!!");

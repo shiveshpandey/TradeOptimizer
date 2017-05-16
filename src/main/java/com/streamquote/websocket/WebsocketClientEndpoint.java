@@ -23,7 +23,7 @@ public class WebsocketClientEndpoint {
 	private MessageHandler messageHandler;
 	private WebServiceSessionNotifier sessionNotifier = null;
 	private static Timer hbTimer = null;
-	private static final int hbTimeDelay = StreamingConfig.getStreamingQuoteHeartBitCheckTime();
+	private static final int hbTimeDelay = StreamingConfig.QUOTE_STREAMING_WS_HEARTBIT_CHECK_TIME;
 	private boolean terminate = false;
 
 	/**

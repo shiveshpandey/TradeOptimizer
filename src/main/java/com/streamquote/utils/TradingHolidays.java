@@ -14,7 +14,7 @@ public class TradingHolidays {
 		TimeZone timeZone = TimeZone.getTimeZone("IST");
 		dateFormat.setTimeZone(timeZone);
 		String todayString = dateFormat.format(Calendar.getInstance(timeZone).getTime());
-		String tradingHolidaysArr[] = StreamingConfig.getTradingHolidays();
+		String tradingHolidaysArr[] = StreamingConfig.QUOTE_STREAMING_TRADING_HOLIDAYS;
 		try {
 			Date today = dateFormat.parse(todayString);
 			for (String tradingDay : tradingHolidaysArr) {

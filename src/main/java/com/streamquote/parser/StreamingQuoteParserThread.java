@@ -45,7 +45,7 @@ public class StreamingQuoteParserThread implements Runnable {
 					"StreamingQuoteParserThread.StreamingQuoteParserThread(): ERROR: Quote Parser is null... !!!");
 		}
 
-		if (StreamingConfig.isStreamingQuoteStoringRequired()) {
+		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD) {
 			this.streamingQuoteStorage = streamingQuoteStorage;
 		}
 
@@ -94,13 +94,14 @@ public class StreamingQuoteParserThread implements Runnable {
 	 * @param buffer
 	 * @param time
 	 */
+	@SuppressWarnings("unused")
 	private void parseBuffer(ByteBuffer buffer, String time) {
 		// start parse Buffer array
 		int start = buffer.position();
 		int buffLen = buffer.capacity();
 		if (buffLen == 1) {
 			// HeartBeat
-			if (StreamingConfig.isHeartBitMsgPrintable()) {
+			if (StreamingConfig.QUOTE_STREAMING_HEART_BIT_MSG_PRINT) {
 				System.out.println("StreamingQuoteParserThread.parseBuffer(): WS HEARTBIT Byte");
 			}
 		} else {
@@ -159,7 +160,7 @@ public class StreamingQuoteParserThread implements Runnable {
 			streamingQuote = streamingQuoteParser.parse(pktBuffer, time);
 		}
 
-		if (StreamingConfig.isStreamingQuoteStoringRequired() && (streamingQuoteStorage != null)
+		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)
 				&& streamingQuote != null) {
 			streamingQuoteStorage.storeData(streamingQuote);
 		}

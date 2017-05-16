@@ -19,11 +19,11 @@ import com.trade.optimizer.models.Order;
 public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	// JDBC driver name and database URL
 	private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-	private static final String DB_URL = StreamingConfig.getStreamingQuoteDbUrl();
+	private static final String DB_URL = StreamingConfig.QUOTE_STREAMING_DB_URL;
 
 	// Database credentials
-	private static final String USER = StreamingConfig.getStreamingQuoteDbUser();
-	private static final String PASS = StreamingConfig.getStreamingQuoteDbPwd();
+	private static final String USER = StreamingConfig.QUOTE_STREAMING_DB_USER;
+	private static final String PASS = StreamingConfig.QUOTE_STREAMING_DB_PWD;
 
 	// DB connection
 	private Connection conn = null;
