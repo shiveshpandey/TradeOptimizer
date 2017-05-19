@@ -41,8 +41,8 @@ public class StreamingQuoteParserThread implements Runnable {
 		// get quote parser
 		streamingQuoteParser = StreamingQuoteParserFactory.getStreamingQuoteParser();
 		if (streamingQuoteParser == null) {
-			System.out.println(
-					"StreamingQuoteParserThread.StreamingQuoteParserThread(): ERROR: Quote Parser is null... !!!");
+//			System.out.println(
+//					"StreamingQuoteParserThread.StreamingQuoteParserThread(): ERROR: Quote Parser is null... !!!");
 		}
 
 		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD) {
@@ -68,15 +68,15 @@ public class StreamingQuoteParserThread implements Runnable {
 					} catch (Exception e) {
 						// If its an exception while parsing the data, we dont
 						// require this data
-						System.out.println(
-								"StreamingQuoteParserThread.run(): ERROR: Exception in parsing the Buffer, reason: "
-										+ e.getMessage());
+//						System.out.println(
+//								"StreamingQuoteParserThread.run(): ERROR: Exception in parsing the Buffer, reason: "
+//										+ e.getMessage());
 					}
 				}
 			} catch (InterruptedException e) {
-				System.out.println(
-						"StreamingQuoteParserThread.run(): ERROR: InterruptedException on take from quoteBufferQ");
-				e.printStackTrace();
+//				System.out.println(
+//						"StreamingQuoteParserThread.run(): ERROR: InterruptedException on take from quoteBufferQ");
+//				e.printStackTrace();
 			}
 		}
 	}
@@ -102,15 +102,15 @@ public class StreamingQuoteParserThread implements Runnable {
 		if (buffLen == 1) {
 			// HeartBeat
 			if (StreamingConfig.QUOTE_STREAMING_HEART_BIT_MSG_PRINT) {
-				System.out.println("StreamingQuoteParserThread.parseBuffer(): WS HEARTBIT Byte");
+				//System.out.println("StreamingQuoteParserThread.parseBuffer(): WS HEARTBIT Byte");
 			}
 		} else {
 			// num of Packets
 			int numPackets = buffer.getShort();
 			if (numPackets == 0) {
 				// Invalid Case: Zero Num of Packets - ignore
-				System.out.println(
-						"StreamingQuoteParserThread.parseBuffer(): ERROR: WS Byte numPackets is 0 in WS message, Ignoring !!!");
+                // System.out.println(
+//						"StreamingQuoteParserThread.parseBuffer(): ERROR: WS Byte numPackets is 0 in WS message, Ignoring !!!");
 			} else {
 				start += 2;
 				// System.out.println("numPackets: " + numPackets);
@@ -133,14 +133,14 @@ public class StreamingQuoteParserThread implements Runnable {
 						} else {
 							// Invalid Case: ByteBuffer could not wrap the bytes
 							// - ignore
-							System.out.println(
-									"StreamingQuoteParserThread.parseBuffer(): ERROR: pktBuffer is null in WS message, Ignoring !!!");
+//							System.out.println(
+//									"StreamingQuoteParserThread.parseBuffer(): ERROR: pktBuffer is null in WS message, Ignoring !!!");
 						}
 					} else {
 						// Invalid Case: Zero Num of Bytes in packet - ignore
-						System.out.println(
-								"StreamingQuoteParserThread.parseBuffer(): ERROR: numBytes is 0 in WS message packet["
-										+ i + "], Ignoring !!!");
+//						System.out.println(
+//								"StreamingQuoteParserThread.parseBuffer(): ERROR: numBytes is 0 in WS message packet["
+//										+ i + "], Ignoring !!!");
 					}
 				}
 			}

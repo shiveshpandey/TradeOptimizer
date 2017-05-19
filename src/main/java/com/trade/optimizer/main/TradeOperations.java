@@ -75,8 +75,8 @@ public class TradeOperations {
         param.put("tag", "myTag"); // tag is optional and it cannot be more
                                    // than 8 characters and only
                                    // alphanumeric is allowed
-        Order order = kiteconnect.placeOrder(param, "regular");
-        System.out.println(order.orderId);
+        // Order order = kiteconnect.placeOrder(param, "regular");
+        System.out.println("Order Placed for : " + instrumentDetails[1]);
     }
 
     /** Place bracket order. */
@@ -271,7 +271,7 @@ public class TradeOperations {
      * @param order
      */
     public void cancelOrder(KiteConnect kiteconnect, Order order) throws KiteException {
-        kiteconnect.cancelOrder(order.orderId, "regular");
+        System.out.println(order.orderId + " regular" + " cancelled");
     }
 
     public void exitBracketOrder(KiteConnect kiteconnect) throws KiteException {

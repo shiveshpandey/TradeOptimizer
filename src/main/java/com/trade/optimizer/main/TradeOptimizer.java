@@ -40,410 +40,452 @@ import com.trade.optimizer.models.UserModel;
 @Controller
 public class TradeOptimizer {
 
-	private static StreamingQuoteStorage streamingQuoteDAOModeQuote = new StreamingQuoteStorageImpl();
-	private static StreamingQuoteModeQuote quote = null;
-	private static HistoricalData historicalData = null;
-	private static TimeZone timeZone = TimeZone.getTimeZone("IST");
-	private static String todaysDate = null;
-	static DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
-	private static boolean streamingQuoteStarted = false;
-	private static WebsocketThread websocketThread = null;
+    private static StreamingQuoteStorage streamingQuoteStorage = new StreamingQuoteStorageImpl();
+    private static StreamingQuoteModeQuote quote = null;
+    private static HistoricalData historicalData = null;
+    private static TimeZone timeZone = TimeZone.getTimeZone("IST");
+    private static String todaysDate = null;
+    static DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
+    private static boolean streamingQuoteStarted = false;
+    private static WebsocketThread websocketThread = null;
 
-	private static StreamingQuoteStorage streamingQuoteStorage = null;
+    private KiteConnect kiteconnect = new KiteConnect(StreamingConfig.API_KEY);
 
-	private KiteConnect kiteconnect = new KiteConnect(StreamingConfig.API_KEY);
+    private String url = kiteconnect.getLoginUrl();
 
-	private String url = kiteconnect.getLoginUrl();
+    private TradeOperations tradeOperations = new TradeOperations();
+    private static int a = 0, b = 0, g = 0, d = 0, e = 0, f = 0;
+    @Autowired
+    ServletContext context;
+    @Autowired
+    HttpServletRequest request;
+    @Autowired
+    HttpServletResponse response;
 
-	private TradeOperations tradeOperations = new TradeOperations();
+    @RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
+    public String authRedirectWithTokenPost(@RequestParam String status,
+            @RequestParam String request_token) {
+        try {
+            UserModel userModel = kiteconnect.requestAccessToken(request_token,
+                    StreamingConfig.API_SECRET_KEY);
+            kiteconnect.setAccessToken(userModel.accessToken);
+            kiteconnect.setPublicToken(userModel.publicToken);
+            startProcess();
+        } catch (JSONException | KiteException e) {
+            e.printStackTrace();
+            return "error";
+        }
+        return "index";
+    }
 
-	@Autowired
-	ServletContext context;
-	@Autowired
-	HttpServletRequest request;
-	@Autowired
-	HttpServletResponse response;
+    @RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+    public RedirectView localRedirect() {
 
-	@RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
-	public String authRedirectWithTokenPost(@RequestParam String status, @RequestParam String request_token) {
-		try {
-			UserModel userModel = kiteconnect.requestAccessToken(request_token, StreamingConfig.API_SECRET_KEY);
-			kiteconnect.setAccessToken(userModel.accessToken);
-			kiteconnect.setPublicToken(userModel.publicToken);
-			startProcess();
-		} catch (JSONException | KiteException e) {
-			e.printStackTrace();
-			return "error";
-		}
-		return "index";
-	}
+        kiteconnect.registerHook(new SessionExpiryHook() {
+            @Override
+            public void sessionExpired() {
+                System.out.println("session expired");
+            }
+        });
 
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
-	public RedirectView localRedirect() {
+        RedirectView redirectView = new RedirectView();
+        redirectView.setUrl(url);
+        return redirectView;
+    }
 
-		kiteconnect.registerHook(new SessionExpiryHook() {
-			@Override
-			public void sessionExpired() {
-				System.out.println("session expired");
-			}
-		});
+    public void startProcess() {
+        try {
+            System.out.println("startProcess Entry");
+            dtFmt.setTimeZone(timeZone);
+            todaysDate = dtFmt.format(Calendar.getInstance(timeZone).getTime());
 
-		RedirectView redirectView = new RedirectView();
-		redirectView.setUrl(url);
-		return redirectView;
-	}
+            createInitialDayTables();
 
-	public void startProcess() {
-		try {
+            startStreamForHistoricalInstrumentsData();
 
-			dtFmt.setTimeZone(timeZone);
-			todaysDate = dtFmt.format(Calendar.getInstance(timeZone).getTime());
+            // startLiveStreamOfSelectedInstruments();
 
-			createInitialDayTables();
+            // checkForSignalsFromStrategies();
 
-			startStreamForHistoricalInstrumentsData();
+            // executeOrdersOnSignals();
 
-			startLiveStreamOfSelectedInstruments();
+            // checkAndProcessPendingOrdersOnMarketQueue();
 
-			checkForSignalsFromStrategies();
+            // closingDayRoundOffOperations();
+            System.out.println("startProcess Exit");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 
-			executeOrdersOnSignals();
+    private void checkAndProcessPendingOrdersOnMarketQueue() {
+        // TODO Auto-generated method stub
+    }
 
-			checkAndProcessPendingOrdersOnMarketQueue();
+    private void createInitialDayTables() {
+        System.out.println("Thread  for createInitialDayTables Entry");
+        if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)) {
 
-			closingDayRoundOffOperations();
+            DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
+            quoteTableDtFmt.setTimeZone(timeZone);
 
-		} catch (JSONException e) {
-			e.printStackTrace();
-		} catch (KiteException e) {
-			e.printStackTrace();
-		}
-	}
+            streamingQuoteStorage.initializeJDBCConn();
+            streamingQuoteStorage.createDaysStreamingQuoteTable(
+                    quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
+        }
+    }
 
-	private void checkAndProcessPendingOrdersOnMarketQueue() {
-		// TODO Auto-generated method stub
-	}
+    private void closingDayRoundOffOperations() throws KiteException {
+        System.out.println("Thread  for closingDayRoundOffOperations Entry");
+        Thread t = new Thread(new Runnable() {
+            private boolean runnable = true;
+            private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            private TimeZone timeZone = TimeZone.getTimeZone("IST");
+            private String quoteEndTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_END_TIME;
+            List<Order> orderList = tradeOperations.getOrders(kiteconnect);
+            List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
 
-	private void createInitialDayTables() {
+            @Override
+            public void run() {
+                System.out.println("Thread  for closingDayRoundOffOperations" + f++);
+                dtFmt.setTimeZone(timeZone);
+                try {
+                    Date timeEnd = dtFmt.parse(quoteEndTime);
+                    while (runnable) {
+                        Date timeNow = Calendar.getInstance(timeZone).getTime();
+                        if (timeNow.compareTo(timeEnd) >= 0) {
+                            runnable = false;
+                            for (int index = 0; index < orderList.size(); index++) {
+                                if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
+                                    tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
+                                }
+                            }
+                            for (int index = 0; index < holdings.size(); index++) {
+                                tradeOperations.placeOrder(kiteconnect,
+                                        holdings.get(index).instrumentToken, "SELL",
+                                        holdings.get(index).quantity);
+                            }
+                        } else {
+                            Thread.sleep(1000);
+                            runnable = true;
+                        }
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (KiteException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 
-		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)) {
+    private void executeOrdersOnSignals() {
+        System.out.println("Thread  for executeOrdersOnSignals entry");
+        Thread t = new Thread(new Runnable() {
+            private boolean runnable = true;
+            private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            private TimeZone timeZone = TimeZone.getTimeZone("IST");
+            private String quoteStartTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_START_TIME;
+            private String quoteEndTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_END_TIME;
 
-			DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
-			quoteTableDtFmt.setTimeZone(timeZone);
+            @Override
+            public void run() {
+                System.out.println("Thread  for executeOrdersOnSignals" + e++);
+                dtFmt.setTimeZone(timeZone);
+                try {
+                    Date timeStart = dtFmt.parse(quoteStartTime);
+                    Date timeEnd = dtFmt.parse(quoteEndTime);
+                    while (runnable) {
+                        Date timeNow = Calendar.getInstance(timeZone).getTime();
+                        if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
+                            List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
+                            for (int index = 0; index < signalList.size(); index++)
+                                tradeOperations.placeOrder(kiteconnect,
+                                        signalList.get(index).symbol,
+                                        signalList.get(index).transactionType,
+                                        signalList.get(index).quantity);
+                            Thread.sleep(1000);
+                        } else {
+                            runnable = false;
+                        }
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (KiteException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 
-			streamingQuoteStorage.initializeJDBCConn();
-			streamingQuoteStorage
-					.createDaysStreamingQuoteTable(quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
-		}
-	}
+    private List<Order> getOrderListToPlaceAsPerStrategySignals() {
+        System.out.println("Thread  for getOrderListToPlaceAsPerStrategySignals entry");
+        return streamingQuoteStorage.getOrderListToPlace();
+    }
 
-	private void closingDayRoundOffOperations() throws KiteException {
+    private void startLiveStreamOfSelectedInstruments() {
+        System.out.println("Thread  for startLiveStreamOfSelectedInstruments entry");
+        Thread t = new Thread(new Runnable() {
+            private boolean runnable = true;
+            private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            private TimeZone timeZone = TimeZone.getTimeZone("IST");
+            private String quoteStartTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_START_TIME;
+            private String quoteEndTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_END_TIME;
 
-		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
-			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			private TimeZone timeZone = TimeZone.getTimeZone("IST");
-			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
-			List<Order> orderList = tradeOperations.getOrders(kiteconnect);
-			List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
+            @Override
+            public void run() {
+                System.out.println("Thread  for startLiveStreamOfSelectedInstruments" + d++);
+                dtFmt.setTimeZone(timeZone);
+                try {
+                    Date timeStart = dtFmt.parse(quoteStartTime);
+                    Date timeEnd = dtFmt.parse(quoteEndTime);
+                    while (runnable) {
+                        Date timeNow = Calendar.getInstance(timeZone).getTime();
+                        if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
+                            startStreamingQuote(kiteconnect.getApiKey(), kiteconnect.getUserId(),
+                                    kiteconnect.getPublicToken());
+                            Thread.sleep(1000);
+                        } else {
+                            runnable = false;
+                            stopStreamingQuote();
+                        }
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 
-			@Override
-			public void run() {
-				dtFmt.setTimeZone(timeZone);
-				try {
-					Date timeEnd = dtFmt.parse(quoteEndTime);
-					while (runnable) {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(timeEnd) >= 0) {
-							runnable = false;
-							for (int index = 0; index < orderList.size(); index++) {
-								if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
-									tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
-								}
-							}
-							for (int index = 0; index < holdings.size(); index++) {
-								tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
-										holdings.get(index).quantity);
-							}
-						} else {
-							Thread.sleep(1000);
-							runnable = true;
-						}
-					}
-				} catch (ParseException e) {
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				} catch (KiteException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		t.start();
-	}
+    private void startStreamForHistoricalInstrumentsData() {
+        System.out.println("Thread  for startStreamForHistoricalInstrumentsData entry");
+        Thread t = new Thread(new Runnable() {
+            private boolean runnable = true;
+            private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            private TimeZone timeZone = TimeZone.getTimeZone("IST");
+            private String quoteStartTime = todaysDate + " "
+                    + StreamingConfig.HISTORICAL_DATA_STREAM_START_TIME;
+            private String quoteEndTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_END_TIME;
+            private SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
 
-	private void executeOrdersOnSignals() {
+            @Override
+            public void run() {
+                System.out.println("Thread  for startStreamForHistoricalInstrumentsData" + a++);
+                dtFmt.setTimeZone(timeZone);
+                try {
+                    Date timeStart = dtFmt.parse(quoteStartTime);
+                    Date timeEnd = dtFmt.parse(quoteEndTime);
+                    while (runnable) {
+                        Date timeNow = Calendar.getInstance(timeZone).getTime();
+                        if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 
-		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
-			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			private TimeZone timeZone = TimeZone.getTimeZone("IST");
-			private String quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
-			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
+                            List<Instrument> instrumentList = tradeOperations
+                                    .getInstrumentsForExchange(kiteconnect, "NSE");
+                            instrumentList.addAll(
+                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "BSE"));
+                            instrumentList.addAll(
+                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "NFO"));
+                            instrumentList.addAll(
+                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "BFO"));
 
-			@Override
-			public void run() {
-				dtFmt.setTimeZone(timeZone);
-				try {
-					Date timeStart = dtFmt.parse(quoteStartTime);
-					Date timeEnd = dtFmt.parse(quoteEndTime);
-					while (runnable) {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
-							for (int index = 0; index < signalList.size(); index++)
-								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
-										signalList.get(index).transactionType, signalList.get(index).quantity);
-							Thread.sleep(1000);
-						} else {
-							runnable = false;
-						}
-					}
-				} catch (ParseException e) {
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				} catch (KiteException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		t.start();
-	}
+                            List<StreamingQuoteModeQuote> quoteList = new ArrayList<StreamingQuoteModeQuote>();
 
-	private List<Order> getOrderListToPlaceAsPerStrategySignals() {
-		return streamingQuoteStorage.getOrderListToPlace();
-	}
+                            HistoricalData histData;
+                            for (int index = 0; index < instrumentList.size(); index++) {
 
-	private void startLiveStreamOfSelectedInstruments() {
-		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
-			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			private TimeZone timeZone = TimeZone.getTimeZone("IST");
-			private String quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
-			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
+                                long dayHighVolume = 0, dayLowVolume = 1999999999,
+                                        dayCloseVolume = 0;
+                                double dayHighPrice = 0, dayLowPrice = 1999999999,
+                                        dayClosePrice = 0;
 
-			@Override
-			public void run() {
-				dtFmt.setTimeZone(timeZone);
-				try {
-					Date timeStart = dtFmt.parse(quoteStartTime);
-					Date timeEnd = dtFmt.parse(quoteEndTime);
-					while (runnable) {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							startStreamingQuote(kiteconnect.getApiKey(), kiteconnect.getUserId(),
-									kiteconnect.getPublicToken());
-							Thread.sleep(1000);
-						} else {
-							runnable = false;
-							stopStreamingQuote();
-						}
-					}
-				} catch (ParseException e) {
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		t.start();
-	}
+                                try {
+                                    historicalData = tradeOperations.getHistoricalData(kiteconnect,
+                                            StreamingConfig.HIST_DATA_START_DATE,
+                                            StreamingConfig.HIST_DATA_END_DATE, "minute",
+                                            Long.toString(instrumentList.get(index)
+                                                    .getInstrument_token()));
+                                } catch (Exception e) {
+                                    continue;
+                                }
+                                for (int count = 0; count < historicalData.dataArrayList
+                                        .size(); count++) {
+                                    histData = historicalData.dataArrayList.get(count);
 
-	private void startStreamForHistoricalInstrumentsData() {
-		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
-			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			private TimeZone timeZone = TimeZone.getTimeZone("IST");
-			private String quoteStartTime = todaysDate + " " + StreamingConfig.HISTORICAL_DATA_STREAM_START_TIME;
-			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
+                                    if (dayHighVolume < Long.valueOf(histData.volume))
+                                        dayHighVolume = Long.valueOf(histData.volume);
+                                    if (dayLowVolume > Long.valueOf(histData.volume))
+                                        dayLowVolume = Long.valueOf(histData.volume);
+                                    if (count == historicalData.dataArrayList.size() - 1)
+                                        dayCloseVolume = Long.valueOf(histData.volume);
 
-			@Override
-			public void run() {
-				dtFmt.setTimeZone(timeZone);
-				try {
-					Date timeStart = dtFmt.parse(quoteStartTime);
-					Date timeEnd = dtFmt.parse(quoteEndTime);
-					while (runnable) {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
+                                    if (dayHighPrice < Double.valueOf(histData.high))
+                                        dayHighPrice = Double.valueOf(histData.high);
+                                    if (dayLowPrice > Double.valueOf(histData.low))
+                                        dayLowPrice = Double.valueOf(histData.low);
+                                    if (count == historicalData.dataArrayList.size() - 1)
+                                        dayClosePrice = Double.valueOf(histData.close);
 
-							List<Instrument> instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect,
-									"NSE");
-							instrumentList.addAll(tradeOperations.getInstrumentsForExchange(kiteconnect, "BSE"));
-							instrumentList.addAll(tradeOperations.getInstrumentsForExchange(kiteconnect, "NFO"));
-							instrumentList.addAll(tradeOperations.getInstrumentsForExchange(kiteconnect, "BFO"));
+                                    quote = new StreamingQuoteModeQuote(
+                                            dtFmt.format(fmt.parse(historicalData.dataArrayList
+                                                    .get(count).timeStamp).getTime()),
+                                            Long.toString(instrumentList.get(index)
+                                                    .getInstrument_token()),
+                                            new Double(0), new Long(0), new Double(0),
+                                            Long.valueOf(histData.volume), new Long(0), new Long(0),
+                                            new Double(histData.open), new Double(histData.high),
+                                            new Double(histData.low), new Double(histData.close));
+                                    quoteList.add(quote);
+                                }
+                                double priorityPoint = (dayClosePrice
+                                        / (dayHighPrice - dayLowPrice)) * 100
+                                        * (dayCloseVolume / (dayHighVolume - dayLowVolume));
+                                quoteList.get(0).ltp = priorityPoint;
+                                streamingQuoteStorage.storeData(quoteList, "minute");
+                            }
+                            streamingQuoteStorage.saveInstrumentDetails(instrumentList,
+                                    new Date().toString());
 
-							List<StreamingQuoteModeQuote> quoteList = new ArrayList<StreamingQuoteModeQuote>();
+                            StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR = streamingQuoteStorage
+                                    .getTopPrioritizedTokenList(10);
 
-							HistoricalData histData;
-							for (int index = 0; index < instrumentList.size(); index++) {
+                            roundOfNonPerformingBoughtStocks(
+                                    StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR,
+                                    tradeOperations.getOrders(kiteconnect), kiteconnect);
 
-								long dayHighVolume = 0, dayLowVolume = 1999999999, dayCloseVolume = 0;
-								double dayHighPrice = 0, dayLowPrice = 1999999999, dayClosePrice = 0;
+                            Thread.sleep(3600);
+                        } else {
+                            runnable = false;
+                        }
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (KiteException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 
-								historicalData = tradeOperations.getHistoricalData(kiteconnect,
-										StreamingConfig.HIST_DATA_START_DATE, StreamingConfig.HIST_DATA_END_DATE,
-										"minute", Long.toString(instrumentList.get(index).getInstrument_token()));
-								for (int count = 0; count < historicalData.dataArrayList.size(); count++) {
-									histData = historicalData.dataArrayList.get(count);
+    private void roundOfNonPerformingBoughtStocks(String[] qUOTE_STREAMING_INSTRUMENTS_ARR,
+            List<Order> list, KiteConnect kiteconnect) throws KiteException {
+        System.out.println("Thread  for roundOfNonPerformingBoughtStocks Entry");
+        for (int index = 0; index < list.size(); index++) {
+            for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
+                if (list.get(index).tradingSymbol
+                        .equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count]))
+                    if (list.get(index).status.equalsIgnoreCase("OPEN")) {
+                        tradeOperations.cancelOrder(kiteconnect, list.get(index));
+                    }
+            }
+        }
+        List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
 
-									if (dayHighVolume < Long.valueOf(histData.volume))
-										dayHighVolume = Long.valueOf(histData.volume);
-									if (dayLowVolume > Long.valueOf(histData.volume))
-										dayLowVolume = Long.valueOf(histData.volume);
-									if (count == historicalData.dataArrayList.size() - 1)
-										dayCloseVolume = Long.valueOf(histData.volume);
+        for (int index = 0; index < holdings.size(); index++) {
+            for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
+                if (holdings.get(index).instrumentToken
+                        .equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count])) {
+                    tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken,
+                            "SELL", holdings.get(index).quantity);
+                }
+            }
+        }
+    }
 
-									if (dayHighPrice < Double.valueOf(histData.high))
-										dayHighPrice = Double.valueOf(histData.high);
-									if (dayLowPrice > Double.valueOf(histData.low))
-										dayLowPrice = Double.valueOf(histData.low);
-									if (count == historicalData.dataArrayList.size() - 1)
-										dayClosePrice = Double.valueOf(histData.close);
+    private void checkForSignalsFromStrategies() {
+        System.out.println("Thread  for checkForSignalsFromStrategies Entry");
+        Thread t = new Thread(new Runnable() {
 
-									double priorityPoint = (dayClosePrice / (dayHighPrice - dayLowPrice)) * 100
-											* (dayCloseVolume / (dayHighVolume - dayLowVolume));
+            private boolean runnable = true;
+            private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            private TimeZone timeZone = TimeZone.getTimeZone("IST");
+            private String quoteStartTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_START_TIME;
+            private String quoteEndTime = todaysDate + " "
+                    + StreamingConfig.QUOTE_STREAMING_END_TIME;
 
-									quote = new StreamingQuoteModeQuote(
-											historicalData.dataArrayList.get(count).timeStamp,
-											Long.toString(instrumentList.get(index).getInstrument_token()),
-											new Double(priorityPoint), new Long(0), new Double(0),
-											Long.valueOf(histData.volume), new Long(0), new Long(0),
-											new Double(histData.open), new Double(histData.high),
-											new Double(histData.low), new Double(histData.close));
-									quoteList.add(quote);
-								}
-								streamingQuoteDAOModeQuote.storeData(quoteList, "minute");
-							}
-							streamingQuoteDAOModeQuote.saveInstrumentDetails(instrumentList, new Date().toString());
+            @Override
+            public void run() {
+                System.out.println("Thread  for checkForSignalsFromStrategies" + b++);
+                dtFmt.setTimeZone(timeZone);
+                try {
+                    Date timeStart = dtFmt.parse(quoteStartTime);
+                    Date timeEnd = dtFmt.parse(quoteEndTime);
+                    while (runnable) {
+                        Date timeNow = Calendar.getInstance(timeZone).getTime();
+                        if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
+                            Thread.sleep(1000);
+                        } else {
+                            runnable = false;
+                        }
+                    }
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
+    }
 
-							StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR = streamingQuoteDAOModeQuote
-									.getTopPrioritizedTokenList(10);
+    private void startStreamingQuote(String apiKey, String userId, String publicToken) {
+        String URIstring = StreamingConfig.STREAMING_QUOTE_WS_URL_TEMPLATE + "api_key=" + apiKey
+                + "&user_id=" + userId + "&public_token=" + publicToken;
+        System.out.println("Thread  for startStreamingQuote Entry");
+        List<String> instrumentList = getInstrumentTokensList();
 
-							roundOfNonPerformingBoughtStocks(StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR,
-									tradeOperations.getOrders(kiteconnect), kiteconnect);
+        websocketThread = new WebsocketThread(URIstring, instrumentList, streamingQuoteStorage);
+        streamingQuoteStarted = websocketThread.startWS();
+        if (streamingQuoteStarted) {
+            Thread t = new Thread(websocketThread);
+            t.start();
+        } else {
+            System.out.println(
+                    "ZStreamingQuoteControl.startStreamingQuote(): ERROR: WebSocket Streaming Quote not started !!!");
+        }
+    }
 
-							Thread.sleep(3600);
-						} else {
-							runnable = false;
-						}
-					}
-				} catch (ParseException e) {
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (KiteException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		t.start();
-	}
+    private List<String> getInstrumentTokensList() {
+        System.out.println("Thread  for getInstrumentTokensList Entry");
+        String[] instrumentsArr = StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR;
+        List<String> instrumentList = Arrays.asList(instrumentsArr);
+        return instrumentList;
+    }
 
-	private void roundOfNonPerformingBoughtStocks(String[] qUOTE_STREAMING_INSTRUMENTS_ARR, List<Order> list,
-			KiteConnect kiteconnect) throws KiteException {
+    private void stopStreamingQuote() {
+        System.out.println("Thread  for stopStreamingQuote Entry");
+        if (streamingQuoteStarted && websocketThread != null) {
+            websocketThread.stopWS();
+            try {
+                System.out.println("Thread  for stopStreamingQuote" + g++);
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
-		for (int index = 0; index < list.size(); index++) {
-			for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
-				if (list.get(index).tradingSymbol.equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count]))
-					if (list.get(index).status.equalsIgnoreCase("OPEN")) {
-						tradeOperations.cancelOrder(kiteconnect, list.get(index));
-					}
-			}
-		}
-		List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
-
-		for (int index = 0; index < holdings.size(); index++) {
-			for (int count = 0; count < qUOTE_STREAMING_INSTRUMENTS_ARR.length; count++) {
-				if (holdings.get(index).instrumentToken.equalsIgnoreCase(qUOTE_STREAMING_INSTRUMENTS_ARR[count])) {
-					tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
-							holdings.get(index).quantity);
-				}
-			}
-		}
-	}
-
-	private void checkForSignalsFromStrategies() {
-
-		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
-			private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			private TimeZone timeZone = TimeZone.getTimeZone("IST");
-			private String quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
-			private String quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
-
-			@Override
-			public void run() {
-				dtFmt.setTimeZone(timeZone);
-				try {
-					Date timeStart = dtFmt.parse(quoteStartTime);
-					Date timeEnd = dtFmt.parse(quoteEndTime);
-					while (runnable) {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							Thread.sleep(1000);
-						} else {
-							runnable = false;
-						}
-					}
-				} catch (ParseException e) {
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		t.start();
-	}
-
-	private void startStreamingQuote(String apiKey, String userId, String publicToken) {
-		String URIstring = StreamingConfig.STREAMING_QUOTE_WS_URL_TEMPLATE + "api_key=" + apiKey + "&user_id=" + userId
-				+ "&public_token=" + publicToken;
-
-		List<String> instrumentList = getInstrumentTokensList();
-
-		websocketThread = new WebsocketThread(URIstring, instrumentList, streamingQuoteStorage);
-		streamingQuoteStarted = websocketThread.startWS();
-		if (streamingQuoteStarted) {
-			Thread t = new Thread(websocketThread);
-			t.start();
-		} else {
-			System.out.println(
-					"ZStreamingQuoteControl.startStreamingQuote(): ERROR: WebSocket Streaming Quote not started !!!");
-		}
-	}
-
-	private List<String> getInstrumentTokensList() {
-		String[] instrumentsArr = StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR;
-		List<String> instrumentList = Arrays.asList(instrumentsArr);
-		return instrumentList;
-	}
-
-	private void stopStreamingQuote() {
-		if (streamingQuoteStarted && websocketThread != null) {
-			websocketThread.stopWS();
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)) {
-			streamingQuoteStorage.closeJDBCConn();
-		}
-	}
+        if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)) {
+            streamingQuoteStorage.closeJDBCConn();
+        }
+    }
 }
