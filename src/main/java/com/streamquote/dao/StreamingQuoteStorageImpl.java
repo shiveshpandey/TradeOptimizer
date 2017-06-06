@@ -177,7 +177,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
                 }
                 sql = "INSERT INTO " + quoteTable + "_priority "
                         + "(Time, InstrumentToken, PriorityPoint) "
-                        + "values(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                        + "values(?,?,?)";
                 prepStmt = conn.prepareStatement(sql);
 
                 prepStmt.setString(1, quoteList.get(0).getTime());

@@ -72,7 +72,7 @@ public class TradeOptimizer {
             kiteconnect.setPublicToken(userModel.publicToken);
             startProcess();
         } catch (JSONException | KiteException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
             return "error";
         }
         return "index";
@@ -114,7 +114,7 @@ public class TradeOptimizer {
             // closingDayRoundOffOperations();
             System.out.println("startProcess Exit");
         } catch (JSONException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 
@@ -172,11 +172,11 @@ public class TradeOptimizer {
                         }
                     }
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (KiteException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
         });
@@ -216,11 +216,11 @@ public class TradeOptimizer {
                         }
                     }
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (KiteException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
         });
@@ -262,9 +262,9 @@ public class TradeOptimizer {
                         }
                     }
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
         });
@@ -287,75 +287,108 @@ public class TradeOptimizer {
             public void run() {
                 System.out.println("Thread  for startStreamForHistoricalInstrumentsData" + a++);
                 dtFmt.setTimeZone(timeZone);
+
+                Date timeStart = null, timeEnd = null;
                 try {
-                    Date timeStart = dtFmt.parse(quoteStartTime);
-                    Date timeEnd = dtFmt.parse(quoteEndTime);
-                    while (runnable) {
+                    timeStart = dtFmt.parse(quoteStartTime);
+                    timeEnd = dtFmt.parse(quoteEndTime);
+                } catch (ParseException e) {
+
+                    System.out.println(e.getMessage());
+                }
+                while (runnable) {
+                    try {
                         Date timeNow = Calendar.getInstance(timeZone).getTime();
                         if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 
-                            List<Instrument> instrumentList = tradeOperations
-                                    .getInstrumentsForExchange(kiteconnect, "NSE");
-                            instrumentList.addAll(
-                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "BSE"));
-                            instrumentList.addAll(
-                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "NFO"));
-                            instrumentList.addAll(
-                                    tradeOperations.getInstrumentsForExchange(kiteconnect, "BFO"));
+                            List<Instrument> instrumentList = null;
+                            try {
+                                instrumentList = tradeOperations
+                                        .getInstrumentsForExchange(kiteconnect, "NSE");
 
-                            List<StreamingQuoteModeQuote> quoteList = new ArrayList<StreamingQuoteModeQuote>();
+                                /*
+                                 * instrumentList.addAll(tradeOperations
+                                 * .getInstrumentsForExchange(kiteconnect, "BSE"));
+                                 * instrumentList.addAll(tradeOperations
+                                 * .getInstrumentsForExchange(kiteconnect, "NFO"));
+                                 * instrumentList.addAll(tradeOperations
+                                 * .getInstrumentsForExchange(kiteconnect, "BFO"));
+                                 */
+                            } catch (KiteException e) {
+
+                                System.out.println(e.message);
+                            }
+                            List<StreamingQuoteModeQuote> quoteList = null;
 
                             HistoricalData histData;
                             for (int index = 0; index < instrumentList.size(); index++) {
-
-                                long dayHighVolume = 0, dayLowVolume = 1999999999,
-                                        dayCloseVolume = 0;
-                                double dayHighPrice = 0, dayLowPrice = 1999999999,
-                                        dayClosePrice = 0;
-
                                 try {
+                                    long dayHighVolume = 0, dayLowVolume = 1999999999,
+                                            dayCloseVolume = 0;
+                                    double dayHighPrice = 0, dayLowPrice = 1999999999,
+                                            dayClosePrice = 0;
+                                    quoteList = new ArrayList<StreamingQuoteModeQuote>();
                                     historicalData = tradeOperations.getHistoricalData(kiteconnect,
                                             StreamingConfig.HIST_DATA_START_DATE,
                                             StreamingConfig.HIST_DATA_END_DATE, "minute",
                                             Long.toString(instrumentList.get(index)
                                                     .getInstrument_token()));
-                                } catch (Exception e) {
-                                    continue;
+
+                                    for (int count = 0; count < historicalData.dataArrayList
+                                            .size(); count++) {
+                                        histData = historicalData.dataArrayList.get(count);
+
+                                        if (dayHighVolume < Long.valueOf(histData.volume))
+                                            dayHighVolume = Long.valueOf(histData.volume);
+                                        if (dayLowVolume > Long.valueOf(histData.volume))
+                                            dayLowVolume = Long.valueOf(histData.volume);
+                                        if (count == historicalData.dataArrayList.size() - 1)
+                                            dayCloseVolume = Long.valueOf(histData.volume);
+
+                                        if (dayHighPrice < Double.valueOf(histData.high))
+                                            dayHighPrice = Double.valueOf(histData.high);
+                                        if (dayLowPrice > Double.valueOf(histData.low))
+                                            dayLowPrice = Double.valueOf(histData.low);
+                                        if (count == historicalData.dataArrayList.size() - 1)
+                                            dayClosePrice = Double.valueOf(histData.close);
+
+                                        quote = new StreamingQuoteModeQuote(
+                                                dtFmt.format(fmt.parse(historicalData.dataArrayList
+                                                        .get(count).timeStamp).getTime()),
+                                                Long.toString(instrumentList.get(index)
+                                                        .getInstrument_token()),
+                                                new Double(0), new Long(0), new Double(0),
+                                                Long.valueOf(histData.volume), new Long(0),
+                                                new Long(0), new Double(histData.open),
+                                                new Double(histData.high), new Double(histData.low),
+                                                new Double(histData.close));
+                                        quoteList.add(quote);
+                                    }
+                                    double priorityPoint = 0;
+                                    if (dayHighPrice - dayLowPrice > 0
+                                            && dayHighVolume - dayLowVolume > 0)
+                                        priorityPoint = (dayClosePrice
+                                                / (dayHighPrice - dayLowPrice)) * 100
+                                                * (dayCloseVolume / (dayHighVolume - dayLowVolume));
+                                    quoteList.get(0).ltp = priorityPoint;
+                                    streamingQuoteStorage.storeData(quoteList, "minute");
+                                } catch (ArithmeticException e) {
+                                    if (e.getMessage().trim().equalsIgnoreCase("/ by zero"))
+                                        continue;
+                                    else {
+                                        System.out.println(e.getMessage());
+                                        continue;
+                                    }
+                                } catch (KiteException e) {
+                                    if (e.message.equalsIgnoreCase(
+                                            "No candles found based on token and time and candleType or Server busy")
+                                            && e.code == 400)
+                                        continue;
+                                    else {
+                                        System.out.println(e.message);
+                                        continue;
+                                    }
                                 }
-                                for (int count = 0; count < historicalData.dataArrayList
-                                        .size(); count++) {
-                                    histData = historicalData.dataArrayList.get(count);
-
-                                    if (dayHighVolume < Long.valueOf(histData.volume))
-                                        dayHighVolume = Long.valueOf(histData.volume);
-                                    if (dayLowVolume > Long.valueOf(histData.volume))
-                                        dayLowVolume = Long.valueOf(histData.volume);
-                                    if (count == historicalData.dataArrayList.size() - 1)
-                                        dayCloseVolume = Long.valueOf(histData.volume);
-
-                                    if (dayHighPrice < Double.valueOf(histData.high))
-                                        dayHighPrice = Double.valueOf(histData.high);
-                                    if (dayLowPrice > Double.valueOf(histData.low))
-                                        dayLowPrice = Double.valueOf(histData.low);
-                                    if (count == historicalData.dataArrayList.size() - 1)
-                                        dayClosePrice = Double.valueOf(histData.close);
-
-                                    quote = new StreamingQuoteModeQuote(
-                                            dtFmt.format(fmt.parse(historicalData.dataArrayList
-                                                    .get(count).timeStamp).getTime()),
-                                            Long.toString(instrumentList.get(index)
-                                                    .getInstrument_token()),
-                                            new Double(0), new Long(0), new Double(0),
-                                            Long.valueOf(histData.volume), new Long(0), new Long(0),
-                                            new Double(histData.open), new Double(histData.high),
-                                            new Double(histData.low), new Double(histData.close));
-                                    quoteList.add(quote);
-                                }
-                                double priorityPoint = (dayClosePrice
-                                        / (dayHighPrice - dayLowPrice)) * 100
-                                        * (dayCloseVolume / (dayHighVolume - dayLowVolume));
-                                quoteList.get(0).ltp = priorityPoint;
-                                streamingQuoteStorage.storeData(quoteList, "minute");
                             }
                             streamingQuoteStorage.saveInstrumentDetails(instrumentList,
                                     new Date().toString());
@@ -363,24 +396,27 @@ public class TradeOptimizer {
                             StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR = streamingQuoteStorage
                                     .getTopPrioritizedTokenList(10);
 
-                            roundOfNonPerformingBoughtStocks(
-                                    StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR,
-                                    tradeOperations.getOrders(kiteconnect), kiteconnect);
+                            try {
+                                roundOfNonPerformingBoughtStocks(
+                                        StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR,
+                                        tradeOperations.getOrders(kiteconnect), kiteconnect);
+                            } catch (KiteException e) {
+                                System.out.println(e.getMessage());
+                            }
 
                             Thread.sleep(3600);
                         } else {
                             runnable = false;
                         }
+                    } catch (ParseException e) {
+                        System.out.println(e.getMessage());
+                    } catch (InterruptedException e) {
+                        System.out.println(e.getMessage());
+                    } catch (IOException e) {
+                        System.out.println(e.getMessage());
                     }
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (KiteException e) {
-                    e.printStackTrace();
                 }
+
             }
         });
         t.start();
@@ -439,9 +475,9 @@ public class TradeOptimizer {
                         }
                     }
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
         });
@@ -480,7 +516,7 @@ public class TradeOptimizer {
                 System.out.println("Thread  for stopStreamingQuote" + g++);
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.out.println(e.getMessage());
             }
         }
 
