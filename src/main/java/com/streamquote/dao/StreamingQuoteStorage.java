@@ -31,4 +31,6 @@ public interface StreamingQuoteStorage {
 	public void saveInstrumentDetails(List<Instrument> instrumentList, String string);
 
 	public String[] getInstrumentDetailsOnTokenId(String instrumentToken);
+
+	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count);
 }

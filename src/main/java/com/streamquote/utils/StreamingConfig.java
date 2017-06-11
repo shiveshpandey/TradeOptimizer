@@ -35,8 +35,8 @@ public class StreamingConfig {
 	public static final String USER_ID = "TNRS4216";
 	public static final String API_KEY = "nwjyiweqm6z@4pmii";
 	public static final String API_SECRET_KEY = "67s1q1k5yl9il439f80nrv6f@bunmwhq6";
-	public static final String HIST_DATA_END_DATE = "2017-05-12";
-	public static final String HIST_DATA_START_DATE = "2017-05-08";
+	public static String HIST_DATA_END_DATE = null;
+	public static String HIST_DATA_START_DATE = "2017-06-01";
 
     public static String getStreamingQuoteTbNameAppendFormat(String date) {
         return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DEFAULT_MODE
