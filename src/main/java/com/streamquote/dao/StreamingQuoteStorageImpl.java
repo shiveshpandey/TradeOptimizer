@@ -7,7 +7,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.streamquote.model.OHLCquote;
 import com.streamquote.model.StreamingQuote;
@@ -504,5 +506,68 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		return streamingQuoteList;
 
+	}
+
+	@Override
+	public void saveGeneratedSignals(Map<String, String> signalList, List<String> instrumentList) {
+
+		if (conn != null) {
+
+			try {
+				String sql = "INSERT INTO " + quoteTable + "_signal "
+						+ "(time,instrumentToken,quantity,processSignal,status) " + "values(?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				for (int index = 0; index < instrumentList.size(); index++) {
+
+					updateOldSignalInSignalTable(instrumentList.get(index), signalList.get(instrumentList.get(index)));
+
+					prepStmt.setString(1, new Date().toString());
+					prepStmt.setString(2, instrumentList.get(index));
+					prepStmt.setString(3, "0");
+					prepStmt.setString(4, signalList.get(instrumentList.get(index)));
+					prepStmt.setString(5, "active");
+					prepStmt.executeUpdate();
+				}
+				prepStmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		} else {
+			if (conn != null) {
+				System.out.println("StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: DB conn is null !!!");
+			} else {
+				System.out.println(
+						"StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+			}
+		}
+
+	}
+
+	private void updateOldSignalInSignalTable(String instrument, String processSignal) {
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "SELECT Time FROM " + quoteTable
+						+ "_Signal where status ='active' and InstrumentToken= '" + instrument + "'";
+				ResultSet openRs = stmt.executeQuery(openSql);
+
+				for (int i = 0; i < openRs.getFetchSize(); i++) {
+					stmt = conn.createStatement();
+					openSql = "update " + quoteTable + "_Signal set status ='timeOut' where InstrumentToken= '"
+							+ instrument + "' and Time='" + openRs.getString(1) + "'";
+					stmt.executeUpdate(openSql);
+					openRs.next();
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				System.out.println(
+						"StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else
+
+		{
+			System.out.println("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
+		}
 	}
 }

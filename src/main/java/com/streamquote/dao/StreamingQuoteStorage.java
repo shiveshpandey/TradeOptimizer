@@ -1,6 +1,7 @@
 package com.streamquote.dao;
 
 import java.util.List;
+import java.util.Map;
 
 import com.streamquote.model.OHLCquote;
 import com.streamquote.model.StreamingQuote;
@@ -33,4 +34,6 @@ public interface StreamingQuoteStorage {
 	public String[] getInstrumentDetailsOnTokenId(String instrumentToken);
 
 	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count);
+
+	public void saveGeneratedSignals(Map<String, String> signalList, List<String> instrumentList);
 }

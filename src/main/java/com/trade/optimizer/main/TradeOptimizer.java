@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import javax.servlet.ServletContext;
@@ -111,15 +113,15 @@ public class TradeOptimizer {
 
 			startLiveStreamOfSelectedInstruments();
 
-			// applyStrategiesAndGenerateSignals();
+			applyStrategiesAndGenerateSignals();
 
-			// executeOrdersOnSignals();
+			executeOrdersOnSignals();
 
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
-			// closingDayRoundOffOperations();
+			closingDayRoundOffOperations();
 			System.out.println("startProcess Exit");
-		} catch (JSONException e) {
+		} catch (JSONException | KiteException e) {
 			System.out.println(e.getMessage());
 		}
 	}
@@ -459,9 +461,48 @@ public class TradeOptimizer {
 
 	private void applySmaStragegy() {
 		List<String> instrumentList = getInstrumentTokensList();
+		Map<String, String> signalList = new HashMap<String, String>();
 		List<StreamingQuoteModeQuote> quoteData = null;
-		for (int i = 0; i < instrumentList.size(); i++)
+		for (int i = 0; i < instrumentList.size(); i++) {
 			quoteData = streamingQuoteStorage.getProcessableQuoteDataOnTokenId(instrumentList.get(i), 26);
+			double sma11 = 0, sma12 = 0, sma13 = 0, sma21 = 0, sma22 = 0, sma23 = 0, sma31 = 0, sma32 = 0, sma33 = 0;
+			for (int index = quoteData.size(); index > 0; index--) {
+				if (quoteData.size() - index < 10) {
+					sma11 += quoteData.get(index - 1).closePrice;
+					sma12 += quoteData.get(index - 2).closePrice;
+					sma13 += quoteData.get(index - 3).closePrice;
+				}
+				if (quoteData.size() - index < 13) {
+					sma21 += quoteData.get(index - 1).closePrice;
+					sma22 += quoteData.get(index - 2).closePrice;
+					sma23 += quoteData.get(index - 3).closePrice;
+				}
+				if (quoteData.size() - index < 23) {
+					sma31 += quoteData.get(index - 1).closePrice;
+					sma32 += quoteData.get(index - 2).closePrice;
+					sma33 += quoteData.get(index - 3).closePrice;
+				}
+
+			}
+			sma11 = sma11 / 9;
+			sma21 = sma21 / 12;
+			sma31 = sma31 / 22;
+			sma12 = sma12 / 9;
+			sma22 = sma22 / 12;
+			sma32 = sma32 / 22;
+			sma13 = sma13 / 9;
+			sma23 = sma23 / 12;
+			sma33 = sma33 / 22;
+
+			if (sma11 <= sma12 && sma12 <= sma13 && sma21 <= sma22 && sma22 <= sma23 && sma31 <= sma32
+					&& sma32 <= sma33) {
+				signalList.put(instrumentList.get(i), "SELL");
+			}
+			if (sma11 > sma12 && sma12 > sma13 && sma21 > sma22 && sma22 > sma23 && sma31 > sma32 && sma32 > sma33) {
+				signalList.put(instrumentList.get(i), "BUY");
+			}
+		}
+		streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
 		// try inplementing at data change trigger level, then only sma ema
 		// value fetch and compare would be ok
 	}
