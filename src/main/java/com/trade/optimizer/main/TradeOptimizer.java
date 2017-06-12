@@ -1,10 +1,6 @@
 package com.trade.optimizer.main;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -332,7 +328,7 @@ public class TradeOptimizer {
 									historicalData = tradeOperations.getHistoricalData(kiteconnect,
 											StreamingConfig.HIST_DATA_START_DATE, StreamingConfig.HIST_DATA_END_DATE,
 											"minute", Long.toString(instrumentList.get(index).getInstrument_token()));
-
+									tradeOperations.getQuote(kiteconnect);
 									for (int count = 0; count < historicalData.dataArrayList.size(); count++) {
 										histData = historicalData.dataArrayList.get(count);
 
@@ -367,10 +363,6 @@ public class TradeOptimizer {
 									}
 								}
 							}
-
-							StreamingConfig.HIST_DATA_START_DATE = todaysDate;
-							StreamingConfig.HIST_DATA_END_DATE = todaysDate;
-
 							StreamingConfig.QUOTE_STREAMING_INSTRUMENTS_ARR = streamingQuoteStorage
 									.getTopPrioritizedTokenList(tokenCountForTrade);
 
@@ -380,8 +372,11 @@ public class TradeOptimizer {
 							} catch (KiteException e) {
 								System.out.println(e.getMessage());
 							}
-
+							DateFormat dtFmt1 = new SimpleDateFormat("HH:mm:ss");
+							dtFmt1.setTimeZone(TimeZone.getTimeZone("IST"));
+							StreamingConfig.HIST_DATA_START_DATE = todaysDate + dtFmt1.format(new Date());
 							Thread.sleep(3600);
+							StreamingConfig.HIST_DATA_END_DATE = todaysDate + dtFmt1.format(new Date());
 						} else {
 							runnable = false;
 						}
@@ -546,30 +541,5 @@ public class TradeOptimizer {
 		if (StreamingConfig.QUOTE_STREAMING_DB_STORE_REQD && (streamingQuoteStorage != null)) {
 			streamingQuoteStorage.closeJDBCConn();
 		}
-	}
-
-	public BufferedReader getStock(String symbol, int fromMonth, int fromDay, int fromYear, int toMonth, int toDay,
-			int toYear) {
-
-		try {
-			// Retrieve CSV stream
-			URL yahoo = new URL("http://ichart.yahoo.com/table.csv?s=" + symbol.toUpperCase() + "&a="
-					+ Integer.toString(fromMonth) + "&b=" + Integer.toString(fromDay) + "&c="
-					+ Integer.toString(fromYear) + "&d=" + Integer.toString(toMonth) + "&e=" + Integer.toString(toDay)
-					+ "&f=" + Integer.toString(toYear) + "&g=d&ignore=.csv");
-			System.out.println(yahoo.toString());
-			URLConnection connection = yahoo.openConnection();
-			InputStreamReader is = new InputStreamReader(connection.getInputStream());
-			// return the BufferedReader
-			return new BufferedReader(is);
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	public static void main(String args[]) {
-		new TradeOptimizer().getStock("TCS", 1, 1, 2016, 6, 8, 2016);
 	}
 }

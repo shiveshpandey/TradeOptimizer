@@ -75,16 +75,22 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				stmt = conn.createStatement();
 				quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
-				String sql = "CREATE TABLE " + quoteTable + " " + "(time varchar(32) NOT NULL, "
-						+ " InstrumentToken varchar(32) NOT NULL, " + " LastTradedPrice DECIMAL(20,4) NOT NULL, "
-						+ " LastTradedQty BIGINT NOT NULL, " + " AvgTradedPrice DECIMAL(20,4) NOT NULL, "
-						+ " Volume BIGINT NOT NULL, " + " BuyQty BIGINT NOT NULL, " + " SellQty BIGINT NOT NULL, "
-						+ " OpenPrice DECIMAL(20,4) NOT NULL, " + " HighPrice DECIMAL(20,4) NOT NULL, "
-						+ " LowPrice DECIMAL(20,4) NOT NULL, " + " ClosePrice DECIMAL(20,4) NOT NULL, "
-						+ " PRIMARY KEY (InstrumentToken, time)) "
-						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
-				stmt.executeUpdate(sql);
-				sql = "CREATE TABLE " + quoteTable + "_hist " + "(time varchar(32) NOT NULL, "
+				// String sql = "CREATE TABLE " + quoteTable + " " + "(time
+				// varchar(32) NOT NULL, "
+				// + " InstrumentToken varchar(32) NOT NULL, " + "
+				// LastTradedPrice DECIMAL(20,4) NOT NULL, "
+				// + " LastTradedQty BIGINT NOT NULL, " + " AvgTradedPrice
+				// DECIMAL(20,4) NOT NULL, "
+				// + " Volume BIGINT NOT NULL, " + " BuyQty BIGINT NOT NULL, " +
+				// " SellQty BIGINT NOT NULL, "
+				// + " OpenPrice DECIMAL(20,4) NOT NULL, " + " HighPrice
+				// DECIMAL(20,4) NOT NULL, "
+				// + " LowPrice DECIMAL(20,4) NOT NULL, " + " ClosePrice
+				// DECIMAL(20,4) NOT NULL, "
+				// + " PRIMARY KEY (InstrumentToken, time)) "
+				// + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+				// stmt.executeUpdate(sql);
+				String sql = "CREATE TABLE " + quoteTable + "_hist " + "(time varchar(32) NOT NULL, "
 						+ " InstrumentToken varchar(32) NOT NULL, " + " LastTradedPrice DECIMAL(20,4) NOT NULL, "
 						+ " LastTradedQty BIGINT NOT NULL, " + " AvgTradedPrice DECIMAL(20,4) NOT NULL, "
 						+ " Volume BIGINT NOT NULL, " + " BuyQty BIGINT NOT NULL, " + " SellQty BIGINT NOT NULL, "
@@ -188,10 +194,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			StreamingQuoteModeQuote quoteModeQuote = (StreamingQuoteModeQuote) quote;
 
 			try {
-				String sql = "INSERT INTO " + quoteTable + " "
+				String sql = "INSERT INTO " + quoteTable + "_hist "
 						+ "(Time, InstrumentToken, LastTradedPrice, LastTradedQty, AvgTradedPrice, "
-						+ "Volume, BuyQty, SellQty, OpenPrice, HighPrice, LowPrice, ClosePrice) "
-						+ "values(?,?,?,?,?,?,?,?,?,?,?,?)";
+						+ "Volume, BuyQty, SellQty, OpenPrice, HighPrice, LowPrice, ClosePrice,TickType) "
+						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
 				prepStmt.setString(1, quoteModeQuote.getTime());
@@ -206,6 +212,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				prepStmt.setDouble(10, quoteModeQuote.getHighPrice());
 				prepStmt.setDouble(11, quoteModeQuote.getLowPrice());
 				prepStmt.setDouble(12, quoteModeQuote.getClosePrice());
+				prepStmt.setString(13, "live");
+
 				prepStmt.executeUpdate();
 				prepStmt.close();
 			} catch (SQLException e) {
@@ -289,7 +297,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 
-				String openSql = "SELECT * FROM " + quoteTable + " WHERE Time >= '" + prevTime + "' AND Time <= '"
+				String openSql = "SELECT * FROM " + quoteTable + "_hist WHERE Time >= '" + prevTime + "' AND Time <= '"
 						+ currTime + "' AND InstrumentToken = '" + instrumentToken + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
@@ -335,7 +343,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				instrumentList = new String[i];
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ " ORDER BY Time,PriorityPoint DESC LIMIT " + i + "";
+						+ "_priority ORDER BY Time,PriorityPoint DESC LIMIT " + i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				for (int index = 0; index < openRs.getFetchSize(); index++) {
 					openRs.next();
@@ -469,7 +477,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 
-				String openSql = "SELECT * FROM " + quoteTable + " WHERE InstrumentToken = '" + instrumentToken
+				String openSql = "SELECT * FROM " + quoteTable + "_hist WHERE InstrumentToken = '" + instrumentToken
 						+ "' order by Time desc limit " + count;
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
