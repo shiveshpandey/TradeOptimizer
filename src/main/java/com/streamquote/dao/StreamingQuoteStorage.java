@@ -21,8 +21,6 @@ public interface StreamingQuoteStorage {
 
 	public OHLCquote getOHLCDataByTimeRange(String instrumentToken, String prevTime, String currTime);
 
-	public List<StreamingQuote> getQuoteListByTimeRange(String instrumentToken, String prevTime, String currTime);
-
 	void storeData(List<StreamingQuoteModeQuote> quoteList, String tickType);
 
 	public String[] getTopPrioritizedTokenList(int i);

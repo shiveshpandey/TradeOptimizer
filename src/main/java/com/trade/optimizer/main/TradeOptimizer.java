@@ -43,6 +43,7 @@ import com.trade.optimizer.models.UserModel;
 public class TradeOptimizer {
 
 	private static int tokenCountForTrade = 10;
+	private static int seconds = 1000;
 	private static StreamingQuoteStorage streamingQuoteStorage = new StreamingQuoteStorageImpl();
 	private static StreamingQuoteModeQuote quote = null;
 	private static HistoricalData historicalData = null;
@@ -169,7 +170,7 @@ public class TradeOptimizer {
 										holdings.get(index).quantity);
 							}
 						} else {
-							Thread.sleep(1000);
+							Thread.sleep(10 * seconds);
 							runnable = true;
 						}
 					}
@@ -208,7 +209,7 @@ public class TradeOptimizer {
 							for (int index = 0; index < signalList.size(); index++)
 								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
 										signalList.get(index).transactionType, signalList.get(index).quantity);
-							Thread.sleep(1000);
+							Thread.sleep(2 * seconds);
 						} else {
 							runnable = false;
 						}
@@ -251,7 +252,7 @@ public class TradeOptimizer {
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							startStreamingQuote(kiteconnect.getApiKey(), kiteconnect.getUserId(),
 									kiteconnect.getPublicToken());
-							Thread.sleep(1000);
+							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
 							stopStreamingQuote();
@@ -328,7 +329,7 @@ public class TradeOptimizer {
 									historicalData = tradeOperations.getHistoricalData(kiteconnect,
 											StreamingConfig.HIST_DATA_START_DATE, StreamingConfig.HIST_DATA_END_DATE,
 											"minute", Long.toString(instrumentList.get(index).getInstrument_token()));
-									tradeOperations.getQuote(kiteconnect);
+
 									for (int count = 0; count < historicalData.dataArrayList.size(); count++) {
 										histData = historicalData.dataArrayList.get(count);
 
@@ -375,7 +376,7 @@ public class TradeOptimizer {
 							DateFormat dtFmt1 = new SimpleDateFormat("HH:mm:ss");
 							dtFmt1.setTimeZone(TimeZone.getTimeZone("IST"));
 							StreamingConfig.HIST_DATA_START_DATE = todaysDate + dtFmt1.format(new Date());
-							Thread.sleep(3600);
+							Thread.sleep(1800 * seconds);
 							StreamingConfig.HIST_DATA_END_DATE = todaysDate + dtFmt1.format(new Date());
 						} else {
 							runnable = false;
@@ -438,7 +439,7 @@ public class TradeOptimizer {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							applySmaStragegy();
-							Thread.sleep(1000);
+							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
 						}
@@ -532,7 +533,7 @@ public class TradeOptimizer {
 			websocketThread.stopWS();
 			try {
 				System.out.println("Thread  for stopStreamingQuote" + g++);
-				Thread.sleep(1000);
+				Thread.sleep(2 * seconds);
 			} catch (InterruptedException e) {
 				System.out.println(e.getMessage());
 			}
