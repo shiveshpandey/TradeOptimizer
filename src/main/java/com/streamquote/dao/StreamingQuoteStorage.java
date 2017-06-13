@@ -1,5 +1,6 @@
 package com.streamquote.dao;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -8,6 +9,7 @@ import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
 import com.trade.optimizer.models.Instrument;
 import com.trade.optimizer.models.Order;
+import com.trade.optimizer.models.Tick;
 
 public interface StreamingQuoteStorage {
 
@@ -33,5 +35,7 @@ public interface StreamingQuoteStorage {
 
 	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count);
 
-	public void saveGeneratedSignals(Map<String, String> signalList, List<Long> instrumentList);
+	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList);
+
+	public void storeData(ArrayList<Tick> ticks);
 }
