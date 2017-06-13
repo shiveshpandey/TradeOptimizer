@@ -33,5 +33,5 @@ public interface StreamingQuoteStorage {
 
 	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count);
 
-	public void saveGeneratedSignals(Map<String, String> signalList, List<String> instrumentList);
+	public void saveGeneratedSignals(Map<String, String> signalList, List<Long> instrumentList);
 }
