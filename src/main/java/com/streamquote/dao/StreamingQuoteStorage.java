@@ -25,7 +25,7 @@ public interface StreamingQuoteStorage {
 
 	void storeData(List<StreamingQuoteModeQuote> quoteList, String tickType);
 
-	public String[] getTopPrioritizedTokenList(int i);
+	public ArrayList<Long> getTopPrioritizedTokenList(int i);
 
 	public List<Order> getOrderListToPlace();
 

@@ -532,7 +532,7 @@ public class KiteTicker {
 	}
 
 	/** Disconnects and reconnects ticker */
-	private void reconnect(final ArrayList<Long> tokens) {
+	public void reconnect(final ArrayList<Long> tokens) {
 		try {
 			nonUserDisconnect();
 			connect();
