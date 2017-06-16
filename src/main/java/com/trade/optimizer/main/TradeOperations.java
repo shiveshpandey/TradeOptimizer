@@ -5,12 +5,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.json.JSONObject;
 
 import com.neovisionaries.ws.client.WebSocketException;
 import com.streamquote.dao.StreamingQuoteStorage;
-import com.streamquote.dao.StreamingQuoteStorageImpl;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
 import com.trade.optimizer.models.HistoricalData;
@@ -30,24 +30,25 @@ import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
 
 public class TradeOperations {
-	
+	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
+
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteconnect) throws KiteException {
 		// Get margins returns margin model, you can pass equity or commodity as
 		// arguments to get margins of respective segments.
 		Margins margins = kiteconnect.getMargins("equity");
-		System.out.println(margins.available.cash);
-		System.out.println(margins.utilised.debits);
+		LOGGER.info(margins.available.cash);
+		LOGGER.info(margins.utilised.debits);
 	}
 
 	/**
 	 * Place order.
 	 * 
 	 * @param quantity
-	 * @param streamingQuoteDAOModeQuote 
+	 * @param streamingQuoteDAOModeQuote
 	 */
-	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity, StreamingQuoteStorage streamingQuoteDAOModeQuote)
-			throws KiteException {
+	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity,
+			StreamingQuoteStorage streamingQuoteDAOModeQuote) throws KiteException {
 		/**
 		 * Place order method requires a map argument which contains,
 		 * tradingsymbol, exchange, transaction_type, order_type, quantity,
@@ -76,7 +77,7 @@ public class TradeOperations {
 									// than 8 characters and only
 									// alphanumeric is allowed
 		// Order order = kiteconnect.placeOrder(param, "regular");
-		System.out.println("Order Placed for : " + instrumentDetails[1]);
+		LOGGER.info("Order Placed for : " + instrumentDetails[1]);
 	}
 
 	/** Place bracket order. */
@@ -104,7 +105,7 @@ public class TradeOperations {
 			}
 		};
 		Order order10 = kiteconnect.placeOrder(param10, "bo");
-		System.out.println(order10.orderId);
+		LOGGER.info(order10.orderId);
 	}
 
 	/** Place cover order. */
@@ -136,7 +137,7 @@ public class TradeOperations {
 			}
 		};
 		Order order11 = kiteconnect.placeOrder(param11, "co");
-		System.out.println(order11.orderId);
+		LOGGER.info(order11.orderId);
 	}
 
 	/** Get trigger range. */
@@ -146,7 +147,7 @@ public class TradeOperations {
 		Map<String, Object> params12 = new HashMap<>();
 		params12.put("transaction_type", "SELL");
 		TriggerRange triggerRange = kiteconnect.getTriggerRange("NSE", "RELIANCE", params12);
-		System.out.println(triggerRange.start);
+		LOGGER.info(String.valueOf(triggerRange.start));
 	}
 
 	/**
@@ -160,10 +161,10 @@ public class TradeOperations {
 		Order order = kiteconnect.getOrders();
 		return order.orders;
 		// for (int i = 0; i < order1.orders.size(); i++) {
-		// System.out.println(order1.orders.get(i).tradingSymbol + " " +
+		// LOGGER.info(order1.orders.get(i).tradingSymbol + " " +
 		// order1.orders.get(i).orderId);
 		// }
-		// System.out.println("list of orders size is " + order1.orders.size());
+		// LOGGER.info("list of orders size is " + order1.orders.size());
 	}
 
 	/**
@@ -175,24 +176,24 @@ public class TradeOperations {
 		Order order = kiteconnect.getOrder("161028000217306");
 		return order;
 		// for (int i = 0; i < order.orders.size(); i++) {
-		// System.out.println(order.orders.get(i).orderId + " " +
+		// LOGGER.info(order.orders.get(i).orderId + " " +
 		// order.orders.get(i).status);
 		// }
-		// System.out.println("list size is " + order.orders.size());
+		// LOGGER.info("list size is " + order.orders.size());
 	}
 
 	/** Get tradebook */
 	public void getTrades(KiteConnect kiteconnect) throws KiteException {
 		// Returns tradebook.
 		Trade trade = kiteconnect.getTrades();
-		System.out.println(trade.trades.size());
+		LOGGER.info(String.valueOf(trade.trades.size()));
 	}
 
 	/** Get trades for an order. */
 	public void getTradesWithOrderId(KiteConnect kiteconnect) throws KiteException {
 		// Returns trades for the given order.
 		Trade trade1 = kiteconnect.getTrades("161007000088484");
-		System.out.println(trade1.trades.size());
+		LOGGER.info(String.valueOf(trade1.trades.size()));
 	}
 
 	/** Modify order. */
@@ -216,7 +217,7 @@ public class TradeOperations {
 			}
 		};
 		Order order21 = kiteconnect.modifyOrder("161007000088484", params, "regular");
-		System.out.println(order21.orderId);
+		LOGGER.info(order21.orderId);
 	}
 
 	/** Modify second leg SL-M order of bracket order */
@@ -240,7 +241,7 @@ public class TradeOperations {
 			}
 		};
 		Order order = kiteconnect.modifyOrder("161220000183239", params, "bo");
-		System.out.println(order.orderId);
+		LOGGER.info(order.orderId);
 	}
 
 	/** Modify second leg LIMIT order of bracket order */
@@ -264,7 +265,7 @@ public class TradeOperations {
 			}
 		};
 		Order order = kiteconnect.modifyOrder("161220000183238", params, "bo");
-		System.out.println(order.orderId);
+		LOGGER.info(order.orderId);
 	}
 
 	/**
@@ -273,14 +274,14 @@ public class TradeOperations {
 	 * @param order
 	 */
 	public void cancelOrder(KiteConnect kiteconnect, Order order) throws KiteException {
-		System.out.println(order.orderId + " regular" + " cancelled");
+		LOGGER.info(order.orderId + " regular" + " cancelled");
 	}
 
 	public void exitBracketOrder(KiteConnect kiteconnect) throws KiteException {
 		Map<String, Object> params = new HashMap<>();
 		params.put("parent_order_id", "161129000165203");
 		Order order = kiteconnect.cancelOrder(params, "161129000221590", "bo");
-		System.out.println(order.orderId);
+		LOGGER.info(order.orderId);
 	}
 
 	/** Get all positions. */
@@ -288,7 +289,7 @@ public class TradeOperations {
 		// Get positions returns position model which contains list of
 		// positions.
 		Position position = kiteconnect.getPositions();
-		System.out.println(position.netPositions.size());
+		LOGGER.info(String.valueOf(position.netPositions.size()));
 	}
 
 	/** Get holdings. */
@@ -315,7 +316,7 @@ public class TradeOperations {
 			}
 		};
 		JSONObject jsonObject6 = kiteconnect.modifyProduct(param6);
-		System.out.println(jsonObject6);
+		LOGGER.info(String.valueOf(jsonObject6));
 	}
 
 	/** Get all instruments that can be traded using kite connect. */
@@ -325,7 +326,7 @@ public class TradeOperations {
 		// Hence, it is recommended that this call be made once and the results
 		// stored locally once every morning before market opening.
 		List<Instrument> instruments = kiteconnect.getInstruments();
-		System.out.println(instruments.size());
+		LOGGER.info(String.valueOf(instruments.size()));
 	}
 
 	/** Get instruments for the desired exchange. */
@@ -333,7 +334,7 @@ public class TradeOperations {
 			throws KiteException, IOException {
 		// Get instruments for an exchange.
 		return kiteconnect.getInstruments(exchangeName);
-		// System.out.println(nseInstruments.size());
+		// LOGGER.info(nseInstruments.size());
 	}
 
 	/**
@@ -349,7 +350,7 @@ public class TradeOperations {
 	public void getQuoteIndices(KiteConnect kiteconnect) throws KiteException {
 		// Get quotes returns quote for desired tradingsymbol.
 		IndicesQuote quote = kiteconnect.getQuoteIndices("NSE", "NIFTY 50");
-		System.out.println(quote.lastPrice);
+		LOGGER.info(String.valueOf(quote.lastPrice));
 	}
 
 	/** Get historical data for an instrument. */
@@ -365,9 +366,9 @@ public class TradeOperations {
 		param.put("to", toDate);
 
 		return kiteconnect.getHistoricalData(param, tokenName, interval);
-		// System.out.println(historicalData.dataArrayList.size());
-		// System.out.println(historicalData.dataArrayList.get(0).volume);
-		// System.out.println(historicalData.dataArrayList.get(historicalData.dataArrayList.size()
+		// LOGGER.info(historicalData.dataArrayList.size());
+		// LOGGER.info(historicalData.dataArrayList.get(0).volume);
+		// LOGGER.info(historicalData.dataArrayList.get(historicalData.dataArrayList.size()
 		// - 1).volume);
 	}
 
@@ -375,7 +376,7 @@ public class TradeOperations {
 	public void logout(KiteConnect kiteconnect) throws KiteException {
 		/** Logout user and kill session. */
 		JSONObject jsonObject10 = kiteconnect.logout();
-		System.out.println(jsonObject10);
+		LOGGER.info(String.valueOf(jsonObject10));
 	}
 
 	/**
@@ -423,7 +424,7 @@ public class TradeOperations {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				System.out.println(ticks.size());
+				LOGGER.info(String.valueOf(ticks.size()));
 			}
 		});
 
@@ -455,7 +456,7 @@ public class TradeOperations {
 		 * following method.
 		 */
 		boolean isConnected = tickerProvider.isConnectionOpen();
-		System.out.println(isConnected);
+		LOGGER.info(String.valueOf(isConnected));
 
 		/**
 		 * set mode is used to set mode in which you need tick for list of

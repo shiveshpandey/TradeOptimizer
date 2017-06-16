@@ -29,12 +29,12 @@ public class WebsocketClientEndpoint {
     public WebsocketClientEndpoint(URI endpointURI, WebServiceSessionNotifier sessionNotifier) {
         try {
             this.sessionNotifier = sessionNotifier;
-            // System.out.println("WebsocketClientEndpoint.WebsocketClientEndpoint(): creating
+            // LOGGER.info("WebsocketClientEndpoint.WebsocketClientEndpoint(): creating
             // WebSocketContainer...");
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
             container.connectToServer(this, endpointURI);
         } catch (Exception e) {
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketClientEndpoint.WebsocketClientEndpoint(): ERROR: Exception on container
             // connectToServer, reason: "
             // + e.getMessage());
@@ -44,7 +44,7 @@ public class WebsocketClientEndpoint {
 
     @OnOpen
     public void onOpen(Session userSession) {
-        // System.out.println("WebsocketClientEndpoint.onOpen(): Opening WebSocket...");
+        // LOGGER.info("WebsocketClientEndpoint.onOpen(): Opening WebSocket...");
         this.userSession = userSession;
 
         sessionNotifier.notifyWsSessionOpened();
@@ -52,13 +52,13 @@ public class WebsocketClientEndpoint {
 
     @OnClose
     public void onClose(Session userSession, CloseReason reason) {
-        // System.out.println(
+        // LOGGER.info(
         // "WebsocketClientEndpoint.onClose(): Closing Websocket.... Reason[" +
         // reason.getReasonPhrase() + "]");
         try {
             this.userSession.close();
         } catch (IOException e) {
-            // System.out.println("WebsocketClientEndpoint.onClose(): ERROR: IOException on
+            // LOGGER.info("WebsocketClientEndpoint.onClose(): ERROR: IOException on
             // userSession close!!!");
             e.printStackTrace();
         }
@@ -83,23 +83,23 @@ public class WebsocketClientEndpoint {
 
     @OnMessage
     public void onMessage(String message) {
-        // System.out.println("WebsocketClientEndpoint.onMessage(): [String Message]: \n" +
+        // LOGGER.info("WebsocketClientEndpoint.onMessage(): [String Message]: \n" +
         // message);
     }
 
     public void addMessageHandler(MessageHandler msgHandler) {
-        // System.out.println("WebsocketClientEndpoint.addMessageHandler(): Adding
+        // LOGGER.info("WebsocketClientEndpoint.addMessageHandler(): Adding
         // MessageHandler...");
         this.messageHandler = msgHandler;
     }
 
     public void sendMessage(String message) {
-        // System.out.println("WebsocketClientEndpoint.sendMessage(): sending message");
+        // LOGGER.info("WebsocketClientEndpoint.sendMessage(): sending message");
         this.userSession.getAsyncRemote().sendText(message);
     }
 
     public void forceClose(boolean terminate) {
-        // System.out.println("WebsocketClientEndpoint.forceClose(): Force Closing Websocket....");
+        // LOGGER.info("WebsocketClientEndpoint.forceClose(): Force Closing Websocket....");
         try {
             this.terminate = terminate;
             this.userSession.close();
@@ -124,7 +124,7 @@ public class WebsocketClientEndpoint {
         hbTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                // System.out.println(
+                // LOGGER.info(
                 // "WebsocketClientEndpoint.onMessage().new TimerTask().run(): ERROR: Streaming
                 // Quote WS HeartBit Timer Fired, notifying session notifier !!!");
                 //

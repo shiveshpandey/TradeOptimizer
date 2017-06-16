@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import com.streamquote.model.OHLCquote;
 import com.streamquote.model.StreamingQuote;
@@ -20,6 +21,7 @@ import com.trade.optimizer.models.Order;
 import com.trade.optimizer.models.Tick;
 
 public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
+	private final static Logger LOGGER = Logger.getLogger(StreamingQuoteStorageImpl.class.getName());
 
 	private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
 	private static final String DB_URL = StreamingConfig.QUOTE_STREAMING_DB_URL;
@@ -37,7 +39,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	@Override
 	public void initializeJDBCConn() {
 		try {
-			System.out.println(
+			LOGGER.info(
 					"StreamingQuoteStorageImpl.initializeJDBCConn(): creating JDBC connection for Streaming Quote...");
 
 			Class.forName(JDBC_DRIVER);
@@ -48,7 +50,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					.println("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
 			e.printStackTrace();
 		} catch (SQLException e) {
-			System.out.println("StreamingQuoteStorageImpl.initializeJDBCConn(): SQLException on getConnection");
+			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): SQLException on getConnection");
 			e.printStackTrace();
 		}
 	}
@@ -57,15 +59,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	public void closeJDBCConn() {
 		if (conn != null) {
 			try {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.closeJDBCConn(): Closing JDBC connection for Streaming Quote...");
 				conn.close();
 			} catch (SQLException e) {
-				System.out.println("StreamingQuoteStorageImpl.closeJDBCConn(): SQLException on conn close");
+				LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): SQLException on conn close");
 				e.printStackTrace();
 			}
 		} else {
-			System.out.println("StreamingQuoteStorageImpl.closeJDBCConn(): WARNING: DB connection already null");
+			LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): WARNING: DB connection already null");
 		}
 	}
 
@@ -116,16 +118,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): SQL table for Streaming quote created, table name: ["
 								+ quoteTable + "]");
 			} catch (SQLException e) {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out.println("StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
 		}
 	}
 
@@ -172,9 +174,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
 			} else {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
@@ -211,13 +213,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				System.out
 						.println("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 								+ quote);
-				System.out.println("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
 			} else {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
@@ -256,13 +258,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				System.out
 						.println("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 								+ ticks);
-				System.out.println("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
 			} else {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
@@ -313,13 +315,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				stmt.close();
 			} catch (SQLException e) {
 				ohlcMap = null;
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
 			ohlcMap = null;
-			System.out.println("StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: DB conn is null !!!");
 		}
 
 		return ohlcMap;
@@ -364,14 +366,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	// stmt.close();
 	// } catch (SQLException e) {
 	// streamingQuoteList = null;
-	// System.out.println(
+	// LOGGER.info(
 	// "StreamingQuoteStorageImpl.getQuoteByTimeRange(): ERROR: SQLException on
 	// fetching data from Table, cause: "
 	// + e.getMessage());
 	// }
 	// } else {
 	// streamingQuoteList = null;
-	// System.out.println("StreamingQuoteStorageImpl.getQuoteByTimeRange():
+	// LOGGER.info("StreamingQuoteStorageImpl.getQuoteByTimeRange():
 	// ERROR: DB conn is null !!!");
 	// }
 	//
@@ -391,12 +393,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					instrumentList.add(openRs.getLong(1));
 				}
 			} catch (SQLException e) {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out.println("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
 		}
 		return instrumentList;
 	}
@@ -428,12 +430,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				stmt.close();
 			} catch (SQLException e) {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out.println("StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: DB conn is null !!!");
 		}
 		return orders;
 	}
@@ -473,9 +475,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteStorageImpl.saveInstrumentDetails(): ERROR: DB conn is null !!!");
+				LOGGER.info("StreamingQuoteStorageImpl.saveInstrumentDetails(): ERROR: DB conn is null !!!");
 			} else {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.saveInstrumentDetails(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
@@ -499,12 +501,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				stmt.close();
 			} catch (SQLException e) {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
-			System.out.println("StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: DB conn is null !!!");
 		}
 
 		return param;
@@ -543,14 +545,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				stmt.close();
 			} catch (SQLException e) {
 				streamingQuoteList = null;
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else {
 			streamingQuoteList = null;
-			System.out.println(
-					"StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR: DB conn is null !!!");
 		}
 
 		return streamingQuoteList;
@@ -584,9 +585,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		} else {
 			if (conn != null) {
-				System.out.println("StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: DB conn is null !!!");
+				LOGGER.info("StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: DB conn is null !!!");
 			} else {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
@@ -617,14 +618,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				stmt.close();
 			} catch (SQLException e) {
-				System.out.println(
+				LOGGER.info(
 						"StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
 		} else
 
 		{
-			System.out.println("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
 		}
 		return true;
 	}

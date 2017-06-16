@@ -55,7 +55,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 
         // Establish the websocket
         try {
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.startWS(): creating WebsocketClientEndpoint with URI: <" + URIstring
             // + ">....");
             // save the state of web socket before initiating
@@ -71,7 +71,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             // set the running status
             runStatus = true;
         } catch (URISyntaxException e) {
-            // System.out.println("WebsocketThread.startWS(): ERROR: URISyntaxException on
+            // LOGGER.info("WebsocketThread.startWS(): ERROR: URISyntaxException on
             // WebsocketClientEndpoint");
             e.printStackTrace();
         }
@@ -84,13 +84,13 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         quoteBufferQ = new ArrayBlockingQueue<Object>(300);
 
         // spawn quote parse thread
-        // System.out.println("WebsocketThread.run(): starting StreamingQuoteParserThread...");
+        // LOGGER.info("WebsocketThread.run(): starting StreamingQuoteParserThread...");
         quoteParserThread = new StreamingQuoteParserThread(quoteBufferQ, streamingQuoteStorage);
         Thread parserTh = new Thread(quoteParserThread);
         parserTh.start();
 
         // send websocket subscribe message
-        // System.out.println("WebsocketThread.run(): Sending Suscribe message with Handler to
+        // LOGGER.info("WebsocketThread.run(): Sending Suscribe message with Handler to
         // Streaming Quote WS server");
         subscribeWSwithMsgHandler();
 
@@ -99,7 +99,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
-                // System.out.println("WebsocketThread.run(): ERROR: InterruptedException on
+                // LOGGER.info("WebsocketThread.run(): ERROR: InterruptedException on
                 // sleep");
             }
         }
@@ -109,11 +109,11 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
      * stopWS - method to stop the websocket thread
      */
     public void stopWS() {
-        // System.out.println("WebsocketThread.stopWS(): Sending UnSuscribe message to Streaming
+        // LOGGER.info("WebsocketThread.stopWS(): Sending UnSuscribe message to Streaming
         // Quote WS server");
         sendUnSubscribeMessage();
 
-        // System.out.println("WebsocketThread.stopWS(): Terminate Force closing previous WS
+        // LOGGER.info("WebsocketThread.stopWS(): Terminate Force closing previous WS
         // session");
         clientEndPoint.forceClose(true);
         clientEndPoint = null;
@@ -122,7 +122,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         currWSstate = null;
         currWSstateLock.unlock();
 
-        // System.out.println("WebsocketThread.stopWS(): method called to stop Websocket data parser
+        // LOGGER.info("WebsocketThread.stopWS(): method called to stop Websocket data parser
         // thread...");
         // Stop quote parser thread first
         quoteParserThread.stopThread();
@@ -147,7 +147,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
                 try {
                     quoteBufferQ.put(buffer);
                 } catch (InterruptedException e) {
-                    // System.out.println("WebsocketThread.addMessageHandler().new MessageHandler():
+                    // LOGGER.info("WebsocketThread.addMessageHandler().new MessageHandler():
                     // "
                     // + "ERROR: InterruptedException on putting to quoteBufferQ");
                     e.printStackTrace();
@@ -168,7 +168,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         String instrumentString = getInstrumentString(instrumentList);
         // send message to websocket e.g. INFY (408065) and TATAMOTORS (884737)
         String msg = "{\"a\": \"subscribe\", \"v\": [" + instrumentString + "]}";
-        // System.out.println("WebsocketThread.sendSubscribeMessage(): WS Subscribe msg: " + msg);
+        // LOGGER.info("WebsocketThread.sendSubscribeMessage(): WS Subscribe msg: " + msg);
         clientEndPoint.sendMessage(msg);
     }
 
@@ -185,7 +185,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         // send message to websocket e.g. INFY (408065) and TATAMOTORS (884737)
         String msg = "{\"a\": \"mode\", \"v\": [\"" + StreamingConfig.QUOTE_STREAMING_DEFAULT_MODE
                 + "\", [" + instrumentString + "]]}";
-        // System.out.println("WebsocketThread.sendModeMessage(): WS mode msg: " + msg);
+        // LOGGER.info("WebsocketThread.sendModeMessage(): WS mode msg: " + msg);
         clientEndPoint.sendMessage(msg);
 
         // Dirty Hack: At Market Open, WS does not respond with data after Open
@@ -204,7 +204,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 
         String instrumentString = getInstrumentString(instrumentList);
         String msg = "{\"a\": \"unsubscribe\", \"v\": [" + instrumentString + "]}";
-        // System.out.println("WebsocketThread.sendUnSubscribeMessage(): WS UnSubscribe msg: " +
+        // LOGGER.info("WebsocketThread.sendUnSubscribeMessage(): WS UnSubscribe msg: " +
         // msg);
         clientEndPoint.sendMessage(msg);
     }
@@ -225,7 +225,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         }
 
         String instrumentString = stringBuilder.toString();
-        // System.out.println("WebsocketThread.getInstrumentString(): instrumentString: [" +
+        // LOGGER.info("WebsocketThread.getInstrumentString(): instrumentString: [" +
         // instrumentString + "]");
         return instrumentString;
     }
@@ -236,13 +236,13 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             // delay before re initiating
             Thread.sleep(StreamingConfig.QUOTE_STREAMING_REINITIATE_DELAY_ON_INITIATE_FAIL);
         } catch (InterruptedException e1) {
-            // System.out.println("WebsocketThread.notifyWsInitiateFailure(): ERROR:
+            // LOGGER.info("WebsocketThread.notifyWsInitiateFailure(): ERROR:
             // InterruptedException on sleep !!!");
         }
 
         // Establish the websocket again
         try {
-            // System.out.println("WebsocketThread.notifyWsInitiateFailure(): Previous WS initiate
+            // LOGGER.info("WebsocketThread.notifyWsInitiateFailure(): Previous WS initiate
             // Failed, "
             // + "creating new WebsocketClientEndpoint with URI: <" + URIstring + ">....");
             clientEndPoint = new WebsocketClientEndpoint(new URI(URIstring), this);
@@ -252,12 +252,12 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             currWSstateLock.unlock();
 
             // Subscribe again with message Handler
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.notifyWsInitiateFailure(): ReSending Suscribe message with handler
             // to Streaming Quote WS server");
             subscribeWSwithMsgHandler();
         } catch (URISyntaxException e) {
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.notifyWsInitiateFailure(): ERROR: URISyntaxException on
             // WebsocketClientEndpoint");
             e.printStackTrace();
@@ -281,11 +281,11 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
 
         if (toTerminate) {
             // Nothing to do, WS session is to be terminated completely
-            // System.out.println("WebsocketThread.notifyWsSessionClosed(): Previous WS session
+            // LOGGER.info("WebsocketThread.notifyWsSessionClosed(): Previous WS session
             // closed on Termination");
         } else {
             // Abrupt close of WS session, restart the WS session
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.notifyWsSessionClosed(): ERROR: Previous WS session closed,
             // reStarting new WS session !!!");
             try {
@@ -301,16 +301,16 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
                     clientEndPoint = new WebsocketClientEndpoint(new URI(URIstring), this);
 
                     // Subscribe again with message Handler
-                    // System.out.println(
+                    // LOGGER.info(
                     // "WebsocketThread.notifyWsSessionClosed(): ReSending Suscribe message with
                     // handler to Streaming Quote WS server");
                     subscribeWSwithMsgHandler();
                 } else {
-                    // System.out.println("WebsocketThread.notifyWsSessionClosed(): ERROR:
+                    // LOGGER.info("WebsocketThread.notifyWsSessionClosed(): ERROR:
                     // clientEndPoint is null");
                 }
             } catch (URISyntaxException e) {
-                // System.out.println(
+                // LOGGER.info(
                 // "WebsocketThread.notifyWsSessionClosed(): ERROR: URISyntaxException on reopening
                 // of WS session");
                 e.printStackTrace();
@@ -325,23 +325,23 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         currWSstate = WSstate.WS_DATA_MISSED;
         currWSstateLock.unlock();
 
-        // System.out.println(
+        // LOGGER.info(
         // "WebsocketThread.notifyWsDataMissedAfterSubscribe(): ERROR: WS session Data Missed
         // notified after Subscribe!!!");
 
         if (clientEndPoint != null) {
             // first unsubscribe the previous messages
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.notifyWsDataMissedAfterSubscribe(): Sending UnSubscribe message to
             // Streaming Quote WS server");
             sendUnSubscribeMessage();
 
             // force close the session
-            // System.out.println("WebsocketThread.notifyWsDataMissedAfterSubscribe(): Force closing
+            // LOGGER.info("WebsocketThread.notifyWsDataMissedAfterSubscribe(): Force closing
             // previous WS session");
             clientEndPoint.forceClose(false);
         } else {
-            // System.out.println("WebsocketThread.notifyWsDataMissedAfterSubscribe(): ERROR:
+            // LOGGER.info("WebsocketThread.notifyWsDataMissedAfterSubscribe(): ERROR:
             // clientEndPoint is null");
         }
     }
@@ -353,23 +353,23 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         currWSstate = WSstate.WS_HEARTBIT_EXPIRED;
         currWSstateLock.unlock();
 
-        // System.out.println(
+        // LOGGER.info(
         // "WebsocketThread.notifyWsHeartBitExpired(): ERROR: Previous WS session heart bit expired
         // notified!!!");
 
         if (clientEndPoint != null) {
             // first unsubscribe the previous messages
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.notifyWsHeartBitExpired(): Sending UnSubscribe message to Streaming
             // Quote WS server");
             sendUnSubscribeMessage();
 
             // force close the session
-            // System.out.println("WebsocketThread.notifyWsHeartBitExpired(): Force closing previous
+            // LOGGER.info("WebsocketThread.notifyWsHeartBitExpired(): Force closing previous
             // WS session");
             clientEndPoint.forceClose(false);
         } else {
-            // System.out.println("WebsocketThread.notifyWsHeartBitExpired(): ERROR: clientEndPoint
+            // LOGGER.info("WebsocketThread.notifyWsHeartBitExpired(): ERROR: clientEndPoint
             // is null");
         }
     }
@@ -381,7 +381,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
         try {
             Thread.sleep(StreamingConfig.QUOTE_STREAMING_WS_SUBSCRIBE_DELAY_ON_INITIATE);
         } catch (InterruptedException e) {
-            // System.out.println(
+            // LOGGER.info(
             // "WebsocketThread.subscribeWSwithMsgHandler(): ERROR: InterruptedException on sleep
             // before subscribe !!!");
         }
@@ -399,14 +399,14 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             // WebSocket Did not get Opened even on delay after initiation
             if (wsSessionRetry < StreamingConfig.QUOTE_STREAMING_REINITIATE_RETRY_LIMIT) {
                 // Reinitiate WS session
-                // System.out.println(
+                // LOGGER.info(
                 // "WebsocketThread.subscribeWSwithMsgHandler(): WARNING: WS Open FAILED On
                 // Initiation, Retrying !!!");
                 wsSessionRetry++;
                 reInitiateOnWSOpenFailure();
             } else {
                 // Max limit reached, No initiation again
-                // System.out.println(
+                // LOGGER.info(
                 // "WebsocketThread.subscribeWSwithMsgHandler(): ERROR: WS reinitiation max limit
                 // reached, no retry !!!");
             }
@@ -419,11 +419,11 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
     private void reInitiateOnWSOpenFailure() {
         if (clientEndPoint != null) {
             // force close the session without terminating
-            // System.out.println("WebsocketThread.reInitiateOnWSOpenFailure(): Force closing
+            // LOGGER.info("WebsocketThread.reInitiateOnWSOpenFailure(): Force closing
             // previous WS session");
             clientEndPoint.forceClose(false);
         } else {
-            // System.out.println("WebsocketThread.reInitiateOnWSOpenFailure(): ERROR:
+            // LOGGER.info("WebsocketThread.reInitiateOnWSOpenFailure(): ERROR:
             // clientEndPoint is null");
         }
     }
@@ -441,7 +441,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
             @Override
             public void run() {
                 if (currWSstate == WSstate.WS_MODE_SWITCHED) {
-                    // System.out.println("WebsocketThread.fireDataMissTimerOnWSsubscribe().new
+                    // LOGGER.info("WebsocketThread.fireDataMissTimerOnWSsubscribe().new
                     // TimerTask().run(): ERROR: "
                     // + "Streaming Quote WS Data Miss Timer Fired after subscribe, notifying
                     // session notifier !!!");
@@ -449,7 +449,7 @@ public class WebsocketThread implements Runnable, WebServiceSessionNotifier {
                     notifyWsDataMissedAfterSubscribe();
                 } else {
                     // Data started, let the timer expire
-                    // System.out.println("WebsocketThread.fireDataMissTimerOnWSsubscribe()new
+                    // LOGGER.info("WebsocketThread.fireDataMissTimerOnWSsubscribe()new
                     // TimerTask().run(): "
                     // + "WS data getting pushed in, curr state[" + currWSstate + "]");
                 }

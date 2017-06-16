@@ -192,7 +192,7 @@ public class KiteRequest {
 			HttpResponse<String> response = Unirest.get(url).asString();
 			if (response.getStatus() == 200) {
 				resp = response.getBody();
-				// System.out.println(resp);
+				// LOGGER.info(resp);
 				return resp;
 			} else {
 				throw new KiteGeneralException("Csv fetch failed.", 400);
