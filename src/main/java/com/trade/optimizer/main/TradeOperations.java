@@ -30,8 +30,7 @@ import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
 
 public class TradeOperations {
-	private StreamingQuoteStorage streamingQuoteDAOModeQuote = new StreamingQuoteStorageImpl();
-
+	
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteconnect) throws KiteException {
 		// Get margins returns margin model, you can pass equity or commodity as
@@ -45,8 +44,9 @@ public class TradeOperations {
 	 * Place order.
 	 * 
 	 * @param quantity
+	 * @param streamingQuoteDAOModeQuote 
 	 */
-	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity)
+	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity, StreamingQuoteStorage streamingQuoteDAOModeQuote)
 			throws KiteException {
 		/**
 		 * Place order method requires a map argument which contains,

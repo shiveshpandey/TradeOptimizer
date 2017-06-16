@@ -5,6 +5,7 @@ public class StreamingConfig {
     public static final String QUOTE_STREAMING_START_TIME = "09:15:01";
     public static final String QUOTE_STREAMING_END_TIME = "23:55:01";
     public static final String HISTORICAL_DATA_STREAM_START_TIME = "09:15:01";
+    public static final String HISTORICAL_DATA_STREAM_END_TIME = "23:55:01";
 
     public static final String STREAMING_QUOTE_WS_URL_TEMPLATE = "wss://websocket.kite.trade/?";
     public static final Integer QUOTE_STREAMING_REINITIATE_DELAY_ON_INITIATE_FAIL = 500;
