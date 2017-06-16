@@ -46,12 +46,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 			conn = DriverManager.getConnection(DB_URL, USER, PASS);
 		} catch (ClassNotFoundException e) {
-			System.out
-					.println("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
-			e.printStackTrace();
+			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
 		} catch (SQLException e) {
 			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): SQLException on getConnection");
-			e.printStackTrace();
 		}
 	}
 
@@ -64,7 +61,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				conn.close();
 			} catch (SQLException e) {
 				LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): SQLException on conn close");
-				e.printStackTrace();
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): WARNING: DB connection already null");
@@ -72,20 +68,26 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public void createDaysStreamingQuoteTable(String date) {
+	public void createDaysStreamingQuoteTable(String date) throws SQLException {
 		if (conn != null) {
-			Statement stmt;
+			Statement stmt = conn.createStatement();
+			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
+			String sql = "";
 			try {
-				stmt = conn.createStatement();
-				quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
-				String sql = "CREATE TABLE " + quoteTable + " " + "(time varchar(32) , "
-						+ " InstrumentToken varchar(32) , " + " LastTradedPrice DECIMAL(20,4) , "
-						+ " LastTradedQty BIGINT , " + " AvgTradedPrice DECIMAL(20,4) , " + " Volume BIGINT , "
-						+ " BuyQty BIGINT , " + " SellQty BIGINT , " + " OpenPrice DECIMAL(20,4) , "
-						+ " HighPrice DECIMAL(20,4) , " + " LowPrice DECIMAL(20,4) , " + " ClosePrice DECIMAL(20,4) , "
+				sql = "CREATE TABLE " + quoteTable + " " + "(time varchar(32) , " + " InstrumentToken varchar(32) , "
+						+ " LastTradedPrice DECIMAL(20,4) , " + " LastTradedQty BIGINT , "
+						+ " AvgTradedPrice DECIMAL(20,4) , " + " Volume BIGINT , " + " BuyQty BIGINT , "
+						+ " SellQty BIGINT , " + " OpenPrice DECIMAL(20,4) , " + " HighPrice DECIMAL(20,4) , "
+						+ " LowPrice DECIMAL(20,4) , " + " ClosePrice DECIMAL(20,4) , "
 						+ " PRIMARY KEY (InstrumentToken, time)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage());
+			}
+			try {
 				sql = "CREATE TABLE " + quoteTable + "_hist " + "(time varchar(32) , "
 						+ " InstrumentToken varchar(32) , " + " LastTradedPrice DECIMAL(20,4) , "
 						+ " LastTradedQty BIGINT , " + " AvgTradedPrice DECIMAL(20,4) , " + " Volume BIGINT , "
@@ -95,19 +97,34 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " PRIMARY KEY (InstrumentToken, time)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
-
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage());
+			}
+			try {
 				sql = "CREATE TABLE " + quoteTable + "_priority " + "(time varchar(32) , "
 						+ " InstrumentToken varchar(32) , " + " PriorityPoint DECIMAL(20,4) , "
 						+ " PRIMARY KEY (InstrumentToken)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
-
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage());
+			}
+			try {
 				sql = "CREATE TABLE " + quoteTable + "_Signal " + "(time varchar(32) , "
 						+ " InstrumentToken varchar(32) , " + " Quantity varchar(32) , "
 						+ " ProcessSignal varchar(32) , " + " Status varchar(32) , "
 						+ " PRIMARY KEY (time, InstrumentToken, ProcessSignal)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
-
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage());
+			}
+			try {
 				sql = "CREATE TABLE " + quoteTable + "_instrumentDetails " + "(time varchar(32) , "
 						+ " instrumentToken varchar(32) ,exchangeToken varchar(32) ,"
 						+ "tradingsymbol varchar(32) ,name varchar(32) ,"
@@ -118,9 +135,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): SQL table for Streaming quote created, table name: ["
-								+ quoteTable + "]");
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
@@ -210,9 +224,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				prepStmt.executeUpdate();
 				prepStmt.close();
 			} catch (SQLException e) {
-				System.out
-						.println("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
-								+ quote);
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
+						+ quote);
 				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
 			}
 		} else {
@@ -255,9 +268,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
-				System.out
-						.println("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
-								+ ticks);
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
+						+ ticks);
 				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
 			}
 		} else {
@@ -581,7 +593,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
-				e.printStackTrace();
+				LOGGER.info(e.getMessage());
 			}
 		} else {
 			if (conn != null) {

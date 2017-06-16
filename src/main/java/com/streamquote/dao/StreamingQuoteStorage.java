@@ -1,5 +1,6 @@
 package com.streamquote.dao;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,7 @@ public interface StreamingQuoteStorage {
 
 	public void closeJDBCConn();
 
-	public void createDaysStreamingQuoteTable(String date);
+	public void createDaysStreamingQuoteTable(String date) throws SQLException;
 
 	public void storeData(StreamingQuote quote);
 

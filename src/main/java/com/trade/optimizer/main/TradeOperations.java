@@ -30,7 +30,7 @@ import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
 
 public class TradeOperations {
-	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
+	private final static Logger LOGGER = Logger.getLogger(TradeOperations.class.getName());
 
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteconnect) throws KiteException {

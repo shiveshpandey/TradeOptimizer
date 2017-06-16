@@ -1,6 +1,7 @@
 package com.trade.optimizer.main;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -206,8 +207,12 @@ public class TradeOptimizer {
 			quoteTableDtFmt.setTimeZone(timeZone);
 
 			streamingQuoteStorage.initializeJDBCConn();
-			streamingQuoteStorage
-					.createDaysStreamingQuoteTable(quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
+			try {
+				streamingQuoteStorage.createDaysStreamingQuoteTable(
+						quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
+			} catch (SQLException e) {
+				LOGGER.info(e.getMessage());
+			}
 		}
 		LOGGER.info("createInitialDayTables Exit");
 	}
