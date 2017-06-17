@@ -137,7 +137,7 @@ public class TradeOptimizer {
 
 			startStreamForHistoricalInstrumentsData();
 
-			tickerSettingInitialization();
+			// tickerSettingInitialization();
 
 			startLiveStreamOfSelectedInstruments();
 
