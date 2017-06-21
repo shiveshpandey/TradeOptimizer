@@ -295,8 +295,11 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
                     prepStmt.setDouble(12, tick.getClosePrice());
 
                     prepStmt.executeUpdate();
-                }
+                }                
                 prepStmt.close();
+                for (int index = 0; index < ticks.size(); index++) {
+                    calculateAndStoreStrategySignalParameters(String.valueOf(ticks.get(index).getToken()), null, null);
+                }
             } catch (SQLException e) {
                 LOGGER.info(
                         "StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
@@ -691,4 +694,46 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
         }
         return true;
     }
+   
+    private void calculateAndStoreStrategySignalParameters(String instrumentToken, String startTime, String endTime) {
+        List<Order> orders = new ArrayList<Order>();
+        if (conn != null) {
+            try {
+                Statement stmt = conn.createStatement();
+                String openSql = "SELECT * FROM "
+                        + quoteTable + "_SignalParams where InstrumentToken ='"+instrumentToken+"' ORDER BY Time DESC LIMIT 26 ";
+                ResultSet openRs = stmt.executeQuery(openSql);
+
+                openSql = "SELECT * FROM "
+                        + quoteTable + " where InstrumentToken ='"+instrumentToken+"' and time between "+startTime+" and "+endTime+" ORDER BY Time DESC ";
+                ResultSet openRs2 = stmt.executeQuery(openSql);
+                
+                while (openRs.next()) {
+                    Order order = new Order();
+                    order.symbol = String.valueOf(openRs.getString(1));
+                    order.transactionType = String.valueOf(openRs.getString(2));
+                    order.quantity = String.valueOf(openRs.getString(3));
+
+                    orders.add(order);
+
+                    stmt = conn.createStatement();
+                    openSql = "update " + quoteTable
+                            + "_Signal set status ='orderPlaced' where InstrumentToken= "
+                            + openRs.getString(1) + " and ProcessSignal= '" + openRs.getString(2)
+                            + "' and Time= " + openRs.getTimestamp(4) + "";
+                    stmt.executeUpdate(openSql);
+
+                }
+                stmt.close();
+            } catch (SQLException e) {
+                LOGGER.info(
+                        "StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: SQLException on fetching data from Table, cause: "
+                                + e.getMessage());
+            }
+        } else {
+            LOGGER.info(
+                    "StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: DB conn is null !!!");
+        }
+        }
+
 }
