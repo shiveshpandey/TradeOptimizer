@@ -14,7 +14,8 @@ public class StreamingConfig {
 	public static final Integer QUOTE_STREAMING_WS_SUBSCRIBE_DELAY_ON_INITIATE = 500;
 	public static final Integer QUOTE_STREAMING_REINITIATE_RETRY_LIMIT = 5;
 	public static final Boolean QUOTE_STREAMING_START_AT_BOOTUP = false;
-
+	// https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopVolume1.json
+	// https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopValue1.json
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
 	public static final String QUOTE_STREAMING_DB_PWD = "root";
@@ -35,7 +36,7 @@ public class StreamingConfig {
 	public static final String API_KEY = "nwjyiweqm6z@4pmii";
 	public static final String API_SECRET_KEY = "67s1q1k5yl9il439f80nrv6f@bunmwhq6";
 	public static String HIST_DATA_END_DATE = null;
-	public static String HIST_DATA_START_DATE = "2017-06-01";
+	public static String HIST_DATA_START_DATE = "2017-06-19";
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
 		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;

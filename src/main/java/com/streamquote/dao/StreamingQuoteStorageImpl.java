@@ -158,7 +158,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "eP DECIMAL(20,4) ,eP_pSar DECIMAL(20,4) ,accFactor DECIMAL(20,4) ,eP_pSarXaccFactor DECIMAL(20,4) ,"
 						+ "trend DECIMAL(20,4) ,upMove DECIMAL(20,4) ,downMove DECIMAL(20,4) ,avgUpMove DECIMAL(20,4) ,"
 						+ "avgDownMove DECIMAL(20,4) ,relativeStrength DECIMAL(20,4) ,RSI DECIMAL(20,4) ,fastEma DECIMAL(20,4) ,"
-						+ "slowEma DECIMAL(20,4) ,difference DECIMAL(20,4) ,signal  DECIMAL(20,4) ,"
+						+ "slowEma DECIMAL(20,4) ,difference DECIMAL(20,4) ,strategySignal  DECIMAL(20,4) ,"
 						+ " PRIMARY KEY (time,instrumentToken)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 
@@ -681,33 +681,44 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		return true;
 	}
 
-	public void calculateAndStoreStrategySignalParameters(String instrumentToken, String startTime, String endTime) {
+	@Override
+	public void calculateAndStoreStrategySignalParameters(String instrumentToken, Date endingTimeToMatch) {
 		Double low = null;
 		Double high = null;
 		Double close = null;
 
 		if (conn != null) {
 			try {
+				Timestamp endTime = new Timestamp(dtTmFmtNoSeconds.parse(endingTimeToMatch.toString()).getTime());
+
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-						+ "' and usedForSignal = '' or usedForSignal = 'null'  and timestampGrp between " + startTime
-						+ " and " + endTime + " ORDER BY Time DESC ";
-				ResultSet openRs1 = stmt.executeQuery(openSql);
-				boolean firstRecord = true;
-				while (openRs1.next()) {
-					if (null == low || openRs1.getDouble("low") < low)
-						low = openRs1.getDouble("low");
-					if (null == high || openRs1.getDouble("high") > high)
-						high = openRs1.getDouble("high");
-					if (firstRecord) {
-						close = openRs1.getDouble("close");
-						firstRecord = false;
+				String openSql = "SELECT distinct timestampGrp FROM " + quoteTable + " where InstrumentToken ='"
+						+ instrumentToken + "' and usedForSignal = '' or usedForSignal = 'null' and timestampGrp<"
+						+ endTime;
+				ResultSet timeStampRs = stmt.executeQuery(openSql);
+				openSql = "update " + quoteTable + " set usedForSignal ='used' where InstrumentToken= '"
+						+ instrumentToken + "' and timestampGrp in (SELECT distinct timestampGrp FROM " + quoteTable
+						+ " where InstrumentToken ='" + instrumentToken
+						+ "' and usedForSignal = '' or usedForSignal = 'null' and timestampgrp<" + endTime + ")";
+				stmt.executeUpdate(openSql);
+
+				while (timeStampRs.next()) {
+					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
+							+ "' and usedForSignal = '' or usedForSignal = 'null'  and timestampGrp ="
+							+ timeStampRs.getTimestamp("timestampGrp") + " ORDER BY Time DESC ";
+					ResultSet openRs1 = stmt.executeQuery(openSql);
+					boolean firstRecord = true;
+					while (openRs1.next()) {
+						if (null == low || openRs1.getDouble("low") < low)
+							low = openRs1.getDouble("low");
+						if (null == high || openRs1.getDouble("high") > high)
+							high = openRs1.getDouble("high");
+						if (firstRecord) {
+							close = openRs1.getDouble("close");
+							firstRecord = false;
+						}
 					}
 				}
-
-				openSql = "update " + quoteTable + " set usedForSignal ='used' where InstrumentToken= '"
-						+ instrumentToken + "' and timestampGrp between " + startTime + " and " + endTime;
-				stmt.executeUpdate(openSql);
 
 				openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 						+ "' ORDER BY Time DESC LIMIT 1 ";
@@ -728,7 +739,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 								openRs2.getDouble("avgDownMove"), openRs2.getDouble("relativeStrength"),
 								openRs2.getDouble("rSI"));
 						m1 = new MACDSignalParam(close, openRs2.getDouble("fastEma"), openRs2.getDouble("slowEma"),
-								openRs2.getDouble("signal"));
+								openRs2.getDouble("strategySignal"));
 					} else if (null != openRs2.getString(15) && !"".equalsIgnoreCase(openRs2.getString(15))) {
 
 						openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
@@ -755,7 +766,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							macdSignalParam.setDifference(openRs3.getDouble("difference"));
 							macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
 							macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-							macdSignalParam.setSignal(openRs3.getDouble("signal"));
+							macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
 							macdSignalParamList.add(macdSignalParam);
 						}
 						m1 = new MACDSignalParam(macdSignalParamList);
@@ -785,7 +796,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							macdSignalParam.setDifference(openRs3.getDouble("difference"));
 							macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
 							macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-							macdSignalParam.setSignal(openRs3.getDouble("signal"));
+							macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
 							macdSignalParamList.add(macdSignalParam);
 
 							rsiSignalParam.setClose(close);
@@ -823,7 +834,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						macdSignalParam.setDifference(openRs3.getDouble("difference"));
 						macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
 						macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-						macdSignalParam.setSignal(openRs3.getDouble("signal"));
+						macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
 						macdSignalParamList.add(macdSignalParam);
 
 						rsiSignalParam.setClose(close);
@@ -840,7 +851,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				String sql = "INSERT INTO " + quoteTable + "_signalParam "
 						+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
-						+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,signal) "
+						+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal) "
 						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
@@ -868,7 +879,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				prepStmt.executeUpdate();
 
 				prepStmt.close();
-			} catch (SQLException e) {
+			} catch (SQLException | ParseException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
@@ -877,6 +888,51 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info(
 					"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: DB conn is null !!!");
 		}
+	}
+
+	@Override
+	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(ArrayList<String> stocksSymbolArray) {
+
+		ArrayList<Long> instrumentList = new ArrayList<Long>();
+		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "SELECT InstrumentToken FROM " + quoteTable
+						+ "_instrumentdetails where tradingsymbol in (";
+				int i = 0;
+				int j = 10000;
+				while (i < stocksSymbolArray.size()) {
+					openSql = openSql + "'" + stocksSymbolArray.get(i++) + "',";
+				}
+				openSql = openSql.substring(0, openSql.length() - 2) + ")";
+				ResultSet openRs = stmt.executeQuery(openSql);
+
+				while (openRs.next()) {
+					instrumentList.add(openRs.getLong(1));
+				}
+
+				openSql = "INSERT INTO " + quoteTable + "_priority " + "(Time, InstrumentToken, PriorityPoint) "
+						+ "values(?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(openSql);
+				for (int index = 0; index < instrumentList.size(); index++) {
+
+					prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
+					prepStmt.setString(2, Long.toString(instrumentList.get(index)));
+					prepStmt.setDouble(3, j--);
+					prepStmt.executeUpdate();
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
+		}
+
+		return instrumentList;
+
 	}
 
 }

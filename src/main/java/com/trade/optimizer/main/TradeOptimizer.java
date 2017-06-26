@@ -1,6 +1,8 @@
 package com.trade.optimizer.main;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -19,7 +21,13 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,13 +54,14 @@ import com.trade.optimizer.tickerws.OnConnect;
 import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
 
+@SuppressWarnings("deprecation")
 @Controller
 public class TradeOptimizer {
 
 	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
 
 	private boolean liveStreamFirstRun = true;
-	boolean firstTimeDayHistoryRun = false;
+	boolean firstTimeDayHistoryRun = true;
 
 	private int tokenCountForTrade = 10;
 	private int seconds = 1000;
@@ -114,6 +123,39 @@ public class TradeOptimizer {
 		return redirectView;
 	}
 
+	public void fetchNSEActiveSymbolList() {
+		@SuppressWarnings({ "resource" })
+		HttpClient client = new DefaultHttpClient();
+		ArrayList<String> stocksSymbolArray = new ArrayList<String>();
+
+		HttpPost post = new HttpPost(
+				"https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopVolume1.json");
+		post.addHeader("Access-Control-Allow-Origin", "*");
+		post.addHeader("user-agent",
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36");
+
+		try {
+			HttpResponse response = client.execute(post);
+			BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			String line = "", lineAll = "";
+
+			while ((line = rd.readLine()) != null)
+				lineAll = lineAll + line;
+
+			JSONObject obj = new JSONObject(lineAll);
+			JSONArray arr = obj.getJSONArray("data");
+
+			for (int i = 0; i < arr.length(); i++)
+				stocksSymbolArray.add(arr.getJSONObject(i).getString("symbol"));
+
+			ArrayList<Long> stocksArray = streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+
+			if (null != stocksArray && stocksArray.size() > 0)
+				quoteStreamingInstrumentsArr = stocksArray;
+		} catch (IOException e) {
+		}
+	}
+
 	public void startProcess() {
 		try {
 			LOGGER.info("startProcess Entry");
@@ -137,7 +179,7 @@ public class TradeOptimizer {
 			createInitialDayTables();
 
 			startStreamForHistoricalInstrumentsData();
-
+			// fetchNSEActiveSymbolList();
 			// tickerSettingInitialization();
 
 			startLiveStreamOfSelectedInstruments();
@@ -328,6 +370,7 @@ public class TradeOptimizer {
 		t.start();
 	}
 
+	@SuppressWarnings("unused")
 	private void threadEnabledHistoricalDataFetch(List<Instrument> instrumentList) {
 		StreamingQuoteModeQuote quote = null;
 		HistoricalData historicalDataList = null, histData = null;
@@ -431,10 +474,11 @@ public class TradeOptimizer {
 							 * 
 							 * }); t.start();
 							 */
-							List<Instrument> instrument = instrumentList;
-
-							threadEnabledHistoricalDataFetch(instrument);
+							//// List<Instrument> instrument = instrumentList;
+							// threadEnabledHistoricalDataFetch(instrument);
 							ArrayList<Long> previousQuoteStreamingInstrumentsArr = quoteStreamingInstrumentsArr;
+							fetchNSEActiveSymbolList();
+
 							quoteStreamingInstrumentsArr = streamingQuoteStorage
 									.getTopPrioritizedTokenList(tokenCountForTrade);
 							try {
@@ -543,8 +587,16 @@ public class TradeOptimizer {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							LOGGER.info("in checkForSignalsFromStrategies" + b++);
-							applySmaStragegy();
-							Thread.sleep(10 * seconds);
+							ArrayList<Long> instrumentList = getInstrumentTokensList();
+							Map<Long, String> signalList = new HashMap<Long, String>();
+
+							if (null != instrumentList && instrumentList.size() > 0) {
+								for (int i = 0; i < instrumentList.size(); i++)
+									streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
+											instrumentList.get(i).toString(), timeNow);
+								streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
+							}
+							Thread.sleep(60 * seconds);
 						} else {
 							runnable = false;
 						}
@@ -555,26 +607,6 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-	}
-
-	private void applySmaStragegy() {
-		LOGGER.info("applySmaStragegy entry");
-
-		ArrayList<Long> instrumentList = getInstrumentTokensList();
-		if (null != instrumentList && instrumentList.size() > 0) {
-			Map<Long, String> signalList = new HashMap<Long, String>();
-			List<StreamingQuoteModeQuote> quoteData = null;
-			for (int i = 0; i < instrumentList.size(); i++) {
-				quoteData = streamingQuoteStorage.getProcessableQuoteDataOnTokenId(instrumentList.get(i).toString(),
-						60);
-				if (null == quoteData || quoteData.size() < 60)
-					continue;
-				//signalList.putAll(new SmaStragegyProcessor(quoteData, instrumentList.get(i)).getSignals());
-			}
-			streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
-		}
-		// try inplementing at data change trigger level, then only sma ema
-		// value fetch and compare would be ok
 	}
 
 	private void startStreamingQuote() {
