@@ -3,12 +3,9 @@ package com.streamquote.dao;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import com.streamquote.model.OHLCquote;
-import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
 import com.trade.optimizer.models.Instrument;
 import com.trade.optimizer.models.Order;
@@ -22,11 +19,7 @@ public interface StreamingQuoteStorage {
 
 	public void createDaysStreamingQuoteTable(String date) throws SQLException;
 
-	public void storeData(StreamingQuote quote);
-
-	public OHLCquote getOHLCDataByTimeRange(String instrumentToken, String prevTime, String currTime);
-
-	void storeData(List<StreamingQuoteModeQuote> quoteList, String tickType);
+	public void storeData(List<StreamingQuoteModeQuote> quoteList, String tickType);
 
 	public ArrayList<Long> getTopPrioritizedTokenList(int i);
 
@@ -36,13 +29,11 @@ public interface StreamingQuoteStorage {
 
 	public String[] getInstrumentDetailsOnTokenId(String instrumentToken);
 
-	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count);
-
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList);
 
 	public void storeData(ArrayList<Tick> ticks);
 
-	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(ArrayList<String> stocksSymbolArray);
+	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray);
 
-	void calculateAndStoreStrategySignalParameters(String instrumentToken, Date timeNow);
+	void calculateAndStoreStrategySignalParameters(String instrumentToken, String string);
 }

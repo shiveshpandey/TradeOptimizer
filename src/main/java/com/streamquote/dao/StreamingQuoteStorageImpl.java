@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 
-import com.streamquote.model.OHLCquote;
-import com.streamquote.model.StreamingQuote;
 import com.streamquote.model.StreamingQuoteModeQuote;
 import com.streamquote.utils.StreamingConfig;
 import com.trade.optimizer.models.Instrument;
@@ -232,48 +230,53 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		}
 	}
-
-	@Override
-	public void storeData(StreamingQuote quote) {
-		if (conn != null && quote instanceof StreamingQuoteModeQuote) {
-			StreamingQuoteModeQuote quoteModeQuote = (StreamingQuoteModeQuote) quote;
-
-			try {
-				String sql = "INSERT INTO " + quoteTable + ""
-						+ "(Time, InstrumentToken, LastTradedPrice, LastTradedQty, AvgTradedPrice, "
-						+ "Volume, BuyQty, SellQty, OpenPrice, HighPrice, LowPrice, ClosePrice) "
-						+ "values(?,?,?,?,?,?,?,?,?,?,?,?)";
-				PreparedStatement prepStmt = conn.prepareStatement(sql);
-
-				prepStmt.setString(1, quoteModeQuote.getTime());
-				prepStmt.setString(2, quoteModeQuote.getInstrumentToken());
-				prepStmt.setDouble(3, quoteModeQuote.getLtp());
-				prepStmt.setLong(4, quoteModeQuote.getLastTradedQty());
-				prepStmt.setDouble(5, quoteModeQuote.getAvgTradedPrice());
-				prepStmt.setLong(6, quoteModeQuote.getVol());
-				prepStmt.setLong(7, quoteModeQuote.getBuyQty());
-				prepStmt.setLong(8, quoteModeQuote.getSellQty());
-				prepStmt.setDouble(9, quoteModeQuote.getOpenPrice());
-				prepStmt.setDouble(10, quoteModeQuote.getHighPrice());
-				prepStmt.setDouble(11, quoteModeQuote.getLowPrice());
-				prepStmt.setDouble(12, quoteModeQuote.getClosePrice());
-
-				prepStmt.executeUpdate();
-				prepStmt.close();
-			} catch (SQLException e) {
-				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
-						+ quote);
-				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
-			}
-		} else {
-			if (conn != null) {
-				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
-			} else {
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
-			}
-		}
-	}
+	//
+	// @Override
+	// public void storeData(StreamingQuote quote) {
+	// if (conn != null && quote instanceof StreamingQuoteModeQuote) {
+	// StreamingQuoteModeQuote quoteModeQuote = (StreamingQuoteModeQuote) quote;
+	//
+	// try {
+	// String sql = "INSERT INTO " + quoteTable + ""
+	// + "(Time, InstrumentToken, LastTradedPrice, LastTradedQty,
+	// AvgTradedPrice, "
+	// + "Volume, BuyQty, SellQty, OpenPrice, HighPrice, LowPrice, ClosePrice) "
+	// + "values(?,?,?,?,?,?,?,?,?,?,?,?)";
+	// PreparedStatement prepStmt = conn.prepareStatement(sql);
+	//
+	// prepStmt.setString(1, quoteModeQuote.getTime());
+	// prepStmt.setString(2, quoteModeQuote.getInstrumentToken());
+	// prepStmt.setDouble(3, quoteModeQuote.getLtp());
+	// prepStmt.setLong(4, quoteModeQuote.getLastTradedQty());
+	// prepStmt.setDouble(5, quoteModeQuote.getAvgTradedPrice());
+	// prepStmt.setLong(6, quoteModeQuote.getVol());
+	// prepStmt.setLong(7, quoteModeQuote.getBuyQty());
+	// prepStmt.setLong(8, quoteModeQuote.getSellQty());
+	// prepStmt.setDouble(9, quoteModeQuote.getOpenPrice());
+	// prepStmt.setDouble(10, quoteModeQuote.getHighPrice());
+	// prepStmt.setDouble(11, quoteModeQuote.getLowPrice());
+	// prepStmt.setDouble(12, quoteModeQuote.getClosePrice());
+	//
+	// prepStmt.executeUpdate();
+	// prepStmt.close();
+	// } catch (SQLException e) {
+	// LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException
+	// on Storing data to Table: "
+	// + quote);
+	// LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]:
+	// " + e.getMessage());
+	// }
+	// } else {
+	// if (conn != null) {
+	// LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is
+	// null !!!");
+	// } else {
+	// LOGGER.info(
+	// "StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type
+	// StreamingQuoteModeQuote !!!");
+	// }
+	// }
+	// }
 
 	@Override
 	public void storeData(ArrayList<Tick> ticks) {
@@ -300,7 +303,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmt.setDouble(10, tick.getHighPrice());
 					prepStmt.setDouble(11, tick.getLowPrice());
 					prepStmt.setDouble(12, tick.getClosePrice());
-					prepStmt.setTimestamp(13, new Timestamp(dtTmFmt.parse(new Date().toString()).getTime()));
+					prepStmt.setTimestamp(13, new Timestamp(dtTmFmtNoSeconds.parse(new Date().toString()).getTime()));
 					prepStmt.setString(14, "");
 					prepStmt.executeUpdate();
 				}
@@ -320,63 +323,77 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		}
 	}
-
-	@Override
-	public OHLCquote getOHLCDataByTimeRange(String instrumentToken, String prevTime, String currTime) {
-		OHLCquote ohlcMap = null;
-
-		if (conn != null) {
-			try {
-				Statement stmt = conn.createStatement();
-
-				String openSql = "SELECT LastTradedPrice FROM " + quoteTable + " WHERE Time >= '" + prevTime
-						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken
-						+ "' ORDER BY Time ASC LIMIT 1";
-				ResultSet openRs = stmt.executeQuery(openSql);
-				openRs.next();
-				Double openQuote = openRs.getDouble("LastTradedPrice");
-
-				String highSql = "SELECT MAX(LastTradedPrice) FROM " + quoteTable + " WHERE Time >= '" + prevTime
-						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken + "'";
-				ResultSet highRs = stmt.executeQuery(highSql);
-				highRs.next();
-				Double highQuote = highRs.getDouble(1);
-
-				String lowSql = "SELECT MIN(LastTradedPrice) FROM " + quoteTable + " WHERE Time >= '" + prevTime
-						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken + "'";
-				ResultSet lowRs = stmt.executeQuery(lowSql);
-				lowRs.next();
-				Double lowQuote = lowRs.getDouble(1);
-
-				String closeSql = "SELECT LastTradedPrice FROM " + quoteTable + " WHERE Time >= '" + prevTime
-						+ "' AND Time <= '" + currTime + "' AND InstrumentToken = '" + instrumentToken
-						+ "' ORDER BY Time DESC LIMIT 1";
-				ResultSet closeRs = stmt.executeQuery(closeSql);
-				closeRs.next();
-				Double closeQuote = closeRs.getDouble("LastTradedPrice");
-
-				String volSql = "SELECT Volume FROM " + quoteTable + " WHERE Time >= '" + prevTime + "' AND Time <= '"
-						+ currTime + "' AND InstrumentToken = '" + instrumentToken + "' ORDER BY Time DESC LIMIT 1";
-				ResultSet volRs = stmt.executeQuery(volSql);
-				volRs.next();
-				Long volQuote = volRs.getLong(1);
-
-				ohlcMap = new OHLCquote(openQuote, highQuote, lowQuote, closeQuote, volQuote);
-
-				stmt.close();
-			} catch (SQLException e) {
-				ohlcMap = null;
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
-			}
-		} else {
-			ohlcMap = null;
-			LOGGER.info("StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: DB conn is null !!!");
-		}
-
-		return ohlcMap;
-	}
+	//
+	// @Override
+	// public OHLCquote getOHLCDataByTimeRange(String instrumentToken, String
+	// prevTime, String currTime) {
+	// OHLCquote ohlcMap = null;
+	//
+	// if (conn != null) {
+	// try {
+	// Statement stmt = conn.createStatement();
+	//
+	// String openSql = "SELECT LastTradedPrice FROM " + quoteTable + " WHERE
+	// Time >= '" + prevTime
+	// + "' AND Time <= '" + currTime + "' AND InstrumentToken = '" +
+	// instrumentToken
+	// + "' ORDER BY Time ASC LIMIT 1";
+	// ResultSet openRs = stmt.executeQuery(openSql);
+	// openRs.next();
+	// Double openQuote = openRs.getDouble("LastTradedPrice");
+	//
+	// String highSql = "SELECT MAX(LastTradedPrice) FROM " + quoteTable + "
+	// WHERE Time >= '" + prevTime
+	// + "' AND Time <= '" + currTime + "' AND InstrumentToken = '" +
+	// instrumentToken + "'";
+	// ResultSet highRs = stmt.executeQuery(highSql);
+	// highRs.next();
+	// Double highQuote = highRs.getDouble(1);
+	//
+	// String lowSql = "SELECT MIN(LastTradedPrice) FROM " + quoteTable + "
+	// WHERE Time >= '" + prevTime
+	// + "' AND Time <= '" + currTime + "' AND InstrumentToken = '" +
+	// instrumentToken + "'";
+	// ResultSet lowRs = stmt.executeQuery(lowSql);
+	// lowRs.next();
+	// Double lowQuote = lowRs.getDouble(1);
+	//
+	// String closeSql = "SELECT LastTradedPrice FROM " + quoteTable + " WHERE
+	// Time >= '" + prevTime
+	// + "' AND Time <= '" + currTime + "' AND InstrumentToken = '" +
+	// instrumentToken
+	// + "' ORDER BY Time DESC LIMIT 1";
+	// ResultSet closeRs = stmt.executeQuery(closeSql);
+	// closeRs.next();
+	// Double closeQuote = closeRs.getDouble("LastTradedPrice");
+	//
+	// String volSql = "SELECT Volume FROM " + quoteTable + " WHERE Time >= '" +
+	// prevTime + "' AND Time <= '"
+	// + currTime + "' AND InstrumentToken = '" + instrumentToken + "' ORDER BY
+	// Time DESC LIMIT 1";
+	// ResultSet volRs = stmt.executeQuery(volSql);
+	// volRs.next();
+	// Long volQuote = volRs.getLong(1);
+	//
+	// ohlcMap = new OHLCquote(openQuote, highQuote, lowQuote, closeQuote,
+	// volQuote);
+	//
+	// stmt.close();
+	// } catch (SQLException e) {
+	// ohlcMap = null;
+	// LOGGER.info(
+	// "StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR: SQLException
+	// on fetching data from Table, cause: "
+	// + e.getMessage());
+	// }
+	// } else {
+	// ohlcMap = null;
+	// LOGGER.info("StreamingQuoteStorageImpl.getOHLCDataByTimeRange(): ERROR:
+	// DB conn is null !!!");
+	// }
+	//
+	// return ohlcMap;
+	// }
 
 	// @Override
 	// public List<StreamingQuote> getQuoteListByTimeRange(String
@@ -522,7 +539,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
-				e.printStackTrace();
+				LOGGER.info(e.getMessage());
 			}
 		} else {
 			if (conn != null) {
@@ -563,51 +580,58 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		return param;
 	}
 
-	@Override
-	public List<StreamingQuoteModeQuote> getProcessableQuoteDataOnTokenId(String instrumentToken, int count) {
-		List<StreamingQuoteModeQuote> streamingQuoteList = new ArrayList<StreamingQuoteModeQuote>();
-		if (conn != null) {
-			try {
-				Statement stmt = conn.createStatement();
-
-				String openSql = "SELECT * FROM " + quoteTable + " WHERE InstrumentToken = '" + instrumentToken
-						+ "' order by Time desc limit " + count;
-				ResultSet openRs = stmt.executeQuery(openSql);
-				while (openRs.next()) {
-					Timestamp time = openRs.getTimestamp("Time");
-					String instrument_Token = openRs.getString("InstrumentToken");
-					Double lastTradedPrice = openRs.getDouble("LastTradedPrice");
-					Long lastTradedQty = openRs.getLong("LastTradedQty");
-					Double avgTradedPrice = openRs.getDouble("AvgTradedPrice");
-					Long volume = openRs.getLong("Volume");
-					Long buyQty = openRs.getLong("BuyQty");
-					Long sellQty = openRs.getLong("SellQty");
-					Double openPrice = openRs.getDouble("OpenPrice");
-					Double highPrice = openRs.getDouble("HighPrice");
-					Double lowPrice = openRs.getDouble("LowPrice");
-					Double closePrice = openRs.getDouble("ClosePrice");
-
-					StreamingQuoteModeQuote streamingQuote = new StreamingQuoteModeQuote(time.toString(),
-							instrument_Token, lastTradedPrice, lastTradedQty, avgTradedPrice, volume, buyQty, sellQty,
-							openPrice, highPrice, lowPrice, closePrice);
-					streamingQuoteList.add(streamingQuote);
-				}
-
-				stmt.close();
-			} catch (SQLException e) {
-				streamingQuoteList = null;
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
-			}
-		} else {
-			streamingQuoteList = null;
-			LOGGER.info("StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR: DB conn is null !!!");
-		}
-
-		return streamingQuoteList;
-
-	}
+	// @Override
+	// public List<StreamingQuoteModeQuote>
+	// getProcessableQuoteDataOnTokenId(String instrumentToken, int count) {
+	// List<StreamingQuoteModeQuote> streamingQuoteList = new
+	// ArrayList<StreamingQuoteModeQuote>();
+	// if (conn != null) {
+	// try {
+	// Statement stmt = conn.createStatement();
+	//
+	// String openSql = "SELECT * FROM " + quoteTable + " WHERE InstrumentToken
+	// = '" + instrumentToken
+	// + "' order by Time desc limit " + count;
+	// ResultSet openRs = stmt.executeQuery(openSql);
+	// while (openRs.next()) {
+	// Timestamp time = openRs.getTimestamp("Time");
+	// String instrument_Token = openRs.getString("InstrumentToken");
+	// Double lastTradedPrice = openRs.getDouble("LastTradedPrice");
+	// Long lastTradedQty = openRs.getLong("LastTradedQty");
+	// Double avgTradedPrice = openRs.getDouble("AvgTradedPrice");
+	// Long volume = openRs.getLong("Volume");
+	// Long buyQty = openRs.getLong("BuyQty");
+	// Long sellQty = openRs.getLong("SellQty");
+	// Double openPrice = openRs.getDouble("OpenPrice");
+	// Double highPrice = openRs.getDouble("HighPrice");
+	// Double lowPrice = openRs.getDouble("LowPrice");
+	// Double closePrice = openRs.getDouble("ClosePrice");
+	//
+	// StreamingQuoteModeQuote streamingQuote = new
+	// StreamingQuoteModeQuote(time.toString(),
+	// instrument_Token, lastTradedPrice, lastTradedQty, avgTradedPrice, volume,
+	// buyQty, sellQty,
+	// openPrice, highPrice, lowPrice, closePrice);
+	// streamingQuoteList.add(streamingQuote);
+	// }
+	//
+	// stmt.close();
+	// } catch (SQLException e) {
+	// streamingQuoteList = null;
+	// LOGGER.info(
+	// "StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId(): ERROR:
+	// SQLException on fetching data from Table, cause: "
+	// + e.getMessage());
+	// }
+	// } else {
+	// streamingQuoteList = null;
+	// LOGGER.info("StreamingQuoteStorageImpl.getProcessableQuoteDataOnTokenId():
+	// ERROR: DB conn is null !!!");
+	// }
+	//
+	// return streamingQuoteList;
+	//
+	// }
 
 	@Override
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList) {
@@ -653,7 +677,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "_Signal where status ='active' and InstrumentToken= '" + instrument + "' and processSignal='"
 						+ processSignal + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
-				if (openRs.first())
+				if (openRs.next())
 					return false;
 
 				openSql = "SELECT Time FROM " + quoteTable + "_Signal where status ='active' and InstrumentToken= '"
@@ -682,30 +706,31 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public void calculateAndStoreStrategySignalParameters(String instrumentToken, Date endingTimeToMatch) {
-		Double low = null;
-		Double high = null;
-		Double close = null;
+	public void calculateAndStoreStrategySignalParameters(String instrumentToken, String endingTimeToMatch) {
 
 		if (conn != null) {
 			try {
-				Timestamp endTime = new Timestamp(dtTmFmtNoSeconds.parse(endingTimeToMatch.toString()).getTime());
+				Timestamp endTime = new Timestamp(dtTmFmtNoSeconds.parse(endingTimeToMatch).getTime());
 
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT distinct timestampGrp FROM " + quoteTable + " where InstrumentToken ='"
-						+ instrumentToken + "' and usedForSignal = '' or usedForSignal = 'null' and timestampGrp<"
-						+ endTime;
+						+ instrumentToken + "' and (usedForSignal = '' or usedForSignal = 'null') and timestampGrp<"
+						+ endTime + " ORDER BY Time ASC ";
 				ResultSet timeStampRs = stmt.executeQuery(openSql);
 				openSql = "update " + quoteTable + " set usedForSignal ='used' where InstrumentToken= '"
 						+ instrumentToken + "' and timestampGrp in (SELECT distinct timestampGrp FROM " + quoteTable
 						+ " where InstrumentToken ='" + instrumentToken
-						+ "' and usedForSignal = '' or usedForSignal = 'null' and timestampgrp<" + endTime + ")";
+						+ "' and (usedForSignal = '' or usedForSignal = 'null') and timestampgrp<" + endTime + ")";
 				stmt.executeUpdate(openSql);
 
 				while (timeStampRs.next()) {
+					Double low = null;
+					Double high = null;
+					Double close = null;
+
 					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-							+ "' and usedForSignal = '' or usedForSignal = 'null'  and timestampGrp ="
-							+ timeStampRs.getTimestamp("timestampGrp") + " ORDER BY Time DESC ";
+							+ "' and timestampGrp =" + timeStampRs.getTimestamp("timestampGrp")
+							+ " ORDER BY Time DESC ";
 					ResultSet openRs1 = stmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRs1.next()) {
@@ -718,167 +743,66 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							firstRecord = false;
 						}
 					}
-				}
-
-				openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
-						+ "' ORDER BY Time DESC LIMIT 1 ";
-				ResultSet openRs2 = stmt.executeQuery(openSql);
-
-				PSarSignalParam p1 = null;
-				RSISignalParam r1 = null;
-				MACDSignalParam m1 = null;
-
-				if (openRs2.next()) {
-					if (null != openRs2.getString(19) && !"".equalsIgnoreCase(openRs2.getString(19))) {
-
-						p1 = new PSarSignalParam(high, low, openRs2.getDouble("pSar"), openRs2.getDouble("eP"),
-								openRs2.getDouble("eP_pSar"), openRs2.getDouble("accFactor"),
-								openRs2.getDouble("eP_pSarXaccFactor"), openRs2.getInt("trend"));
-						r1 = new RSISignalParam(openRs2.getDouble("close"), close, openRs2.getDouble("upMove"),
-								openRs2.getDouble("downMove"), openRs2.getDouble("avgUpMove"),
-								openRs2.getDouble("avgDownMove"), openRs2.getDouble("relativeStrength"),
-								openRs2.getDouble("rSI"));
-						m1 = new MACDSignalParam(close, openRs2.getDouble("fastEma"), openRs2.getDouble("slowEma"),
-								openRs2.getDouble("strategySignal"));
-					} else if (null != openRs2.getString(15) && !"".equalsIgnoreCase(openRs2.getString(15))) {
-
-						openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
-								+ instrumentToken + "' ORDER BY Time DESC LIMIT 35 ";
-
-						ResultSet openRs3 = stmt.executeQuery(openSql);
-						List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
-						MACDSignalParam macdSignalParam;
-						boolean firstLoop = true;
-
-						while (openRs3.next()) {
-							if (firstLoop) {
-								p1 = new PSarSignalParam(high, low, openRs3.getDouble("pSar"), openRs3.getDouble("eP"),
-										openRs3.getDouble("eP_pSar"), openRs3.getDouble("accFactor"),
-										openRs3.getDouble("eP_pSarXaccFactor"), openRs3.getInt("trend"));
-								r1 = new RSISignalParam(openRs3.getDouble("close"), close, openRs3.getDouble("upMove"),
-										openRs3.getDouble("downMove"), openRs3.getDouble("avgUpMove"),
-										openRs3.getDouble("avgDownMove"), openRs3.getDouble("relativeStrength"),
-										openRs3.getDouble("rSI"));
-								firstLoop = false;
-							}
-							macdSignalParam = new MACDSignalParam();
-							macdSignalParam.setClose(close);
-							macdSignalParam.setDifference(openRs3.getDouble("difference"));
-							macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
-							macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-							macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
-							macdSignalParamList.add(macdSignalParam);
-						}
-						m1 = new MACDSignalParam(macdSignalParamList);
-					} else if (null != openRs2.getString(4) && !"".equalsIgnoreCase(openRs2.getString(4))
-							&& null != openRs2.getString(5) && !"".equalsIgnoreCase(openRs2.getString(5))
-							&& null != openRs2.getString(8) && !"".equalsIgnoreCase(openRs2.getString(8))) {
-
-						openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
-								+ instrumentToken + "' ORDER BY Time DESC LIMIT 35 ";
-						ResultSet openRs3 = stmt.executeQuery(openSql);
-						List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
-						List<RSISignalParam> rsiSignalParamList = new ArrayList<RSISignalParam>();
-						MACDSignalParam macdSignalParam;
-						RSISignalParam rsiSignalParam;
-						boolean firstLoop = true;
-						while (openRs3.next()) {
-							if (firstLoop) {
-								p1 = new PSarSignalParam(high, low, openRs3.getDouble("pSar"), openRs3.getDouble("eP"),
-										openRs3.getDouble("eP_pSar"), openRs3.getDouble("accFactor"),
-										openRs3.getDouble("eP_pSarXaccFactor"), openRs3.getInt("trend"));
-								firstLoop = false;
-							}
-							macdSignalParam = new MACDSignalParam();
-							rsiSignalParam = new RSISignalParam();
-
-							macdSignalParam.setClose(close);
-							macdSignalParam.setDifference(openRs3.getDouble("difference"));
-							macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
-							macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-							macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
-							macdSignalParamList.add(macdSignalParam);
-
-							rsiSignalParam.setClose(close);
-							rsiSignalParam.setDownMove(openRs3.getDouble("downMove"));
-							rsiSignalParam.setUpMove(openRs3.getDouble("upMove"));
-							rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
-							rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
-							rsiSignalParam.setRelativeStrength(openRs3.getDouble("relativeStrength"));
-							rsiSignalParam.setRSI(openRs3.getDouble("rSI"));
-							rsiSignalParamList.add(rsiSignalParam);
-						}
-						r1 = new RSISignalParam(rsiSignalParamList);
-						m1 = new MACDSignalParam(macdSignalParamList);
-					}
-
-				} else {
 
 					openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
-							+ "' ORDER BY Time DESC LIMIT 35 ";
-					ResultSet openRs3 = stmt.executeQuery(openSql);
-					List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
-					List<RSISignalParam> rsiSignalParamList = new ArrayList<RSISignalParam>();
-					MACDSignalParam macdSignalParam;
-					RSISignalParam rsiSignalParam;
-					boolean firstLoop = true;
-					while (openRs3.next()) {
-						if (firstLoop) {
-							p1 = new PSarSignalParam(high, low);
-							firstLoop = false;
+							+ "' ORDER BY Time DESC LIMIT 1 ";
+					ResultSet openRs2 = stmt.executeQuery(openSql);
+
+					PSarSignalParam p1 = null;
+					RSISignalParam r1 = null;
+					MACDSignalParam m1 = null;
+
+					if (openRs2.next()) {
+						if (null != openRs2.getString(19) && !"".equalsIgnoreCase(openRs2.getString(19))) {
+							this.whenPsarRsiMacdAll3sPreviousSignalsAvailable(openRs2, low, high, close, p1, r1, m1);
+
+						} else if (null != openRs2.getString(15) && !"".equalsIgnoreCase(openRs2.getString(15))) {
+							this.whenPsarRsiPreviousSignalsAvailableButNotMacd(stmt, instrumentToken, low, high, close,
+									p1, r1, m1);
+
+						} else if (null != openRs2.getString(4) && !"".equalsIgnoreCase(openRs2.getString(4))
+								&& null != openRs2.getString(5) && !"".equalsIgnoreCase(openRs2.getString(5))
+								&& null != openRs2.getString(8) && !"".equalsIgnoreCase(openRs2.getString(8))) {
+							this.whenPsarPreviousSignalsAvailableButNotRsiAndMacd(stmt, instrumentToken, low, high,
+									close, p1, r1, m1);
 						}
-						macdSignalParam = new MACDSignalParam();
-						rsiSignalParam = new RSISignalParam();
 
-						macdSignalParam.setClose(close);
-						macdSignalParam.setDifference(openRs3.getDouble("difference"));
-						macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
-						macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
-						macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
-						macdSignalParamList.add(macdSignalParam);
-
-						rsiSignalParam.setClose(close);
-						rsiSignalParam.setDownMove(openRs3.getDouble("downMove"));
-						rsiSignalParam.setUpMove(openRs3.getDouble("upMove"));
-						rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
-						rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
-						rsiSignalParam.setRelativeStrength(openRs3.getDouble("relativeStrength"));
-						rsiSignalParam.setRSI(openRs3.getDouble("rSI"));
-						rsiSignalParamList.add(rsiSignalParam);
+					} else {
+						this.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(stmt, instrumentToken, low, high, close,
+								p1, r1, m1);
 					}
-					r1 = new RSISignalParam(rsiSignalParamList);
-					m1 = new MACDSignalParam(macdSignalParamList);
+					String sql = "INSERT INTO " + quoteTable + "_signalParam "
+							+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
+							+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal,timestampGrp) "
+							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+					PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+					prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
+					prepStmt.setTimestamp(22, timeStampRs.getTimestamp("timestampGrp"));
+					prepStmt.setString(2, instrumentToken);
+					prepStmt.setDouble(3, p1.getHigh());
+					prepStmt.setDouble(4, p1.getLow());
+					prepStmt.setDouble(5, close);
+					prepStmt.setDouble(6, p1.getpSar());
+					prepStmt.setDouble(7, p1.geteP());
+					prepStmt.setDouble(8, p1.geteP_pSar());
+					prepStmt.setDouble(9, p1.getAccFactor());
+					prepStmt.setDouble(10, p1.geteP_pSarXaccFactor());
+					prepStmt.setInt(11, p1.getTrend());
+					prepStmt.setDouble(12, r1.getUpMove());
+					prepStmt.setDouble(13, r1.getDownMove());
+					prepStmt.setDouble(14, r1.getAvgUpMove());
+					prepStmt.setDouble(15, r1.getAvgDownMove());
+					prepStmt.setDouble(16, r1.getRelativeStrength());
+					prepStmt.setDouble(17, r1.getRSI());
+					prepStmt.setDouble(18, m1.getFastEma());
+					prepStmt.setDouble(19, m1.getSlowEma());
+					prepStmt.setDouble(20, m1.getDifference());
+					prepStmt.setDouble(21, m1.getSignal());
+					prepStmt.executeUpdate();
+
+					prepStmt.close();
 				}
-				String sql = "INSERT INTO " + quoteTable + "_signalParam "
-						+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
-						+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal) "
-						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-				PreparedStatement prepStmt = conn.prepareStatement(sql);
-
-				prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
-				prepStmt.setString(2, instrumentToken);
-				prepStmt.setDouble(3, p1.getHigh());
-				prepStmt.setDouble(4, p1.getLow());
-				prepStmt.setDouble(5, close);
-				prepStmt.setDouble(6, p1.getpSar());
-				prepStmt.setDouble(7, p1.geteP());
-				prepStmt.setDouble(8, p1.geteP_pSar());
-				prepStmt.setDouble(9, p1.getAccFactor());
-				prepStmt.setDouble(10, p1.geteP_pSarXaccFactor());
-				prepStmt.setInt(11, p1.getTrend());
-				prepStmt.setDouble(12, r1.getUpMove());
-				prepStmt.setDouble(13, r1.getDownMove());
-				prepStmt.setDouble(14, r1.getAvgUpMove());
-				prepStmt.setDouble(15, r1.getAvgDownMove());
-				prepStmt.setDouble(16, r1.getRelativeStrength());
-				prepStmt.setDouble(17, r1.getRSI());
-				prepStmt.setDouble(18, m1.getFastEma());
-				prepStmt.setDouble(19, m1.getSlowEma());
-				prepStmt.setDouble(20, m1.getDifference());
-				prepStmt.setDouble(21, m1.getSignal());
-				prepStmt.executeUpdate();
-
-				prepStmt.close();
 			} catch (SQLException | ParseException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: SQLException on fetching data from Table, cause: "
@@ -890,25 +814,153 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 	}
 
+	private void whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(Statement stmt, String instrumentToken, Double low,
+			Double high, Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+
+		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
+				+ "' ORDER BY Time DESC LIMIT 35 ";
+		ResultSet openRs3 = stmt.executeQuery(openSql);
+		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
+		List<RSISignalParam> rsiSignalParamList = new ArrayList<RSISignalParam>();
+		MACDSignalParam macdSignalParam;
+		RSISignalParam rsiSignalParam;
+		boolean firstLoop = true;
+		while (openRs3.next()) {
+			if (firstLoop) {
+				p1 = new PSarSignalParam(high, low);
+				firstLoop = false;
+			}
+			macdSignalParam = new MACDSignalParam();
+			rsiSignalParam = new RSISignalParam();
+
+			macdSignalParam.setClose(close);
+			macdSignalParam.setDifference(openRs3.getDouble("difference"));
+			macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
+			macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
+			macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
+			macdSignalParamList.add(macdSignalParam);
+
+			rsiSignalParam.setClose(close);
+			rsiSignalParam.setDownMove(openRs3.getDouble("downMove"));
+			rsiSignalParam.setUpMove(openRs3.getDouble("upMove"));
+			rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
+			rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
+			rsiSignalParam.setRelativeStrength(openRs3.getDouble("relativeStrength"));
+			rsiSignalParam.setRSI(openRs3.getDouble("rSI"));
+			rsiSignalParamList.add(rsiSignalParam);
+		}
+		r1 = new RSISignalParam(rsiSignalParamList);
+		m1 = new MACDSignalParam(macdSignalParamList);
+
+	}
+
+	private void whenPsarPreviousSignalsAvailableButNotRsiAndMacd(Statement stmt, String instrumentToken, Double low,
+			Double high, Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+
+		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
+				+ "' ORDER BY Time DESC LIMIT 35 ";
+		ResultSet openRs3 = stmt.executeQuery(openSql);
+		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
+		List<RSISignalParam> rsiSignalParamList = new ArrayList<RSISignalParam>();
+		MACDSignalParam macdSignalParam;
+		RSISignalParam rsiSignalParam;
+		boolean firstLoop = true;
+		while (openRs3.next()) {
+			if (firstLoop) {
+				p1 = new PSarSignalParam(high, low, openRs3.getDouble("pSar"), openRs3.getDouble("eP"),
+						openRs3.getDouble("eP_pSar"), openRs3.getDouble("accFactor"),
+						openRs3.getDouble("eP_pSarXaccFactor"), openRs3.getInt("trend"));
+				firstLoop = false;
+			}
+			macdSignalParam = new MACDSignalParam();
+			rsiSignalParam = new RSISignalParam();
+
+			macdSignalParam.setClose(close);
+			macdSignalParam.setDifference(openRs3.getDouble("difference"));
+			macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
+			macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
+			macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
+			macdSignalParamList.add(macdSignalParam);
+
+			rsiSignalParam.setClose(close);
+			rsiSignalParam.setDownMove(openRs3.getDouble("downMove"));
+			rsiSignalParam.setUpMove(openRs3.getDouble("upMove"));
+			rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
+			rsiSignalParam.setAvgDownMove(openRs3.getDouble("avgDownMove"));
+			rsiSignalParam.setRelativeStrength(openRs3.getDouble("relativeStrength"));
+			rsiSignalParam.setRSI(openRs3.getDouble("rSI"));
+			rsiSignalParamList.add(rsiSignalParam);
+		}
+		r1 = new RSISignalParam(rsiSignalParamList);
+		m1 = new MACDSignalParam(macdSignalParamList);
+	}
+
+	private void whenPsarRsiPreviousSignalsAvailableButNotMacd(Statement stmt, String instrumentToken, Double low,
+			Double high, Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
+				+ "' ORDER BY Time DESC LIMIT 35 ";
+
+		ResultSet openRs3 = stmt.executeQuery(openSql);
+		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
+		MACDSignalParam macdSignalParam;
+		boolean firstLoop = true;
+
+		while (openRs3.next()) {
+			if (firstLoop) {
+				p1 = new PSarSignalParam(high, low, openRs3.getDouble("pSar"), openRs3.getDouble("eP"),
+						openRs3.getDouble("eP_pSar"), openRs3.getDouble("accFactor"),
+						openRs3.getDouble("eP_pSarXaccFactor"), openRs3.getInt("trend"));
+				r1 = new RSISignalParam(openRs3.getDouble("close"), close, openRs3.getDouble("upMove"),
+						openRs3.getDouble("downMove"), openRs3.getDouble("avgUpMove"), openRs3.getDouble("avgDownMove"),
+						openRs3.getDouble("relativeStrength"), openRs3.getDouble("rSI"));
+				firstLoop = false;
+			}
+			macdSignalParam = new MACDSignalParam();
+			macdSignalParam.setClose(close);
+			macdSignalParam.setDifference(openRs3.getDouble("difference"));
+			macdSignalParam.setFastEma(openRs3.getDouble("fastEma"));
+			macdSignalParam.setSlowEma(openRs3.getDouble("slowEma"));
+			macdSignalParam.setSignal(openRs3.getDouble("strategySignal"));
+			macdSignalParamList.add(macdSignalParam);
+		}
+		m1 = new MACDSignalParam(macdSignalParamList);
+	}
+
+	private void whenPsarRsiMacdAll3sPreviousSignalsAvailable(ResultSet openRs2, Double low, Double high, Double close,
+			PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+
+		p1 = new PSarSignalParam(high, low, openRs2.getDouble("pSar"), openRs2.getDouble("eP"),
+				openRs2.getDouble("eP_pSar"), openRs2.getDouble("accFactor"), openRs2.getDouble("eP_pSarXaccFactor"),
+				openRs2.getInt("trend"));
+		r1 = new RSISignalParam(openRs2.getDouble("close"), close, openRs2.getDouble("upMove"),
+				openRs2.getDouble("downMove"), openRs2.getDouble("avgUpMove"), openRs2.getDouble("avgDownMove"),
+				openRs2.getDouble("relativeStrength"), openRs2.getDouble("rSI"));
+		m1 = new MACDSignalParam(close, openRs2.getDouble("fastEma"), openRs2.getDouble("slowEma"),
+				openRs2.getDouble("strategySignal"));
+
+	}
+
 	@Override
-	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(ArrayList<String> stocksSymbolArray) {
+	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
 
 		ArrayList<Long> instrumentList = new ArrayList<Long>();
+		ArrayList<String> tradingSymbols = new ArrayList<String>();
 		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT InstrumentToken FROM " + quoteTable
+				String openSql = "SELECT InstrumentToken, tradingsymbol FROM " + quoteTable
 						+ "_instrumentdetails where tradingsymbol in (";
-				int i = 0;
-				int j = 10000;
-				while (i < stocksSymbolArray.size()) {
-					openSql = openSql + "'" + stocksSymbolArray.get(i++) + "',";
+
+				Object[] symbolKeys = stocksSymbolArray.keySet().toArray();
+				for (int i = 0; i < symbolKeys.length; i++) {
+					openSql = openSql + "'" + (String) symbolKeys[i] + "',";
 				}
 				openSql = openSql.substring(0, openSql.length() - 2) + ")";
 				ResultSet openRs = stmt.executeQuery(openSql);
 
 				while (openRs.next()) {
 					instrumentList.add(openRs.getLong(1));
+					tradingSymbols.add(openRs.getString(2));
 				}
 
 				openSql = "INSERT INTO " + quoteTable + "_priority " + "(Time, InstrumentToken, PriorityPoint) "
@@ -918,7 +970,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
 					prepStmt.setString(2, Long.toString(instrumentList.get(index)));
-					prepStmt.setDouble(3, j--);
+					prepStmt.setDouble(3, stocksSymbolArray.get(tradingSymbols.get(index)));
 					prepStmt.executeUpdate();
 				}
 				stmt.close();

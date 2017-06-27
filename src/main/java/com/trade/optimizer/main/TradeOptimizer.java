@@ -117,7 +117,6 @@ public class TradeOptimizer {
 				LOGGER.info("session expired");
 			}
 		});
-
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
 		return redirectView;
@@ -126,34 +125,42 @@ public class TradeOptimizer {
 	public void fetchNSEActiveSymbolList() {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
-		ArrayList<String> stocksSymbolArray = new ArrayList<String>();
+		Map<String, Double> stocksSymbolArray = new HashMap<String, Double>();
 
-		HttpPost post = new HttpPost(
-				"https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopVolume1.json");
-		post.addHeader("Access-Control-Allow-Origin", "*");
-		post.addHeader("user-agent",
-				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36");
+		for (int count = 0; count < StreamingConfig.stockListCollectingUrls.length; count++) {
 
-		try {
-			HttpResponse response = client.execute(post);
-			BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-			String line = "", lineAll = "";
+			HttpPost post = new HttpPost(StreamingConfig.stockListCollectingUrls[count]);
+			post.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+			post.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
 
-			while ((line = rd.readLine()) != null)
-				lineAll = lineAll + line;
+			try {
+				HttpResponse response = client.execute(post);
+				BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+				String line = "", lineAll = "";
 
-			JSONObject obj = new JSONObject(lineAll);
-			JSONArray arr = obj.getJSONArray("data");
+				while ((line = rd.readLine()) != null)
+					lineAll = lineAll + line;
 
-			for (int i = 0; i < arr.length(); i++)
-				stocksSymbolArray.add(arr.getJSONObject(i).getString("symbol"));
+				JSONObject obj = new JSONObject(lineAll);
+				JSONArray arr = obj.getJSONArray("data");
 
-			ArrayList<Long> stocksArray = streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+				for (int i = 0; i < arr.length(); i++)
+					if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol")))
+						stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"),
+								(Math.abs(Double.valueOf(arr.getJSONObject(i).getString("netPrice"))) * (Double
+										.valueOf(arr.getJSONObject(i).getString("tradedQuantity").replaceAll(",", ""))
+										/ 100000)));
 
-			if (null != stocksArray && stocksArray.size() > 0)
-				quoteStreamingInstrumentsArr = stocksArray;
-		} catch (IOException e) {
+			} catch (IOException e) {
+				LOGGER.info(e.getMessage());
+			}
 		}
+
+		ArrayList<Long> stocksArray = streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+
+		if (null != stocksArray && stocksArray.size() > 0)
+			quoteStreamingInstrumentsArr = stocksArray;
+
 	}
 
 	public void startProcess() {
@@ -179,8 +186,6 @@ public class TradeOptimizer {
 			createInitialDayTables();
 
 			startStreamForHistoricalInstrumentsData();
-			// fetchNSEActiveSymbolList();
-			// tickerSettingInitialization();
 
 			startLiveStreamOfSelectedInstruments();
 
@@ -214,7 +219,7 @@ public class TradeOptimizer {
 			@Override
 			public void onConnected() {
 				try {
-					System.out.println("TradeOptimizer onConnected then subscribe");
+					LOGGER.info("TradeOptimizer onConnected then subscribe");
 
 					tickerProvider.subscribe(tokenListForTick);
 				} catch (IOException e) {
@@ -230,7 +235,7 @@ public class TradeOptimizer {
 		tickerProvider.setOnDisconnectedListener(new OnDisconnect() {
 			@Override
 			public void onDisconnected() {
-				System.out.println("TradeOptimizer onDisconnected then unsub");
+				LOGGER.info("TradeOptimizer onDisconnected then unsub");
 
 				tickerProvider.unsubscribe(tokenListForTick);
 
@@ -240,7 +245,7 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				System.out.println(ticks.size());
+				LOGGER.info("" + ticks.size());
 
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
@@ -476,7 +481,9 @@ public class TradeOptimizer {
 							 */
 							//// List<Instrument> instrument = instrumentList;
 							// threadEnabledHistoricalDataFetch(instrument);
+
 							ArrayList<Long> previousQuoteStreamingInstrumentsArr = quoteStreamingInstrumentsArr;
+
 							fetchNSEActiveSymbolList();
 
 							quoteStreamingInstrumentsArr = streamingQuoteStorage
@@ -593,7 +600,7 @@ public class TradeOptimizer {
 							if (null != instrumentList && instrumentList.size() > 0) {
 								for (int i = 0; i < instrumentList.size(); i++)
 									streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
-											instrumentList.get(i).toString(), timeNow);
+											instrumentList.get(i).toString(), timeNow.toString());
 								streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
 							}
 							Thread.sleep(60 * seconds);
@@ -618,7 +625,7 @@ public class TradeOptimizer {
 					tickerSettingInitialization();
 					liveStreamFirstRun = false;
 				}
-				System.out.println("TradeOptimizer First Connect");
+				LOGGER.info("TradeOptimizer First Connect");
 				tickerProvider.connect();
 
 			} catch (IOException | WebSocketException e) {
