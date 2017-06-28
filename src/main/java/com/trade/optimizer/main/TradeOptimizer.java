@@ -156,10 +156,10 @@ public class TradeOptimizer {
 			}
 		}
 
-		ArrayList<Long> stocksArray = streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
-
-		if (null != stocksArray && stocksArray.size() > 0)
-			quoteStreamingInstrumentsArr = stocksArray;
+		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+		// if (null != stocksArray && stocksArray.size() > 0)
+		// quoteStreamingInstrumentsArr = streamingQuoteStorage
+		// .getTopPrioritizedTokenList(tokenCountForTrade);
 
 	}
 
@@ -210,7 +210,7 @@ public class TradeOptimizer {
 		} catch (KiteException e) {
 			LOGGER.info(e.getMessage());
 		}
-		tickerProvider.setMaxRetries(10);
+		tickerProvider.setMaxRetries(-1);
 
 		if (null != tokenListForTick && !tokenListForTick.isEmpty())
 			tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
@@ -218,17 +218,7 @@ public class TradeOptimizer {
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
 			public void onConnected() {
-				try {
-					LOGGER.info("TradeOptimizer onConnected then subscribe");
-
-					tickerProvider.subscribe(tokenListForTick);
-				} catch (IOException e) {
-					LOGGER.info(e.getMessage());
-				} catch (WebSocketException e) {
-					LOGGER.info(e.getMessage());
-				} catch (KiteException e) {
-					LOGGER.info(e.getMessage());
-				}
+				LOGGER.info("TradeOptimizer onConnected then subscribe");
 			}
 		});
 
@@ -601,6 +591,7 @@ public class TradeOptimizer {
 								for (int i = 0; i < instrumentList.size(); i++)
 									streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
 											instrumentList.get(i).toString(), timeNow.toString());
+								signalList = streamingQuoteStorage.calculateSignalsFromStrategyParams(instrumentList);
 								streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
 							}
 							Thread.sleep(60 * seconds);
@@ -624,11 +615,11 @@ public class TradeOptimizer {
 				if (liveStreamFirstRun) {
 					tickerSettingInitialization();
 					liveStreamFirstRun = false;
+					tickerProvider.connect();
+					tickerProvider.subscribe(tokenListForTick);
+					LOGGER.info("TradeOptimizer First Connect");
 				}
-				LOGGER.info("TradeOptimizer First Connect");
-				tickerProvider.connect();
-
-			} catch (IOException | WebSocketException e) {
+			} catch (IOException | WebSocketException | KiteException e) {
 				LOGGER.info(e.getMessage());
 			}
 		}

@@ -12,6 +12,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -39,9 +40,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private Connection conn = null;
 
 	private static String quoteTable = null;
-
-	public StreamingQuoteStorageImpl() {
-	}
 
 	@Override
 	public void initializeJDBCConn() {
@@ -81,7 +79,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			Statement stmt = conn.createStatement();
 			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
-			String sql = "";
+			String sql;
 			try {
 				sql = "CREATE TABLE " + quoteTable + " " + "(time timestamp, " + " InstrumentToken varchar(32) , "
 						+ " LastTradedPrice DECIMAL(20,4) , " + " LastTradedQty BIGINT , "
@@ -210,7 +208,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							+ "values(?,?,?)";
 					prepStmt = conn.prepareStatement(sql);
 
-					prepStmt.setTimestamp(1, new Timestamp(dtTmFmt.parse(quoteList.get(0).getTime()).getTime()));
+					prepStmt.setTimestamp(1,
+							new Timestamp(dtTmFmt.parse(quoteList.get(quoteList.size() - 1).getTime()).getTime()));
 					prepStmt.setString(2, quoteList.get(0).getInstrumentToken());
 					prepStmt.setDouble(3, quoteList.get(0).ltp);
 					prepStmt.executeUpdate();
@@ -987,4 +986,42 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 	}
 
+	@Override
+	public Map<Long, String> calculateSignalsFromStrategyParams(ArrayList<Long> instrumentList) {
+		Map<Long, String> signalList = new HashMap<Long, String>();
+
+		if (conn != null && instrumentList != null && instrumentList.size() > 0) {
+			Statement stmt;
+
+			try {
+				stmt = conn.createStatement();
+
+				String openSql;
+				for (int count = 0; count < instrumentList.size(); count++) {
+					openSql = "SELECT trend,rSI,strategySignal FROM " + quoteTable
+							+ "_SignalParams where InstrumentToken ='" + instrumentList.get(count)
+							+ "' ORDER BY Time DESC LIMIT 1 ";
+
+					ResultSet openRs3 = stmt.executeQuery(openSql);
+
+					if (openRs3.next()) {
+						if (openRs3.getInt("trend") == 2 && openRs3.getDouble("rSI") < 70
+								&& openRs3.getDouble("rSI") > 30 && openRs3.getDouble("strategySignal") > 0) {
+							signalList.put(instrumentList.get(count), "BUY");
+						} else if (openRs3.getInt("trend") == 0 && openRs3.getDouble("rSI") > 70
+								&& openRs3.getDouble("rSI") < 30 && openRs3.getDouble("strategySignal") < 0) {
+							signalList.put(instrumentList.get(count), "SELL");
+						}
+					}
+				}
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams(): ERROR: DB conn is null !!!");
+		}
+		return signalList;
+	}
 }

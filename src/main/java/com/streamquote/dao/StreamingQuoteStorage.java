@@ -36,4 +36,6 @@ public interface StreamingQuoteStorage {
 	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray);
 
 	void calculateAndStoreStrategySignalParameters(String instrumentToken, String string);
+
+	public Map<Long, String> calculateSignalsFromStrategyParams(ArrayList<Long> instrumentList);
 }
