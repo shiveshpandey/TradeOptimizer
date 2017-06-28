@@ -65,7 +65,6 @@ public class TradeOptimizer {
 
 	private int tokenCountForTrade = 10;
 	private int seconds = 1000;
-	private int a = 0, b = 0, d = 0, e = 0, f = 0;
 
 	private StreamingQuoteStorage streamingQuoteStorage = new StreamingQuoteStorageImpl();
 	private KiteConnect kiteconnect = new KiteConnect(StreamingConfig.API_KEY);
@@ -150,23 +149,15 @@ public class TradeOptimizer {
 								(Math.abs(Double.valueOf(arr.getJSONObject(i).getString("netPrice"))) * (Double
 										.valueOf(arr.getJSONObject(i).getString("tradedQuantity").replaceAll(",", ""))
 										/ 100000)));
-
 			} catch (IOException e) {
 				LOGGER.info(e.getMessage());
 			}
 		}
-
 		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
-		// if (null != stocksArray && stocksArray.size() > 0)
-		// quoteStreamingInstrumentsArr = streamingQuoteStorage
-		// .getTopPrioritizedTokenList(tokenCountForTrade);
-
 	}
 
 	public void startProcess() {
 		try {
-			LOGGER.info("startProcess Entry");
-
 			tmFmt.setTimeZone(timeZone);
 			dtFmt.setTimeZone(timeZone);
 			dtTmFmt.setTimeZone(timeZone);
@@ -196,7 +187,6 @@ public class TradeOptimizer {
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
 			closingDayRoundOffOperations();
-			LOGGER.info("startProcess Exit");
 		} catch (JSONException | ParseException | KiteException e) {
 			LOGGER.info(e.getMessage());
 		}
@@ -218,25 +208,19 @@ public class TradeOptimizer {
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
 			public void onConnected() {
-				LOGGER.info("TradeOptimizer onConnected then subscribe");
 			}
 		});
 
 		tickerProvider.setOnDisconnectedListener(new OnDisconnect() {
 			@Override
 			public void onDisconnected() {
-				LOGGER.info("TradeOptimizer onDisconnected then unsub");
-
 				tickerProvider.unsubscribe(tokenListForTick);
-
 			}
 		});
 
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				LOGGER.info("" + ticks.size());
-
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 			}
@@ -244,7 +228,6 @@ public class TradeOptimizer {
 	}
 
 	private void createInitialDayTables() {
-		LOGGER.info("createInitialDayTables Entry");
 		if (streamingQuoteStorage != null) {
 
 			DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
@@ -258,11 +241,9 @@ public class TradeOptimizer {
 				LOGGER.info(e.getMessage());
 			}
 		}
-		LOGGER.info("createInitialDayTables Exit");
 	}
 
 	private void closingDayRoundOffOperations() throws KiteException {
-		LOGGER.info("closingDayRoundOffOperations Entry");
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -286,7 +267,6 @@ public class TradeOptimizer {
 										holdings.get(index).quantity, streamingQuoteStorage);
 							}
 						} else {
-							LOGGER.info("in closingDayRoundOffOperations" + f++);
 							Thread.sleep(10 * seconds);
 							runnable = true;
 						}
@@ -302,7 +282,6 @@ public class TradeOptimizer {
 	}
 
 	private void executeOrdersOnSignals() {
-		LOGGER.info("executeOrdersOnSignals entry");
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -312,7 +291,6 @@ public class TradeOptimizer {
 					while (runnable) {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							LOGGER.info("in executeOrdersOnSignals" + e++);
 							List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
 							for (int index = 0; index < signalList.size(); index++)
 								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
@@ -334,12 +312,10 @@ public class TradeOptimizer {
 	}
 
 	private List<Order> getOrderListToPlaceAsPerStrategySignals() {
-		LOGGER.info("getOrderListToPlaceAsPerStrategySignals entry");
 		return streamingQuoteStorage.getOrderListToPlace();
 	}
 
 	private void startLiveStreamOfSelectedInstruments() {
-		LOGGER.info("startLiveStreamOfSelectedInstruments entry");
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -349,7 +325,6 @@ public class TradeOptimizer {
 					while (runnable) {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							LOGGER.info("in startLiveStreamOfSelectedInstruments" + d++);
 							startStreamingQuote();
 							Thread.sleep(10 * seconds);
 						} else {
@@ -412,7 +387,6 @@ public class TradeOptimizer {
 	}
 
 	private void startStreamForHistoricalInstrumentsData() {
-		LOGGER.info("startStreamForHistoricalInstrumentsData entry");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -423,7 +397,6 @@ public class TradeOptimizer {
 					try {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(histTimeStart) >= 0 && timeNow.compareTo(histTimeEnd) <= 0) {
-							LOGGER.info("in startStreamForHistoricalInstrumentsData" + a++);
 							if (firstTimeDayHistoryRun) {
 								try {
 									instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
@@ -443,33 +416,11 @@ public class TradeOptimizer {
 									 */
 									firstTimeDayHistoryRun = false;
 								} catch (KiteException e) {
-
 									LOGGER.info(e.message);
 								}
 							}
 
-							/*
-							 * int size = instrumentList.size() / 2;
-							 * 
-							 * for (int k = 0; k < 2; k++) { LOGGER.info(new
-							 * Date().toString() + ">>>>>>>>>>>>>>>>>>>>>");
-							 * final List<Instrument> instrument =
-							 * instrumentList.subList(size*k, size*(k+1)-1);
-							 * LOGGER.info(new Date().toString() +
-							 * ">>>outer loop>>> " + k + " " +
-							 * instrument.size());
-							 * 
-							 * LOGGER.info(new Date().toString() +
-							 * ">>>InThread>>>" + instrument.size()); Thread t =
-							 * new Thread(new Runnable() {
-							 * 
-							 * @Override public void run() {
-							 * 
-							 * }
-							 * 
-							 * }); t.start();
-							 */
-							//// List<Instrument> instrument = instrumentList;
+							// List<Instrument> instrument = instrumentList;
 							// threadEnabledHistoricalDataFetch(instrument);
 
 							ArrayList<Long> previousQuoteStreamingInstrumentsArr = quoteStreamingInstrumentsArr;
@@ -503,7 +454,6 @@ public class TradeOptimizer {
 
 	private void roundOfNonPerformingBoughtStocks(ArrayList<Long> quoteStreamingInstrumentsArr,
 			ArrayList<Long> previousQuoteStreamingInstrumentsArr, KiteConnect kiteconnect) throws KiteException {
-		LOGGER.info("roundOfNonPerformingBoughtStocks Entry");
 
 		ArrayList<Long> unSubList = new ArrayList<Long>();
 		ArrayList<Long> subList = new ArrayList<Long>();
@@ -573,7 +523,6 @@ public class TradeOptimizer {
 	}
 
 	private void applyStrategiesAndGenerateSignals() {
-		LOGGER.info("checkForSignalsFromStrategies Entry");
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -583,7 +532,6 @@ public class TradeOptimizer {
 					while (runnable) {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							LOGGER.info("in checkForSignalsFromStrategies" + b++);
 							ArrayList<Long> instrumentList = getInstrumentTokensList();
 							Map<Long, String> signalList = new HashMap<Long, String>();
 
@@ -608,7 +556,6 @@ public class TradeOptimizer {
 	}
 
 	private void startStreamingQuote() {
-		LOGGER.info("startStreamingQuote Entry");
 		tokenListForTick = getInstrumentTokensList();
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
@@ -617,7 +564,6 @@ public class TradeOptimizer {
 					liveStreamFirstRun = false;
 					tickerProvider.connect();
 					tickerProvider.subscribe(tokenListForTick);
-					LOGGER.info("TradeOptimizer First Connect");
 				}
 			} catch (IOException | WebSocketException | KiteException e) {
 				LOGGER.info(e.getMessage());
@@ -626,7 +572,6 @@ public class TradeOptimizer {
 	}
 
 	private ArrayList<Long> getInstrumentTokensList() {
-		LOGGER.info("getInstrumentTokensList Entry");
 		if (null != quoteStreamingInstrumentsArr)
 			return quoteStreamingInstrumentsArr;
 		else
@@ -634,7 +579,6 @@ public class TradeOptimizer {
 	}
 
 	private void stopStreamingQuote() {
-		LOGGER.info("stopStreamingQuote Entry");
 		tickerProvider.disconnect();
 
 		if (streamingQuoteStorage != null) {

@@ -46,11 +46,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		dtTmFmt.setTimeZone(TimeZone.getTimeZone("IST"));
 		dtTmFmtNoSeconds.setTimeZone(TimeZone.getTimeZone("IST"));
 		try {
-			LOGGER.info(
-					"StreamingQuoteStorageImpl.initializeJDBCConn(): creating JDBC connection for Streaming Quote...");
-
 			Class.forName(JDBC_DRIVER);
-
 			conn = DriverManager.getConnection(DB_URL, USER, PASS);
 		} catch (ClassNotFoundException e) {
 			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
@@ -63,8 +59,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	public void closeJDBCConn() {
 		if (conn != null) {
 			try {
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.closeJDBCConn(): Closing JDBC connection for Streaming Quote...");
 				conn.close();
 			} catch (SQLException e) {
 				LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): SQLException on conn close");
@@ -636,7 +630,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList) {
 
 		if (conn != null) {
-
 			try {
 				String sql = "INSERT INTO " + quoteTable + "_signal "
 						+ "(time,instrumentToken,quantity,processSignal,status) " + "values(?,?,?,?,?)";
@@ -696,9 +689,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						"StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage());
 			}
-		} else
-
-		{
+		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
 		}
 		return true;
@@ -940,9 +931,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public ArrayList<Long> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
+	public ArrayList<String> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
 
-		ArrayList<Long> instrumentList = new ArrayList<Long>();
+		ArrayList<String> instrumentList = new ArrayList<String>();
 		ArrayList<String> tradingSymbols = new ArrayList<String>();
 		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
 			try {
@@ -954,11 +945,11 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				for (int i = 0; i < symbolKeys.length; i++) {
 					openSql = openSql + "'" + (String) symbolKeys[i] + "',";
 				}
-				openSql = openSql.substring(0, openSql.length() - 2) + ")";
+				openSql = openSql.substring(0, openSql.length() - 1) + ")";
 				ResultSet openRs = stmt.executeQuery(openSql);
 
 				while (openRs.next()) {
-					instrumentList.add(openRs.getLong(1));
+					instrumentList.add(openRs.getString(1));
 					tradingSymbols.add(openRs.getString(2));
 				}
 
@@ -968,7 +959,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				for (int index = 0; index < instrumentList.size(); index++) {
 
 					prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
-					prepStmt.setString(2, Long.toString(instrumentList.get(index)));
+					prepStmt.setString(2, instrumentList.get(index));
 					prepStmt.setDouble(3, stocksSymbolArray.get(tradingSymbols.get(index)));
 					prepStmt.executeUpdate();
 				}
@@ -992,7 +983,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		if (conn != null && instrumentList != null && instrumentList.size() > 0) {
 			Statement stmt;
-
 			try {
 				stmt = conn.createStatement();
 
