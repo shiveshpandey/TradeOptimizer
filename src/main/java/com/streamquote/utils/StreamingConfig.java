@@ -7,21 +7,11 @@ public class StreamingConfig {
 	public static final String HISTORICAL_DATA_STREAM_START_TIME = "00:05:01";
 	public static final String HISTORICAL_DATA_STREAM_END_TIME = "23:55:01";
 
-	public static final String STREAMING_QUOTE_WS_URL_TEMPLATE = "wss://websocket.kite.trade/?";
-	public static final Integer QUOTE_STREAMING_REINITIATE_DELAY_ON_INITIATE_FAIL = 500;
-	public static final Integer QUOTE_STREAMING_WS_HEARTBIT_CHECK_TIME = 3000;
-	public static final Integer QUOTE_STREAMING_WS_DATA_CHECK_TIME_ON_SUBSCRIBE = 5000;
-	public static final Integer QUOTE_STREAMING_WS_SUBSCRIBE_DELAY_ON_INITIATE = 500;
-	public static final Integer QUOTE_STREAMING_REINITIATE_RETRY_LIMIT = 5;
-	public static final Boolean QUOTE_STREAMING_START_AT_BOOTUP = false;
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
 	public static final String QUOTE_STREAMING_DB_PWD = "root";
 	public static final String QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER = "StreamingQuote";
 	public static final String QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER = "_Date_";
-	public static final Boolean QUOTE_STREAMING_DB_STORE_REQD = true;
-
-	public static final Boolean QUOTE_STREAMING_HEART_BIT_MSG_PRINT = true;
 
 	public static final String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "26-01-2016", "07-03-2016", "24-03-2016",
 			"25-03-2016", "14-04-2016", "15-04-2016", "19-04-2016", "06-07-2016", "15-08-2016", "05-09-2016",
