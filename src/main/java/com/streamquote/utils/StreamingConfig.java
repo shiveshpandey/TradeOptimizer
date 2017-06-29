@@ -14,8 +14,6 @@ public class StreamingConfig {
 	public static final Integer QUOTE_STREAMING_WS_SUBSCRIBE_DELAY_ON_INITIATE = 500;
 	public static final Integer QUOTE_STREAMING_REINITIATE_RETRY_LIMIT = 5;
 	public static final Boolean QUOTE_STREAMING_START_AT_BOOTUP = false;
-	// https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopVolume1.json
-	// https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopValue1.json
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
 	public static final String QUOTE_STREAMING_DB_PWD = "root";
