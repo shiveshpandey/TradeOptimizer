@@ -26,6 +26,7 @@ import com.trade.optimizer.models.Tick;
 import com.trade.optimizer.signal.parameter.MACDSignalParam;
 import com.trade.optimizer.signal.parameter.PSarSignalParam;
 import com.trade.optimizer.signal.parameter.RSISignalParam;
+import com.trade.optimizer.signal.parameter.SignalContainer;
 
 public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private final static Logger LOGGER = Logger.getLogger(StreamingQuoteStorageImpl.class.getName());
@@ -79,8 +80,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32),"
 						+ " LastTradedPrice DECIMAL(20,4) , LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT,"
 						+ " BuyQty BIGINT , SellQty BIGINT , OpenPrice DECIMAL(20,4) ,  HighPrice DECIMAL(20,4) , LowPrice DECIMAL(20,4),"
-						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID))"
-						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID),"
+						+ "CONSTRAINT UC_tick UNIQUE (time,InstrumentToken)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -92,7 +93,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "_hist (ID int NOT NULL AUTO_INCREMENT,time timestamp,InstrumentToken varchar(32),"
 						+ " LastTradedPrice DECIMAL(20,4), LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT , "
 						+ " BuyQty BIGINT, SellQty BIGINT, OpenPrice DECIMAL(20,4), HighPrice DECIMAL(20,4), LowPrice DECIMAL(20,4), "
-						+ " ClosePrice DECIMAL(20,4), TickType varchar(32), PRIMARY KEY (ID)) "
+						+ " ClosePrice DECIMAL(20,4), TickType varchar(32), PRIMARY KEY (ID),CONSTRAINT UC_hist UNIQUE (time,InstrumentToken)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
@@ -103,7 +104,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				sql = "CREATE TABLE " + quoteTable
 						+ "_priority (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32), PriorityPoint DECIMAL(20,4)  "
-						+ ",PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ ",PRIMARY KEY (ID),CONSTRAINT UC_priority UNIQUE (time,InstrumentToken,PriorityPoint)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -113,7 +114,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				sql = "CREATE TABLE " + quoteTable
 						+ "_Signal (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
-						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID)) "
+						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
+						+ "CONSTRAINT UC_signal UNIQUE (time,InstrumentToken,ProcessSignal,Status)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
@@ -126,7 +128,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "(ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32) ,exchangeToken varchar(32) ,"
 						+ "tradingsymbol varchar(32) ,name varchar(32) , last_price varchar(32) ,tickSize varchar(32), expiry varchar(32),"
 						+ "instrumentType varchar(32), segment varchar(32) ,exchange varchar(32), strike varchar(32) ,lotSize varchar(32) ,"
-						+ " PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " PRIMARY KEY (ID),CONSTRAINT UC_instrumentDetails UNIQUE (instrumentToken,tradingsymbol)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
 			} catch (SQLException e) {
@@ -762,20 +764,18 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							+ "' ORDER BY Time DESC LIMIT 1 ";
 					ResultSet openRsSignalParams = timeLoopRsStmt.executeQuery(openSql);
 
-					PSarSignalParam p1 = null;
-					RSISignalParam r1 = null;
-					MACDSignalParam m1 = null;
+					SignalContainer signalContainer = null;
 
 					if (openRsSignalParams.next()) {
 						if (null != openRsSignalParams.getString(20)
 								&& !"".equalsIgnoreCase(openRsSignalParams.getString(20))) {
-							this.whenPsarRsiMacdAll3sPreviousSignalsAvailable(openRsSignalParams, low, high, close, p1,
-									r1, m1);
+							signalContainer = this.whenPsarRsiMacdAll3sPreviousSignalsAvailable(openRsSignalParams, low,
+									high, close);
 
 						} else if (null != openRsSignalParams.getString(16)
 								&& !"".equalsIgnoreCase(openRsSignalParams.getString(16))) {
-							this.whenPsarRsiPreviousSignalsAvailableButNotMacd(instrumentToken, low, high, close, p1,
-									r1, m1);
+							signalContainer = this.whenPsarRsiPreviousSignalsAvailableButNotMacd(instrumentToken, low,
+									high, close);
 
 						} else if (null != openRsSignalParams.getString(5)
 								&& !"".equalsIgnoreCase(openRsSignalParams.getString(5))
@@ -783,13 +783,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 								&& !"".equalsIgnoreCase(openRsSignalParams.getString(6))
 								&& null != openRsSignalParams.getString(9)
 								&& !"".equalsIgnoreCase(openRsSignalParams.getString(9))) {
-							this.whenPsarPreviousSignalsAvailableButNotRsiAndMacd(instrumentToken, low, high, close, p1,
-									r1, m1);
+							signalContainer = this.whenPsarPreviousSignalsAvailableButNotRsiAndMacd(instrumentToken,
+									low, high, close);
 						}
 
 					} else {
-						this.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(instrumentToken, low, high, close, p1, r1,
-								m1);
+						signalContainer = this.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(instrumentToken, low,
+								high, close);
 					}
 					String sql = "INSERT INTO " + quoteTable + "_signalParams "
 							+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
@@ -797,29 +797,33 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 					PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
 
+					PSarSignalParam p = signalContainer.p1;
+					RSISignalParam r = signalContainer.r1;
+					MACDSignalParam m = signalContainer.m1;
+
 					prepStmtInsertSignalParams.setTimestamp(1,
 							new Timestamp(dtTmFmt.parse(dtTmFmt.format(new Date())).getTime()));
 					prepStmtInsertSignalParams.setTimestamp(22, timeStampPeriodList.get(timeLoop));
 					prepStmtInsertSignalParams.setString(2, instrumentToken);
-					prepStmtInsertSignalParams.setDouble(3, p1.getHigh());
-					prepStmtInsertSignalParams.setDouble(4, p1.getLow());
+					prepStmtInsertSignalParams.setDouble(3, p.getHigh());
+					prepStmtInsertSignalParams.setDouble(4, p.getLow());
 					prepStmtInsertSignalParams.setDouble(5, close);
-					prepStmtInsertSignalParams.setDouble(6, p1.getpSar());
-					prepStmtInsertSignalParams.setDouble(7, p1.geteP());
-					prepStmtInsertSignalParams.setDouble(8, p1.geteP_pSar());
-					prepStmtInsertSignalParams.setDouble(9, p1.getAccFactor());
-					prepStmtInsertSignalParams.setDouble(10, p1.geteP_pSarXaccFactor());
-					prepStmtInsertSignalParams.setInt(11, p1.getTrend());
-					prepStmtInsertSignalParams.setDouble(12, r1.getUpMove());
-					prepStmtInsertSignalParams.setDouble(13, r1.getDownMove());
-					prepStmtInsertSignalParams.setDouble(14, r1.getAvgUpMove());
-					prepStmtInsertSignalParams.setDouble(15, r1.getAvgDownMove());
-					prepStmtInsertSignalParams.setDouble(16, r1.getRelativeStrength());
-					prepStmtInsertSignalParams.setDouble(17, r1.getRSI());
-					prepStmtInsertSignalParams.setDouble(18, m1.getFastEma());
-					prepStmtInsertSignalParams.setDouble(19, m1.getSlowEma());
-					prepStmtInsertSignalParams.setDouble(20, m1.getDifference());
-					prepStmtInsertSignalParams.setDouble(21, m1.getSignal());
+					prepStmtInsertSignalParams.setDouble(6, p.getpSar());
+					prepStmtInsertSignalParams.setDouble(7, p.geteP());
+					prepStmtInsertSignalParams.setDouble(8, p.geteP_pSar());
+					prepStmtInsertSignalParams.setDouble(9, p.getAccFactor());
+					prepStmtInsertSignalParams.setDouble(10, p.geteP_pSarXaccFactor());
+					prepStmtInsertSignalParams.setInt(11, p.getTrend());
+					prepStmtInsertSignalParams.setDouble(12, r.getUpMove());
+					prepStmtInsertSignalParams.setDouble(13, r.getDownMove());
+					prepStmtInsertSignalParams.setDouble(14, r.getAvgUpMove());
+					prepStmtInsertSignalParams.setDouble(15, r.getAvgDownMove());
+					prepStmtInsertSignalParams.setDouble(16, r.getRelativeStrength());
+					prepStmtInsertSignalParams.setDouble(17, r.getRSI());
+					prepStmtInsertSignalParams.setDouble(18, m.getFastEma());
+					prepStmtInsertSignalParams.setDouble(19, m.getSlowEma());
+					prepStmtInsertSignalParams.setDouble(20, m.getDifference());
+					prepStmtInsertSignalParams.setDouble(21, m.getSignal());
 					prepStmtInsertSignalParams.executeUpdate();
 
 					prepStmtInsertSignalParams.close();
@@ -837,11 +841,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 	}
 
-	private void whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low, Double high,
-			Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low,
+			Double high, Double close) throws SQLException {
 
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
+		SignalContainer signalContainer = new SignalContainer();
 		Statement stmt = conn.createStatement();
 		ResultSet openRs = stmt.executeQuery(openSql);
 		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
@@ -851,7 +856,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		boolean firstLoop = true;
 		while (openRs.next()) {
 			if (firstLoop) {
-				p1 = new PSarSignalParam(high, low);
+				signalContainer.p1 = new PSarSignalParam(high, low);
 				firstLoop = false;
 			}
 			macdSignalParam = new MACDSignalParam();
@@ -874,15 +879,18 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParamList.add(rsiSignalParam);
 		}
 		stmt.close();
-		r1 = new RSISignalParam(rsiSignalParamList);
-		m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.r1 = new RSISignalParam(rsiSignalParamList);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		return signalContainer;
 	}
 
-	private void whenPsarPreviousSignalsAvailableButNotRsiAndMacd(String instrumentToken, Double low, Double high,
-			Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+	private SignalContainer whenPsarPreviousSignalsAvailableButNotRsiAndMacd(String instrumentToken, Double low,
+			Double high, Double close) throws SQLException {
 
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
+		SignalContainer signalContainer = new SignalContainer();
+
 		Statement stmt = conn.createStatement();
 		ResultSet openRs = stmt.executeQuery(openSql);
 		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
@@ -892,7 +900,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		boolean firstLoop = true;
 		while (openRs.next()) {
 			if (firstLoop) {
-				p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
+				signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 						openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"),
 						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"));
 				firstLoop = false;
@@ -917,15 +925,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParamList.add(rsiSignalParam);
 		}
 		stmt.close();
-		r1 = new RSISignalParam(rsiSignalParamList);
-		m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.r1 = new RSISignalParam(rsiSignalParamList);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		return signalContainer;
 	}
 
-	private void whenPsarRsiPreviousSignalsAvailableButNotMacd(String instrumentToken, Double low, Double high,
-			Double close, PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
+	private SignalContainer whenPsarRsiPreviousSignalsAvailableButNotMacd(String instrumentToken, Double low,
+			Double high, Double close) throws SQLException {
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
-
+		SignalContainer signalContainer = new SignalContainer();
 		Statement stmt = conn.createStatement();
 		ResultSet openRs = stmt.executeQuery(openSql);
 		List<MACDSignalParam> macdSignalParamList = new ArrayList<MACDSignalParam>();
@@ -934,10 +943,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		while (openRs.next()) {
 			if (firstLoop) {
-				p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
+				signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 						openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"),
 						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"));
-				r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
+				signalContainer.r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
 						openRs.getDouble("downMove"), openRs.getDouble("avgUpMove"), openRs.getDouble("avgDownMove"),
 						openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"));
 				firstLoop = false;
@@ -951,20 +960,22 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParamList.add(macdSignalParam);
 		}
 		stmt.close();
-		m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		return signalContainer;
 	}
 
-	private void whenPsarRsiMacdAll3sPreviousSignalsAvailable(ResultSet openRs, Double low, Double high, Double close,
-			PSarSignalParam p1, RSISignalParam r1, MACDSignalParam m1) throws SQLException {
-
-		p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
+	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsAvailable(ResultSet openRs, Double low, Double high,
+			Double close) throws SQLException {
+		SignalContainer signalContainer = new SignalContainer();
+		signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 				openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"), openRs.getDouble("eP_pSarXaccFactor"),
 				openRs.getInt("trend"));
-		r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
+		signalContainer.r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
 				openRs.getDouble("downMove"), openRs.getDouble("avgUpMove"), openRs.getDouble("avgDownMove"),
 				openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"));
-		m1 = new MACDSignalParam(close, openRs.getDouble("fastEma"), openRs.getDouble("slowEma"),
+		signalContainer.m1 = new MACDSignalParam(close, openRs.getDouble("fastEma"), openRs.getDouble("slowEma"),
 				openRs.getDouble("strategySignal"));
+		return signalContainer;
 	}
 
 	@Override
