@@ -481,10 +481,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					idList.add(openRs.getInt(5));
 					orders.add(order);
 				}
-				stmt = conn.createStatement();
-				openSql = "update " + quoteTable + "_Signal set status ='orderPlaced' where id in("
-						+ commaSeperatedIDs(idList) + ")";
-				stmt.executeUpdate(openSql);
+				if (null != idList && idList.size() > 0) {
+					stmt = conn.createStatement();
+					openSql = "update " + quoteTable + "_Signal set status ='orderPlaced' where id in("
+							+ commaSeperatedIDs(idList) + ")";
+					stmt.executeUpdate(openSql);
+				}
 				stmt.close();
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -500,8 +502,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	private String commaSeperatedIDs(List<Integer> idList) {
-		String ids = "";
-		for (int i = 0; i < idList.size(); i++)
+		String ids = String.valueOf(idList.get(0));
+
+		for (int i = 1; i < idList.size(); i++)
 			ids = ids + "," + idList.get(i);
 		return ids;
 	}
@@ -688,10 +691,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				while (openRs.next()) {
 					idList.add(openRs.getInt(1));
 				}
-				stmt = conn.createStatement();
-				openSql = "update " + quoteTable + "_Signal set status ='timeOut' where id in("
-						+ commaSeperatedIDs(idList) + ")";
-				stmt.executeUpdate(openSql);
+				if (null != idList && idList.size() > 0) {
+					stmt = conn.createStatement();
+					openSql = "update " + quoteTable + "_Signal set status ='timeOut' where id in("
+							+ commaSeperatedIDs(idList) + ")";
+					stmt.executeUpdate(openSql);
+				}
 				stmt.close();
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -725,17 +730,19 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				while (timeStampRs.next()) {
 					idsList.add(timeStampRs.getInt(1));
 				}
-
-				openSql = "SELECT distinct timestampGrp FROM " + quoteTable + " where id in("
-						+ commaSeperatedIDs(idsList) + ") ORDER BY Time ASC ";
-				timeStampRs = timeStampRsStmt.executeQuery(openSql);
-				while (timeStampRs.next()) {
-					timeStampPeriodList.add(timeStampRs.getTimestamp("timestampGrp"));
+				if (null != idsList && idsList.size() > 0) {
+					openSql = "SELECT distinct timestampGrp FROM " + quoteTable + " where id in("
+							+ commaSeperatedIDs(idsList) + ") ORDER BY Time ASC ";
+					timeStampRs = timeStampRsStmt.executeQuery(openSql);
+					while (timeStampRs.next()) {
+						timeStampPeriodList.add(timeStampRs.getTimestamp("timestampGrp"));
+					}
 				}
-
-				openSql = "update " + quoteTable + " set usedForSignal ='used' where id in("
-						+ commaSeperatedIDs(idsList) + ")";
-				timeStampRsStmt.executeUpdate(openSql);
+				if (null != idsList && idsList.size() > 0) {
+					openSql = "update " + quoteTable + " set usedForSignal ='used' where id in("
+							+ commaSeperatedIDs(idsList) + ")";
+					timeStampRsStmt.executeUpdate(openSql);
+				}
 				timeStampRsStmt.close();
 
 				for (int timeLoop = 0; timeLoop < timeStampPeriodList.size(); timeLoop++) {
@@ -750,12 +757,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRsHighLowClose.next()) {
-						if (null == low || openRsHighLowClose.getDouble("low") < low)
-							low = openRsHighLowClose.getDouble("low");
-						if (null == high || openRsHighLowClose.getDouble("high") > high)
-							high = openRsHighLowClose.getDouble("high");
+						if (null == low || openRsHighLowClose.getDouble("lowPrice") < low)
+							low = openRsHighLowClose.getDouble("lowPrice");
+						if (null == high || openRsHighLowClose.getDouble("highPrice") > high)
+							high = openRsHighLowClose.getDouble("highPrice");
 						if (firstRecord) {
-							close = openRsHighLowClose.getDouble("close");
+							close = openRsHighLowClose.getDouble("closePrice");
 							firstRecord = false;
 						}
 					}

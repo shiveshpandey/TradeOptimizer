@@ -61,7 +61,7 @@ public class TradeOptimizer {
 	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
 
 	private boolean liveStreamFirstRun = true;
-	boolean firstTimeDayHistoryRun = true;
+	boolean firstTimeDayHistoryRun = false;
 
 	private int tokenCountForTrade = 10;
 	private int seconds = 1000;
@@ -249,8 +249,8 @@ public class TradeOptimizer {
 
 			@Override
 			public void run() {
-				try {
-					while (runnable) {
+				while (runnable) {
+					try {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeEnd) >= 0) {
 							runnable = false;
@@ -270,11 +270,12 @@ public class TradeOptimizer {
 							Thread.sleep(10 * seconds);
 							runnable = true;
 						}
+
+					} catch (InterruptedException e) {
+						LOGGER.info(e.getMessage());
+					} catch (KiteException e) {
+						LOGGER.info(e.getMessage());
 					}
-				} catch (InterruptedException e) {
-					LOGGER.info(e.getMessage());
-				} catch (KiteException e) {
-					LOGGER.info(e.getMessage());
 				}
 			}
 		});
@@ -287,8 +288,8 @@ public class TradeOptimizer {
 
 			@Override
 			public void run() {
-				try {
-					while (runnable) {
+				while (runnable) {
+					try {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
@@ -296,15 +297,16 @@ public class TradeOptimizer {
 								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
 										signalList.get(index).transactionType, signalList.get(index).quantity,
 										streamingQuoteStorage);
-							Thread.sleep(2 * seconds);
+							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
 						}
+
+					} catch (InterruptedException e) {
+						LOGGER.info(e.getMessage());
+					} catch (KiteException e) {
+						LOGGER.info(e.getMessage());
 					}
-				} catch (InterruptedException e) {
-					LOGGER.info(e.getMessage());
-				} catch (KiteException e) {
-					LOGGER.info(e.getMessage());
 				}
 			}
 		});
@@ -321,8 +323,8 @@ public class TradeOptimizer {
 
 			@Override
 			public void run() {
-				try {
-					while (runnable) {
+				while (runnable) {
+					try {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							startStreamingQuote();
@@ -331,9 +333,10 @@ public class TradeOptimizer {
 							runnable = false;
 							stopStreamingQuote();
 						}
+
+					} catch (InterruptedException e) {
+						LOGGER.info(e.getMessage());
 					}
-				} catch (InterruptedException e) {
-					LOGGER.info(e.getMessage());
 				}
 			}
 		});
@@ -438,7 +441,7 @@ public class TradeOptimizer {
 								LOGGER.info(e.getMessage());
 							}
 							histDataStreamStartDateTime = todaysDate + " " + tmFmt.format(new Date());
-							Thread.sleep(1800 * seconds);
+							Thread.sleep(900 * seconds);
 							histDataStreamEndDateTime = todaysDate + " " + tmFmt.format(new Date());
 						} else {
 							runnable = false;
@@ -530,8 +533,9 @@ public class TradeOptimizer {
 
 			@Override
 			public void run() {
-				try {
-					while (runnable) {
+
+				while (runnable) {
+					try {
 						Date timeNow = Calendar.getInstance(timeZone).getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							ArrayList<Long> instrumentList = getInstrumentTokensList();
@@ -548,9 +552,10 @@ public class TradeOptimizer {
 						} else {
 							runnable = false;
 						}
+
+					} catch (InterruptedException e) {
+						LOGGER.info(e.getMessage());
 					}
-				} catch (InterruptedException e) {
-					LOGGER.info(e.getMessage());
 				}
 			}
 		});
@@ -563,9 +568,9 @@ public class TradeOptimizer {
 			try {
 				if (liveStreamFirstRun) {
 					tickerSettingInitialization();
-					liveStreamFirstRun = false;
 					tickerProvider.connect();
 					tickerProvider.subscribe(tokenListForTick);
+					liveStreamFirstRun = false;
 				}
 			} catch (IOException | WebSocketException | KiteException e) {
 				LOGGER.info(e.getMessage());
