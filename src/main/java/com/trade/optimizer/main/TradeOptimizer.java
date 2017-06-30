@@ -101,7 +101,7 @@ public class TradeOptimizer {
 			kiteconnect.setPublicToken(userModel.publicToken);
 			startProcess();
 		} catch (JSONException | KiteException e) {
-			LOGGER.info(e.getMessage());
+			e.printStackTrace();
 			return "error";
 		}
 		return "index";
@@ -150,7 +150,7 @@ public class TradeOptimizer {
 										.valueOf(arr.getJSONObject(i).getString("tradedQuantity").replaceAll(",", ""))
 										/ 100000)));
 			} catch (IOException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 		}
 		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
@@ -188,7 +188,7 @@ public class TradeOptimizer {
 
 			closingDayRoundOffOperations();
 		} catch (JSONException | ParseException | KiteException e) {
-			LOGGER.info(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -198,7 +198,7 @@ public class TradeOptimizer {
 		try {
 			tickerProvider.setTimeIntervalForReconnection(5);
 		} catch (KiteException e) {
-			LOGGER.info(e.getMessage());
+			e.printStackTrace();
 		}
 		tickerProvider.setMaxRetries(-1);
 
@@ -238,7 +238,7 @@ public class TradeOptimizer {
 				streamingQuoteStorage.createDaysStreamingQuoteTable(
 						quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
 			} catch (SQLException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 		}
 	}
@@ -272,9 +272,11 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
 					} catch (KiteException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -303,9 +305,11 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
 					} catch (KiteException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -335,7 +339,9 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -374,7 +380,7 @@ public class TradeOptimizer {
 				if (e.getMessage().trim().equalsIgnoreCase("/ by zero"))
 					continue;
 				else {
-					LOGGER.info(e.getMessage());
+					e.printStackTrace();
 					continue;
 				}
 			} catch (KiteException e) {
@@ -420,6 +426,8 @@ public class TradeOptimizer {
 									firstTimeDayHistoryRun = false;
 								} catch (KiteException e) {
 									LOGGER.info(e.message);
+								} catch (Exception e) {
+									e.printStackTrace();
 								}
 							}
 
@@ -438,8 +446,11 @@ public class TradeOptimizer {
 									roundOfNonPerformingBoughtStocks(quoteStreamingInstrumentsArr,
 											previousQuoteStreamingInstrumentsArr, kiteconnect);
 							} catch (KiteException e) {
-								LOGGER.info(e.getMessage());
+								e.printStackTrace();
+							} catch (Exception e) {
+								e.printStackTrace();
 							}
+
 							histDataStreamStartDateTime = todaysDate + " " + tmFmt.format(new Date());
 							Thread.sleep(900 * seconds);
 							histDataStreamEndDateTime = todaysDate + " " + tmFmt.format(new Date());
@@ -447,9 +458,9 @@ public class TradeOptimizer {
 							runnable = false;
 						}
 					} catch (InterruptedException e) {
-						LOGGER.info(e.getMessage());
-					} catch (IOException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -523,7 +534,7 @@ public class TradeOptimizer {
 			try {
 				tickerProvider.subscribe(subList);
 			} catch (IOException | WebSocketException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 	}
 
@@ -554,7 +565,9 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -573,7 +586,9 @@ public class TradeOptimizer {
 					liveStreamFirstRun = false;
 				}
 			} catch (IOException | WebSocketException | KiteException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 	}

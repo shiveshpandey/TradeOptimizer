@@ -80,8 +80,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32),"
 						+ " LastTradedPrice DECIMAL(20,4) , LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT,"
 						+ " BuyQty BIGINT , SellQty BIGINT , OpenPrice DECIMAL(20,4) ,  HighPrice DECIMAL(20,4) , LowPrice DECIMAL(20,4),"
-						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID),"
-						+ "CONSTRAINT UC_tick UNIQUE (time,InstrumentToken)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID)"
+						+ ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -187,7 +187,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						prepStmt.setString(13, tickType);
 						prepStmt.executeUpdate();
 					} catch (ParseException e) {
-						LOGGER.info(e.getMessage());
+						e.printStackTrace();
 					}
 				}
 				try {
@@ -201,12 +201,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmt.setDouble(3, quoteList.get(0).ltp);
 					prepStmt.executeUpdate();
 					prepStmt.close();
-				} catch (ParseException e) {
-					LOGGER.info(e.getMessage());
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 
 			} catch (SQLException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 		} else {
 			if (conn != null) {
@@ -540,7 +540,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 		} else {
 			if (conn != null) {
@@ -660,7 +660,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
-				LOGGER.info(e.getMessage());
+				e.printStackTrace();
 			}
 		} else {
 			if (conn != null) {
