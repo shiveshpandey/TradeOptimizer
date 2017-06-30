@@ -1,16 +1,18 @@
 package com.trade.optimizer.signal.parameter;
 
+import com.streamquote.utils.StreamingConfig;
+
 public class PSarSignalParam {
 
-	Double high;
-	Double low;
-	Double pSar;
-	Double eP;
-	Double eP_pSar;
+	Double high = StreamingConfig.MAX_VALUE;
+	Double low = StreamingConfig.MAX_VALUE;
+	Double pSar = StreamingConfig.MAX_VALUE;
+	Double eP = StreamingConfig.MAX_VALUE;
+	Double eP_pSar = StreamingConfig.MAX_VALUE;
 	static Double accFactor1 = 0.02;
 	static Double accFactor2 = 0.2;
 	Double accFactor = 0.2;
-	Double eP_pSarXaccFactor;
+	Double eP_pSarXaccFactor = StreamingConfig.MAX_VALUE;
 	int trend = 1;
 
 	public PSarSignalParam(Double high, Double low) {

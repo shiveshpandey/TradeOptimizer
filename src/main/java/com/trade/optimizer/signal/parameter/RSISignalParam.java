@@ -2,16 +2,18 @@ package com.trade.optimizer.signal.parameter;
 
 import java.util.List;
 
+import com.streamquote.utils.StreamingConfig;
+
 public class RSISignalParam {
 
-	Double close;
-	Double upMove;
-	Double downMove;
-	Double avgUpMove;
+	Double close = StreamingConfig.MAX_VALUE;
+	Double upMove = StreamingConfig.MAX_VALUE;
+	Double downMove = StreamingConfig.MAX_VALUE;
+	Double avgUpMove = StreamingConfig.MAX_VALUE;
 	static int periods = 14;
-	Double avgDownMove;
-	Double relativeStrength;
-	Double RSI;
+	Double avgDownMove = StreamingConfig.MAX_VALUE;
+	Double relativeStrength = StreamingConfig.MAX_VALUE;
+	Double RSI = StreamingConfig.MAX_VALUE;
 
 	public RSISignalParam(List<RSISignalParam> rsiSignalParamList) {
 		Double avgUp = 0.0, avgDown = 0.0;

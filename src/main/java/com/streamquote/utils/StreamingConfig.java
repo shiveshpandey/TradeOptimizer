@@ -13,9 +13,9 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER = "StreamingQuote";
 	public static final String QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER = "_Date_";
 
-	public static final String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "26-01-2016", "07-03-2016", "24-03-2016",
-			"25-03-2016", "14-04-2016", "15-04-2016", "19-04-2016", "06-07-2016", "15-08-2016", "05-09-2016",
-			"13-09-2016", "11-10-2016", "12-10-2016", "31-10-2016", "14-11-2016" };
+	public static final String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "26-01-2017", "24-02-2017", "13-03-2017",
+			"04-04-2017", "14-04-2017", "01-05-2017", "26-06-2017", "15-08-2017", "25-08-2017", "02-10-2017",
+			"19-10-2017", "20-10-2017", "25-12-2017" };
 
 	public static final String QUOTE_STREAMING_MODE_QUOTE = "quote";
 	public static final String QUOTE_STREAMING_DEFAULT_MODE = QUOTE_STREAMING_MODE_QUOTE;
@@ -41,8 +41,9 @@ public class StreamingConfig {
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json" };
 
 	public static String HIST_DATA_END_DATE = null;
-	public static String HIST_DATA_START_DATE = "2017-06-19";
+	public static String HIST_DATA_START_DATE = "2017-07-01";
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
+	public static final Double MAX_VALUE = 9999999999.9999999999;
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
 		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;

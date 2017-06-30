@@ -61,7 +61,8 @@ public class TradeOptimizer {
 	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
 
 	private boolean liveStreamFirstRun = true;
-	boolean firstTimeDayHistoryRun = false;
+	private boolean firstTimeDayHistoryRun = true;
+	private boolean tickerStarted = false;
 
 	private int tokenCountForTrade = 10;
 	private int seconds = 1000;
@@ -444,7 +445,7 @@ public class TradeOptimizer {
 								if (null != quoteStreamingInstrumentsArr
 										&& null != previousQuoteStreamingInstrumentsArr)
 									roundOfNonPerformingBoughtStocks(quoteStreamingInstrumentsArr,
-											previousQuoteStreamingInstrumentsArr, kiteconnect);
+											previousQuoteStreamingInstrumentsArr);
 							} catch (KiteException e) {
 								e.printStackTrace();
 							} catch (Exception e) {
@@ -469,7 +470,7 @@ public class TradeOptimizer {
 	}
 
 	private void roundOfNonPerformingBoughtStocks(ArrayList<Long> quoteStreamingInstrumentsArr,
-			ArrayList<Long> previousQuoteStreamingInstrumentsArr, KiteConnect kiteconnect) throws KiteException {
+			ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws KiteException {
 
 		ArrayList<Long> unSubList = new ArrayList<Long>();
 		ArrayList<Long> subList = new ArrayList<Long>();
@@ -498,23 +499,25 @@ public class TradeOptimizer {
 			}
 		}
 		List<Order> orders = tradeOperations.getOrders(kiteconnect);
-
-		for (int index = 0; index < orders.size(); index++) {
-			boolean OrderCancelRequired = true;
-			for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
-				if (orders.get(index).tradingSymbol
-						.equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
-					OrderCancelRequired = false;
+		if (null != orders && orders.size() > 0)
+			for (int index = 0; index < orders.size(); index++) {
+				boolean OrderCancelRequired = true;
+				for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
+					if (orders.get(index).tradingSymbol
+							.equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
+						OrderCancelRequired = false;
+					}
+				}
+				if (OrderCancelRequired) {
+					if (orders.get(index).status.equalsIgnoreCase("OPEN"))
+						tradeOperations.cancelOrder(kiteconnect, orders.get(index));
 				}
 			}
-			if (OrderCancelRequired) {
-				if (orders.get(index).status.equalsIgnoreCase("OPEN"))
-					tradeOperations.cancelOrder(kiteconnect, orders.get(index));
-			}
-		}
 
-		List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
-
+		Holding holdingList = tradeOperations.getHoldings(kiteconnect);
+		List<Holding> holdings = new ArrayList<Holding>();
+		if (null != holdingList && null != holdingList.holdings)
+			holdings = holdingList.holdings;
 		for (int index = 0; index < holdings.size(); index++) {
 			boolean orderSellOutRequired = true;
 			for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
@@ -527,6 +530,15 @@ public class TradeOptimizer {
 				tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
 						holdings.get(index).quantity, streamingQuoteStorage);
 			}
+		}
+		if (liveStreamFirstRun) {
+			tickerSettingInitialization();
+			try {
+				tickerProvider.connect();
+			} catch (WebSocketException | IOException e) {
+				e.printStackTrace();
+			}
+			tickerStarted = true;
 		}
 		if (null != unSubList && unSubList.size() > 0)
 			tickerProvider.unsubscribe(unSubList);
@@ -580,8 +592,10 @@ public class TradeOptimizer {
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
 				if (liveStreamFirstRun) {
-					tickerSettingInitialization();
-					tickerProvider.connect();
+					if (!tickerStarted) {
+						tickerSettingInitialization();
+						tickerProvider.connect();
+					}
 					tickerProvider.subscribe(tokenListForTick);
 					liveStreamFirstRun = false;
 				}

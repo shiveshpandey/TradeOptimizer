@@ -138,12 +138,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
-						+ "_signalParams (ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32), high DECIMAL(20,4) ,"
-						+ " low DECIMAL(20,4) ,close DECIMAL(20,4) ,pSar DECIMAL(20,4) , eP DECIMAL(20,4) ,eP_pSar DECIMAL(20,4) ,"
-						+ "accFactor DECIMAL(20,4) ,eP_pSarXaccFactor DECIMAL(20,4) ,trend DECIMAL(20,4) ,upMove DECIMAL(20,4) ,"
-						+ "downMove DECIMAL(20,4) ,avgUpMove DECIMAL(20,4) , avgDownMove DECIMAL(20,4) ,relativeStrength DECIMAL(20,4),"
-						+ "RSI DECIMAL(20,4) ,fastEma DECIMAL(20,4) , slowEma DECIMAL(20,4) ,difference DECIMAL(20,4) ,"
-						+ " strategySignal  DECIMAL(20,4) ,PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ "_signalParams (ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32), high DECIMAL(20,20) ,"
+						+ " low DECIMAL(20,20) ,close DECIMAL(20,20) ,pSar DECIMAL(20,20) , eP DECIMAL(20,20) ,eP_pSar DECIMAL(20,20) ,"
+						+ "accFactor DECIMAL(20,20) ,eP_pSarXaccFactor DECIMAL(20,20) ,trend DECIMAL(20,20) ,upMove DECIMAL(20,20) ,"
+						+ "downMove DECIMAL(20,20) ,avgUpMove DECIMAL(20,20) , avgDownMove DECIMAL(20,20) ,relativeStrength DECIMAL(20,20),"
+						+ "RSI DECIMAL(20,20) ,fastEma DECIMAL(20,20) , slowEma DECIMAL(20,20) ,difference DECIMAL(20,20) ,"
+						+ " strategySignal  DECIMAL(20,20) ,PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 
 				stmt.executeUpdate(sql);
 
@@ -774,22 +774,17 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					SignalContainer signalContainer = null;
 
 					if (openRsSignalParams.next()) {
-						if (null != openRsSignalParams.getString(20)
-								&& !"".equalsIgnoreCase(openRsSignalParams.getString(20))) {
+						if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(20)) {
 							signalContainer = this.whenPsarRsiMacdAll3sPreviousSignalsAvailable(openRsSignalParams, low,
 									high, close);
 
-						} else if (null != openRsSignalParams.getString(16)
-								&& !"".equalsIgnoreCase(openRsSignalParams.getString(16))) {
+						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(16)) {
 							signalContainer = this.whenPsarRsiPreviousSignalsAvailableButNotMacd(instrumentToken, low,
 									high, close);
 
-						} else if (null != openRsSignalParams.getString(5)
-								&& !"".equalsIgnoreCase(openRsSignalParams.getString(5))
-								&& null != openRsSignalParams.getString(6)
-								&& !"".equalsIgnoreCase(openRsSignalParams.getString(6))
-								&& null != openRsSignalParams.getString(9)
-								&& !"".equalsIgnoreCase(openRsSignalParams.getString(9))) {
+						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(5)
+								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(6)
+								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(9)) {
 							signalContainer = this.whenPsarPreviousSignalsAvailableButNotRsiAndMacd(instrumentToken,
 									low, high, close);
 						}
@@ -1051,7 +1046,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					ResultSet openRs = stmt.executeQuery(openSql);
 
-					if (openRs.next()) {
+					if (openRs.next() && StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
+							&& StreamingConfig.MAX_VALUE != openRs.getDouble("strategySignal")) {
 						if (openRs.getInt("trend") == 2 && openRs.getDouble("rSI") < 70 && openRs.getDouble("rSI") > 30
 								&& openRs.getDouble("strategySignal") > 0) {
 							signalList.put(instrumentList.get(count), "BUY");

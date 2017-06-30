@@ -2,19 +2,21 @@ package com.trade.optimizer.signal.parameter;
 
 import java.util.List;
 
+import com.streamquote.utils.StreamingConfig;
+
 public class MACDSignalParam {
 
-	Double close;
-	Double fastEma;
-	Double slowEma;
-	Double difference;
+	Double close = StreamingConfig.MAX_VALUE;
+	Double fastEma = StreamingConfig.MAX_VALUE;
+	Double slowEma = StreamingConfig.MAX_VALUE;
+	Double difference = StreamingConfig.MAX_VALUE;
 	static int fastEmaPeriods = 12;
 	static int slowEmaPeriods = 26;
 	static int signalEmaPeriods = 9;
 	static double fastEmaAccFactor = 2 / (fastEmaPeriods + 1);
 	static double slowEmaAccFactor = 2 / (slowEmaPeriods + 1);
 	static double signalEmaAccFactor = 2 / (signalEmaPeriods + 1);
-	Double signal;
+	Double signal = StreamingConfig.MAX_VALUE;
 
 	public MACDSignalParam(List<MACDSignalParam> rsiSignalParamList) {
 		for (int i = rsiSignalParamList.size() - 1; i > 0; i--) {
