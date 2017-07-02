@@ -18,34 +18,39 @@ public class MACDSignalParam {
 	static double signalEmaAccFactor = 2 / (signalEmaPeriods + 1);
 	Double signal = StreamingConfig.MAX_VALUE;
 
-	public MACDSignalParam(List<MACDSignalParam> rsiSignalParamList) {
-		for (int i = rsiSignalParamList.size() - 1; i > 0; i--) {
-			if (rsiSignalParamList.size() == fastEmaPeriods) {
-				for (int j = fastEmaPeriods - 1; j > 0; j--) {
-					this.fastEma = this.fastEma + rsiSignalParamList.get(j).close;
-				}
-			} else if (rsiSignalParamList.size() > fastEmaPeriods) {
-				this.fastEma = ((rsiSignalParamList.get(i).close - rsiSignalParamList.get(i - 1).fastEma)
-						* fastEmaAccFactor) + rsiSignalParamList.get(i - 1).fastEma;
+	public MACDSignalParam(List<MACDSignalParam> rsiSignalParamList, Double close) {
+		if (rsiSignalParamList.size() == fastEmaPeriods - 1) {
+			this.fastEma = close;
+			for (int j = 0; j < rsiSignalParamList.size(); j++) {
+				this.fastEma = this.fastEma + rsiSignalParamList.get(j).close;
 			}
-			if (rsiSignalParamList.size() == slowEmaPeriods) {
-				for (int j = slowEmaPeriods - 1; j > 0; j--) {
-					this.slowEma = this.slowEma + rsiSignalParamList.get(j).close;
-				}
-				this.difference = this.fastEma - this.slowEma;
-			} else if (rsiSignalParamList.size() > slowEmaPeriods) {
-				this.slowEma = ((rsiSignalParamList.get(i).close - rsiSignalParamList.get(i - 1).slowEma)
-						* slowEmaAccFactor) + rsiSignalParamList.get(i - 1).slowEma;
-				this.difference = this.fastEma - this.slowEma;
+			this.fastEma = this.fastEma / fastEmaPeriods;
+		} else if (rsiSignalParamList.size() >= fastEmaPeriods) {
+			this.fastEma = ((close - rsiSignalParamList.get(0).fastEma) * fastEmaAccFactor)
+					+ rsiSignalParamList.get(0).fastEma;
+		}
+		if (rsiSignalParamList.size() == slowEmaPeriods - 1) {
+			this.slowEma = close;
+			for (int j = 0; j < rsiSignalParamList.size(); j++) {
+				this.slowEma = this.slowEma + rsiSignalParamList.get(j).close;
 			}
-			if (rsiSignalParamList.size() == slowEmaPeriods + signalEmaPeriods) {
-				for (int j = signalEmaPeriods - 1; j >= 0; j--) {
-					this.signal = this.signal + rsiSignalParamList.get(j).difference;
-				}
-			} else if (rsiSignalParamList.size() > slowEmaPeriods + signalEmaPeriods) {
-				this.signal = ((rsiSignalParamList.get(i).difference - rsiSignalParamList.get(i - 1).signal)
-						* signalEmaAccFactor) + rsiSignalParamList.get(i - 1).signal;
+			this.slowEma = this.slowEma / slowEmaPeriods;
+			this.difference = this.fastEma - this.slowEma;
+
+		} else if (rsiSignalParamList.size() >= slowEmaPeriods) {
+			this.slowEma = ((close - rsiSignalParamList.get(0).slowEma) * slowEmaAccFactor)
+					+ rsiSignalParamList.get(0).slowEma;
+			this.difference = this.fastEma - this.slowEma;
+		}
+		if (rsiSignalParamList.size() == slowEmaPeriods + signalEmaPeriods - 1) {
+			this.signal = this.difference;
+			for (int j = 0; j < rsiSignalParamList.size(); j++) {
+				this.signal = this.signal + rsiSignalParamList.get(j).difference;
 			}
+			this.signal = this.signal / (slowEmaPeriods + signalEmaPeriods);
+		} else if (rsiSignalParamList.size() >= slowEmaPeriods + signalEmaPeriods) {
+			this.signal = ((this.difference - rsiSignalParamList.get(0).signal) * signalEmaAccFactor)
+					+ rsiSignalParamList.get(0).signal;
 		}
 	}
 

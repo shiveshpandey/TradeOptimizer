@@ -138,12 +138,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
-						+ "_signalParams (ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32), high DECIMAL(20,20) ,"
-						+ " low DECIMAL(20,20) ,close DECIMAL(20,20) ,pSar DECIMAL(20,20) , eP DECIMAL(20,20) ,eP_pSar DECIMAL(20,20) ,"
-						+ "accFactor DECIMAL(20,20) ,eP_pSarXaccFactor DECIMAL(20,20) ,trend DECIMAL(20,20) ,upMove DECIMAL(20,20) ,"
-						+ "downMove DECIMAL(20,20) ,avgUpMove DECIMAL(20,20) , avgDownMove DECIMAL(20,20) ,relativeStrength DECIMAL(20,20),"
-						+ "RSI DECIMAL(20,20) ,fastEma DECIMAL(20,20) , slowEma DECIMAL(20,20) ,difference DECIMAL(20,20) ,"
-						+ " strategySignal  DECIMAL(20,20) ,PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ "_signalParams (ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32), high DECIMAL(26,11) ,"
+						+ " low DECIMAL(26,11) ,close DECIMAL(26,11) ,pSar DECIMAL(26,11) , eP DECIMAL(26,11) ,eP_pSar DECIMAL(26,11) ,"
+						+ "accFactor DECIMAL(26,11) ,eP_pSarXaccFactor DECIMAL(26,11) ,trend DECIMAL(26,11) ,upMove DECIMAL(26,11) ,"
+						+ "downMove DECIMAL(26,11) ,avgUpMove DECIMAL(26,11) , avgDownMove DECIMAL(26,11) ,relativeStrength DECIMAL(26,11),"
+						+ "RSI DECIMAL(26,11) ,fastEma DECIMAL(26,11) , slowEma DECIMAL(26,11) ,difference DECIMAL(26,11) ,"
+						+ " strategySignal  DECIMAL(26,11) ,timestampGrp timestamp,PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 
 				stmt.executeUpdate(sql);
 
@@ -856,22 +856,22 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		MACDSignalParam macdSignalParam;
 		RSISignalParam rsiSignalParam;
 		boolean firstLoop = true;
+		if (firstLoop) {
+			signalContainer.p1 = new PSarSignalParam(high, low);
+			firstLoop = false;
+		}
 		while (openRs.next()) {
-			if (firstLoop) {
-				signalContainer.p1 = new PSarSignalParam(high, low);
-				firstLoop = false;
-			}
 			macdSignalParam = new MACDSignalParam();
 			rsiSignalParam = new RSISignalParam();
 
-			macdSignalParam.setClose(close);
+			macdSignalParam.setClose(openRs.getDouble("close"));
 			macdSignalParam.setDifference(openRs.getDouble("difference"));
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
 			macdSignalParamList.add(macdSignalParam);
 
-			rsiSignalParam.setClose(close);
+			rsiSignalParam.setClose(openRs.getDouble("close"));
 			rsiSignalParam.setDownMove(openRs.getDouble("downMove"));
 			rsiSignalParam.setUpMove(openRs.getDouble("upMove"));
 			rsiSignalParam.setAvgDownMove(openRs.getDouble("avgDownMove"));
@@ -881,8 +881,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParamList.add(rsiSignalParam);
 		}
 		stmt.close();
-		signalContainer.r1 = new RSISignalParam(rsiSignalParamList);
-		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.r1 = new RSISignalParam(rsiSignalParamList, close);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 		return signalContainer;
 	}
 
@@ -910,14 +910,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam = new MACDSignalParam();
 			rsiSignalParam = new RSISignalParam();
 
-			macdSignalParam.setClose(close);
+			macdSignalParam.setClose(openRs.getDouble("close"));
 			macdSignalParam.setDifference(openRs.getDouble("difference"));
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
 			macdSignalParamList.add(macdSignalParam);
 
-			rsiSignalParam.setClose(close);
+			rsiSignalParam.setClose(openRs.getDouble("close"));
 			rsiSignalParam.setDownMove(openRs.getDouble("downMove"));
 			rsiSignalParam.setUpMove(openRs.getDouble("upMove"));
 			rsiSignalParam.setAvgDownMove(openRs.getDouble("avgDownMove"));
@@ -927,8 +927,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParamList.add(rsiSignalParam);
 		}
 		stmt.close();
-		signalContainer.r1 = new RSISignalParam(rsiSignalParamList);
-		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.r1 = new RSISignalParam(rsiSignalParamList, close);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 		return signalContainer;
 	}
 
@@ -954,7 +954,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				firstLoop = false;
 			}
 			macdSignalParam = new MACDSignalParam();
-			macdSignalParam.setClose(close);
+			macdSignalParam.setClose(openRs.getDouble("close"));
 			macdSignalParam.setDifference(openRs.getDouble("difference"));
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
@@ -962,7 +962,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParamList.add(macdSignalParam);
 		}
 		stmt.close();
-		signalContainer.m1 = new MACDSignalParam(macdSignalParamList);
+		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 		return signalContainer;
 	}
 

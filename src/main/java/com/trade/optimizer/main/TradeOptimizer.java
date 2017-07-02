@@ -222,10 +222,38 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
+				if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
+					ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 			}
 		});
+	}
+
+	protected ArrayList<Tick> testingTickerData(ArrayList<Long> quoteStreamingInstrumentsArr) {
+
+		ArrayList<Tick> ticks = new ArrayList<Tick>();
+		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
+			Tick tick = new Tick();
+			tick.setToken(Integer.parseInt(quoteStreamingInstrumentsArr.get(i).toString()));
+			tick.setClosePrice(2000.0 + Math.random() * (5.0));
+			tick.setLowPrice(tick.getClosePrice() - (Math.random() * (3.0 * Math.random())));
+			tick.setHighPrice(tick.getClosePrice() + (Math.random() * (3.0 * Math.random())));
+			if (Math.random() > 0.5)
+				tick.setClosePrice(tick.getClosePrice() - Math.random());
+			else
+				tick.setClosePrice(tick.getClosePrice() + Math.random());
+			if (Math.random() > 0.5)
+				tick.setLowPrice(tick.getLowPrice() - Math.random());
+			else
+				tick.setLowPrice(tick.getLowPrice() + Math.random());
+			if (Math.random() > 0.5)
+				tick.setHighPrice(tick.getHighPrice() - Math.random());
+			else
+				tick.setHighPrice(tick.getHighPrice() + Math.random());
+			ticks.add(tick);
+		}
+		return ticks;
 	}
 
 	private void createInitialDayTables() {

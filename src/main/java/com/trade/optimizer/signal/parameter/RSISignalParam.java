@@ -15,26 +15,38 @@ public class RSISignalParam {
 	Double relativeStrength = StreamingConfig.MAX_VALUE;
 	Double RSI = StreamingConfig.MAX_VALUE;
 
-	public RSISignalParam(List<RSISignalParam> rsiSignalParamList) {
-		Double avgUp = 0.0, avgDown = 0.0;
-		for (int i = rsiSignalParamList.size() - 1; i > 0; i--) {
-			if (rsiSignalParamList.get(i).close > rsiSignalParamList.get(i - 1).close)
-				rsiSignalParamList.get(i).upMove = rsiSignalParamList.get(i).close
-						- rsiSignalParamList.get(i - 1).close;
+	public RSISignalParam(List<RSISignalParam> rsiSignalParamList, Double close) {
+		if (rsiSignalParamList.size() > 0) {
+			if (close > rsiSignalParamList.get(0).close)
+				this.upMove = close - rsiSignalParamList.get(0).close;
 			else
-				rsiSignalParamList.get(i).upMove = 0.0;
-			if (rsiSignalParamList.get(i).close < rsiSignalParamList.get(i - 1).close)
-				rsiSignalParamList.get(i).downMove = rsiSignalParamList.get(i).close
-						- rsiSignalParamList.get(i - 1).close;
+				this.upMove = 0.0;
+			if (close < rsiSignalParamList.get(0).close)
+				this.downMove = close - rsiSignalParamList.get(0).close;
 			else
-				rsiSignalParamList.get(i).downMove = 0.0;
-			avgUp = avgUp + rsiSignalParamList.get(i).upMove;
-			avgDown = avgDown + rsiSignalParamList.get(i).downMove;
+				this.downMove = 0.0;
+			if (rsiSignalParamList.size() == periods - 1) {
+				Double avgUp = this.upMove, avgDown = this.downMove;
+				for (int i = 0; i < rsiSignalParamList.size(); i++) {
+					avgUp = avgUp + rsiSignalParamList.get(i).upMove;
+					avgDown = avgDown + rsiSignalParamList.get(i).downMove;
+
+					this.avgDownMove = avgDown / periods;
+					this.avgUpMove = avgUp / periods;
+					if (this.avgDownMove > 0) {
+						this.relativeStrength = this.avgUpMove / this.avgDownMove;
+						this.RSI = 100 - (100 / (this.relativeStrength + 1));
+					}
+				}
+			} else if (rsiSignalParamList.size() >= periods) {
+				this.avgUpMove = (rsiSignalParamList.get(0).avgUpMove * (periods - 1) + this.upMove) / periods;
+				this.avgDownMove = (rsiSignalParamList.get(0).avgDownMove * (periods - 1) + this.avgDownMove) / periods;
+				if (this.avgDownMove > 0) {
+					this.relativeStrength = this.avgUpMove / this.avgDownMove;
+					this.RSI = 100 - (100 / (this.relativeStrength + 1));
+				}
+			}
 		}
-		this.avgDownMove = avgDown / periods;
-		this.avgUpMove = avgUp / periods;
-		this.relativeStrength = this.avgUpMove / this.avgDownMove;
-		this.RSI = 100 - (100 / (this.relativeStrength + 1));
 	}
 
 	public RSISignalParam(Double previousClose, Double close, Double upMove, Double downMove, Double avgUpMove,
@@ -51,8 +63,10 @@ public class RSISignalParam {
 
 		this.avgUpMove = (avgUpMove * (periods - 1) + this.upMove) / periods;
 		this.avgDownMove = (avgDownMove * (periods - 1) + this.avgDownMove) / periods;
-		this.relativeStrength = this.avgUpMove / this.avgDownMove;
-		this.RSI = 100 - (100 / (this.relativeStrength + 1));
+		if (this.avgDownMove > 0) {
+			this.relativeStrength = this.avgUpMove / this.avgDownMove;
+			this.RSI = 100 - (100 / (this.relativeStrength + 1));
+		}
 	}
 
 	public RSISignalParam() {
