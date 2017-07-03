@@ -22,7 +22,7 @@ public class RSISignalParam {
 			else
 				this.upMove = 0.0;
 			if (close < rsiSignalParamList.get(0).close)
-				this.downMove = close - rsiSignalParamList.get(0).close;
+				this.downMove = rsiSignalParamList.get(0).close - close;
 			else
 				this.downMove = 0.0;
 			if (rsiSignalParamList.size() == periods - 1) {
@@ -30,13 +30,12 @@ public class RSISignalParam {
 				for (int i = 0; i < rsiSignalParamList.size(); i++) {
 					avgUp = avgUp + rsiSignalParamList.get(i).upMove;
 					avgDown = avgDown + rsiSignalParamList.get(i).downMove;
-
-					this.avgDownMove = avgDown / periods;
-					this.avgUpMove = avgUp / periods;
-					if (this.avgDownMove > 0) {
-						this.relativeStrength = this.avgUpMove / this.avgDownMove;
-						this.RSI = 100 - (100 / (this.relativeStrength + 1));
-					}
+				}
+				this.avgDownMove = avgDown / periods;
+				this.avgUpMove = avgUp / periods;
+				if (this.avgDownMove > 0) {
+					this.relativeStrength = this.avgUpMove / this.avgDownMove;
+					this.RSI = 100 - (100 / (this.relativeStrength + 1));
 				}
 			} else if (rsiSignalParamList.size() >= periods) {
 				this.avgUpMove = (rsiSignalParamList.get(0).avgUpMove * (periods - 1) + this.upMove) / periods;
@@ -57,7 +56,7 @@ public class RSISignalParam {
 		else
 			this.upMove = 0.0;
 		if (close < previousClose)
-			this.downMove = close - previousClose;
+			this.downMove = previousClose - close;
 		else
 			this.downMove = 0.0;
 

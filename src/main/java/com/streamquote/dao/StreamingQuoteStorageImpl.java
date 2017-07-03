@@ -1042,18 +1042,44 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				for (int count = 0; count < instrumentList.size(); count++) {
 					openSql = "SELECT trend,rSI,strategySignal FROM " + quoteTable
 							+ "_SignalParams where InstrumentToken ='" + instrumentList.get(count)
-							+ "' ORDER BY Time DESC LIMIT 1 ";
+							+ "' ORDER BY Time DESC LIMIT 2 ";
 
 					ResultSet openRs = stmt.executeQuery(openSql);
-
-					if (openRs.next() && StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
-							&& StreamingConfig.MAX_VALUE != openRs.getDouble("strategySignal")) {
-						if (openRs.getInt("trend") == 2 && openRs.getDouble("rSI") < 70 && openRs.getDouble("rSI") > 30
-								&& openRs.getDouble("strategySignal") > 0) {
-							signalList.put(instrumentList.get(count), "BUY");
-						} else if (openRs.getInt("trend") == 0 && openRs.getDouble("rSI") > 70
-								&& openRs.getDouble("rSI") < 30 && openRs.getDouble("strategySignal") < 0) {
-							signalList.put(instrumentList.get(count), "SELL");
+					boolean firstDataSet = true;
+					Double macdSignalCurr = 0.0;
+					Integer trend = 1;
+					Double rsi = 0.0;
+					while (openRs.next()) {
+						if (StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
+								&& StreamingConfig.MAX_VALUE != openRs.getDouble("strategySignal")) {
+							Double macdSignalPrev = openRs.getDouble("difference") - openRs.getDouble("strategySignal");
+							if (firstDataSet) {
+								macdSignalCurr = macdSignalPrev;
+								trend = openRs.getInt("trend");
+								rsi = openRs.getDouble("rSI");
+								firstDataSet = false;
+							} else if (!firstDataSet) {
+								if (trend == 2 && rsi < 70 && rsi > 30
+										&& (macdSignalCurr > 0 && macdSignalPrev < macdSignalCurr)) {
+									signalList.put(instrumentList.get(count), "BUY");
+								} else if (trend == 0 && rsi > 70 && rsi < 30
+										&& (macdSignalCurr < 0 && macdSignalPrev > macdSignalCurr)) {// here
+																										// need
+																										// to
+																										// change
+																										// macdSignalCurr
+																										// cond
+																										// with
+																										// 0<>
+																										// logic
+																										// instead
+																										// of
+																										// macdSignalPrev
+																										// <>
+																										// cond
+									signalList.put(instrumentList.get(count), "SELL");
+								}
+							}
 						}
 					}
 				}

@@ -58,16 +58,16 @@ public class PSarSignalParam {
 		this.eP_pSar = this.eP - this.pSar;
 
 		if (this.trend == trend) {
-			if (trend == 2 && eP > this.eP) {
+			if (trend == 2 && this.eP > eP) {
 				this.accFactor = accFactor + accFactor1;
 			}
-			if (trend == 2 && eP <= this.eP) {
+			if (trend == 2 && this.eP <= eP) {
 				this.accFactor = accFactor;
 			}
-			if (trend == 0 && eP < this.eP) {
+			if (trend == 0 && this.eP < eP) {
 				this.accFactor = accFactor + accFactor1;
 			}
-			if (trend == 0 && eP >= this.eP) {
+			if (trend == 0 && this.eP >= eP) {
 				this.accFactor = accFactor;
 			}
 		} else {
