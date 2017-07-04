@@ -10,9 +10,9 @@ public class MACDSignalParam {
 	Double fastEma = StreamingConfig.MAX_VALUE;
 	Double slowEma = StreamingConfig.MAX_VALUE;
 	Double difference = StreamingConfig.MAX_VALUE;
-	static int fastEmaPeriods = 12;
-	static int slowEmaPeriods = 26;
-	static int signalEmaPeriods = 9;
+	static int fastEmaPeriods = 9;
+	static int slowEmaPeriods = 14;
+	static int signalEmaPeriods = 6;
 	static double fastEmaAccFactor = (double) 2 / (fastEmaPeriods + 1);
 	static double slowEmaAccFactor = (double) 2 / (slowEmaPeriods + 1);
 	static double signalEmaAccFactor = (double) 2 / (signalEmaPeriods + 1);
@@ -21,7 +21,7 @@ public class MACDSignalParam {
 	public MACDSignalParam(List<MACDSignalParam> rsiSignalParamList, Double close) {
 		if (rsiSignalParamList.size() == fastEmaPeriods - 1) {
 			this.fastEma = close;
-			for (int j = 0; j < rsiSignalParamList.size(); j++) {
+			for (int j = 0; j < fastEmaPeriods - 1; j++) {
 				this.fastEma = this.fastEma + rsiSignalParamList.get(j).close;
 			}
 			this.fastEma = this.fastEma / (fastEmaPeriods);
@@ -31,7 +31,7 @@ public class MACDSignalParam {
 		}
 		if (rsiSignalParamList.size() == slowEmaPeriods - 1) {
 			this.slowEma = close;
-			for (int j = 0; j < rsiSignalParamList.size(); j++) {
+			for (int j = 0; j < slowEmaPeriods - 1; j++) {
 				this.slowEma = this.slowEma + rsiSignalParamList.get(j).close;
 			}
 			this.slowEma = this.slowEma / (slowEmaPeriods);

@@ -27,7 +27,7 @@ public class RSISignalParam {
 				this.downMove = 0.0;
 			if (rsiSignalParamList.size() == periods - 1) {
 				Double avgUp = this.upMove, avgDown = this.downMove;
-				for (int i = 0; i < rsiSignalParamList.size() - 1; i++) {
+				for (int i = 0; i < periods - 2; i++) {
 					avgUp = avgUp + rsiSignalParamList.get(i).upMove;
 					avgDown = avgDown + rsiSignalParamList.get(i).downMove;
 				}
