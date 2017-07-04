@@ -80,9 +80,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32),"
 						+ " LastTradedPrice DECIMAL(20,4) , LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT,"
 						+ " BuyQty BIGINT , SellQty BIGINT , OpenPrice DECIMAL(20,4) ,  HighPrice DECIMAL(20,4) , LowPrice DECIMAL(20,4),"
-						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID),"
-						+ "CONSTRAINT UC_quoteTable UNIQUE (time,InstrumentToken,LastTradedPrice,LastTradedQty))"
-						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID)"
+						+ ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -116,8 +115,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				sql = "CREATE TABLE " + quoteTable
 						+ "_Signal (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
 						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
-						+ "TradePrice DECIMAL(20,4), CONSTRAINT UC_signal UNIQUE (time,InstrumentToken,ProcessSignal,Status)) "
-						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ "TradePrice DECIMAL(20,4)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(

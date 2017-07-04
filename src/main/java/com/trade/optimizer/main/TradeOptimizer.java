@@ -251,6 +251,8 @@ public class TradeOptimizer {
 				tick.setHighPrice(tick.getHighPrice() - Math.random());
 			else
 				tick.setHighPrice(tick.getHighPrice() + Math.random());
+
+			tick.setLastTradedPrice(tick.getClosePrice());
 			ticks.add(tick);
 		}
 		return ticks;
