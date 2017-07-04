@@ -2,9 +2,9 @@ package com.streamquote.utils;
 
 public class StreamingConfig {
 
-	public static final String QUOTE_STREAMING_START_TIME = "00:05:01";
+	public static final String QUOTE_STREAMING_START_TIME = "00:00:01";
 	public static final String QUOTE_STREAMING_END_TIME = "23:55:01";
-	public static final String HISTORICAL_DATA_STREAM_START_TIME = "00:05:01";
+	public static final String HISTORICAL_DATA_STREAM_START_TIME = "00:00:01";
 	public static final String HISTORICAL_DATA_STREAM_END_TIME = "23:55:01";
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";

@@ -80,8 +80,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ " (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32),"
 						+ " LastTradedPrice DECIMAL(20,4) , LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT,"
 						+ " BuyQty BIGINT , SellQty BIGINT , OpenPrice DECIMAL(20,4) ,  HighPrice DECIMAL(20,4) , LowPrice DECIMAL(20,4),"
-						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID)"
-						+ ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " ClosePrice DECIMAL(20,4) ,timestampGrp timestamp,usedForSignal varchar(32),PRIMARY KEY (ID),"
+						+ "CONSTRAINT UC_quoteTable UNIQUE (time,InstrumentToken,LastTradedPrice,LastTradedQty))"
+						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -115,7 +116,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				sql = "CREATE TABLE " + quoteTable
 						+ "_Signal (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
 						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
-						+ "CONSTRAINT UC_signal UNIQUE (time,InstrumentToken,ProcessSignal,Status)) "
+						+ "TradePrice DECIMAL(20,4), CONSTRAINT UC_signal UNIQUE (time,InstrumentToken,ProcessSignal,Status)) "
 						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
@@ -279,27 +280,35 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
 				for (int index = 0; index < ticks.size(); index++) {
+
 					Tick tick = ticks.get(index);
-					Date date = dtTmFmt.parse(dtTmFmt.format(new Date()));
-					prepStmt.setTimestamp(1, new Timestamp(date.getTime()));
-					prepStmt.setString(2, String.valueOf(tick.getToken()));
-					prepStmt.setDouble(3, tick.getLastTradedPrice());
-					prepStmt.setLong(4, (long) tick.getLastTradedQuantity());
-					prepStmt.setDouble(5, tick.getAverageTradePrice());
-					prepStmt.setLong(6, (long) tick.getVolumeTradedToday());
-					prepStmt.setLong(7, (long) tick.getTotalBuyQuantity());
-					prepStmt.setLong(8, (long) tick.getTotalSellQuantity());
-					prepStmt.setDouble(9, tick.getOpenPrice());
-					prepStmt.setDouble(10, tick.getHighPrice());
-					prepStmt.setDouble(11, tick.getLowPrice());
-					prepStmt.setDouble(12, tick.getClosePrice());
-					date.setSeconds(0);
-					prepStmt.setTimestamp(13, new Timestamp(date.getTime()));
-					prepStmt.setString(14, "");
-					prepStmt.executeUpdate();
+					try {
+						Date date = dtTmFmt.parse(dtTmFmt.format(new Date()));
+						prepStmt.setTimestamp(1, new Timestamp(date.getTime()));
+						prepStmt.setString(2, String.valueOf(tick.getToken()));
+						prepStmt.setDouble(3, tick.getLastTradedPrice());
+						prepStmt.setLong(4, (long) tick.getLastTradedQuantity());
+						prepStmt.setDouble(5, tick.getAverageTradePrice());
+						prepStmt.setLong(6, (long) tick.getVolumeTradedToday());
+						prepStmt.setLong(7, (long) tick.getTotalBuyQuantity());
+						prepStmt.setLong(8, (long) tick.getTotalSellQuantity());
+						prepStmt.setDouble(9, tick.getOpenPrice());
+						prepStmt.setDouble(10, tick.getHighPrice());
+						prepStmt.setDouble(11, tick.getLowPrice());
+						prepStmt.setDouble(12, tick.getClosePrice());
+						date.setSeconds(0);
+						prepStmt.setTimestamp(13, new Timestamp(date.getTime()));
+						prepStmt.setString(14, "");
+						prepStmt.executeUpdate();
+					} catch (SQLException | ParseException e) {
+						LOGGER.info(
+								"StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
+										+ tick);
+						LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
+					}
 				}
 				prepStmt.close();
-			} catch (SQLException | ParseException e) {
+			} catch (SQLException e) {
 				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 						+ ticks);
 				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
@@ -468,7 +477,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT InstrumentToken,ProcessSignal,Quantity,Time,id FROM " + quoteTable
+				String openSql = "SELECT InstrumentToken,ProcessSignal,Quantity,Time,id,TradePrice FROM " + quoteTable
 						+ "_Signal where status ='active'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				List<Integer> idList = new ArrayList<Integer>();
@@ -478,6 +487,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					order.symbol = String.valueOf(openRs.getString(1));
 					order.transactionType = String.valueOf(openRs.getString(2));
 					order.quantity = String.valueOf(openRs.getString(3));
+					order.price = String.valueOf(openRs.getString(6));
 					idList.add(openRs.getInt(5));
 					orders.add(order);
 				}
@@ -640,20 +650,21 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				String sql = "INSERT INTO " + quoteTable + "_signal "
-						+ "(time,instrumentToken,quantity,processSignal,status) " + "values(?,?,?,?,?)";
+						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice) " + "values(?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 				if (null != instrumentList && instrumentList.size() > 0 && null != signalList
 						&& signalList.size() > 0) {
 					for (int index = 0; index < instrumentList.size(); index++) {
-
-						if (null != instrumentList.get(index) && null != signalList.get(instrumentList.get(index))
-								&& updateOldSignalInSignalTable(instrumentList.get(index).toString(),
-										signalList.get(instrumentList.get(index)))) {
+						String signalArray = signalList.get(instrumentList.get(index));
+						if (null != instrumentList.get(index) && null != signalArray
+								&& updateOldSignalInSignalTable(instrumentList.get(index).toString(), signalArray)) {
+							String[] signalAndPrice = signalArray.split(",");
 							prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
 							prepStmt.setString(2, instrumentList.get(index).toString());
 							prepStmt.setString(3, "0");
-							prepStmt.setString(4, signalList.get(instrumentList.get(index)));
+							prepStmt.setString(4, signalAndPrice[0]);
 							prepStmt.setString(5, "active");
+							prepStmt.setDouble(6, Double.parseDouble(signalAndPrice[1]));
 							prepStmt.executeUpdate();
 						}
 					}
@@ -676,10 +687,11 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private boolean updateOldSignalInSignalTable(String instrument, String processSignal) {
 		if (conn != null) {
 			try {
+				String[] signalAndPrice = processSignal.split(",");
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT id FROM " + quoteTable
 						+ "_Signal where status ='active' and InstrumentToken= '" + instrument + "' and processSignal='"
-						+ processSignal + "'";
+						+ signalAndPrice[0] + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				if (openRs.next())
 					return false;
@@ -757,12 +769,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRsHighLowClose.next()) {
-						if (null == low || openRsHighLowClose.getDouble("lowPrice") < low)
-							low = openRsHighLowClose.getDouble("lowPrice");
-						if (null == high || openRsHighLowClose.getDouble("highPrice") > high)
-							high = openRsHighLowClose.getDouble("highPrice");
+						if (null == low || openRsHighLowClose.getDouble("LastTradedPrice") < low)
+							low = openRsHighLowClose.getDouble("LastTradedPrice");
+						if (null == high || openRsHighLowClose.getDouble("LastTradedPrice") > high)
+							high = openRsHighLowClose.getDouble("LastTradedPrice");
 						if (firstRecord) {
-							close = openRsHighLowClose.getDouble("closePrice");
+							close = openRsHighLowClose.getDouble("LastTradedPrice");
 							firstRecord = false;
 						}
 					}
@@ -774,17 +786,17 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					SignalContainer signalContainer = null;
 
 					if (openRsSignalParams.next()) {
-						if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(20)) {
+						if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble("strategySignal")) {
 							signalContainer = this.whenPsarRsiMacdAll3sPreviousSignalsAvailable(openRsSignalParams, low,
 									high, close);
 
-						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(16)) {
+						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble("RSI")) {
 							signalContainer = this.whenPsarRsiPreviousSignalsAvailableButNotMacd(instrumentToken, low,
 									high, close);
 
-						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(5)
-								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(6)
-								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble(9)) {
+						} else if (StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble("pSar")
+								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble("eP")
+								&& StreamingConfig.MAX_VALUE != openRsSignalParams.getDouble("eP_pSarXaccFactor")) {
 							signalContainer = this.whenPsarPreviousSignalsAvailableButNotRsiAndMacd(instrumentToken,
 									low, high, close);
 						}
@@ -1040,7 +1052,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 				String openSql;
 				for (int count = 0; count < instrumentList.size(); count++) {
-					openSql = "SELECT trend,rSI,strategySignal FROM " + quoteTable
+					openSql = "SELECT trend,rSI,difference,strategySignal,close FROM " + quoteTable
 							+ "_SignalParams where InstrumentToken ='" + instrumentList.get(count)
 							+ "' ORDER BY Time DESC LIMIT 2 ";
 
@@ -1049,6 +1061,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					Double macdSignalCurr = 0.0;
 					Integer trend = 1;
 					Double rsi = 0.0;
+					Double price = 0.0;
 					while (openRs.next()) {
 						if (StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
 								&& StreamingConfig.MAX_VALUE != openRs.getDouble("strategySignal")) {
@@ -1057,27 +1070,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 								macdSignalCurr = macdSignalPrev;
 								trend = openRs.getInt("trend");
 								rsi = openRs.getDouble("rSI");
+								price = openRs.getDouble("close");
 								firstDataSet = false;
 							} else if (!firstDataSet) {
 								if (trend == 2 && rsi < 70 && rsi > 30
-										&& (macdSignalCurr > 0 && macdSignalPrev < macdSignalCurr)) {
-									signalList.put(instrumentList.get(count), "BUY");
+										&& (macdSignalCurr > 0.0 && macdSignalPrev < 0.0)) {
+									signalList.put(instrumentList.get(count), "BUY," + price);
 								} else if (trend == 0 && rsi > 70 && rsi < 30
-										&& (macdSignalCurr < 0 && macdSignalPrev > macdSignalCurr)) {// here
-																										// need
-																										// to
-																										// change
-																										// macdSignalCurr
-																										// cond
-																										// with
-																										// 0<>
-																										// logic
-																										// instead
-																										// of
-																										// macdSignalPrev
-																										// <>
-																										// cond
-									signalList.put(instrumentList.get(count), "SELL");
+										&& (macdSignalCurr < 0.0 && macdSignalPrev > 0.0)) {
+									signalList.put(instrumentList.get(count), "SELL," + price);
 								}
 							}
 						}
