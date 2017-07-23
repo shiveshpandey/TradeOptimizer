@@ -481,7 +481,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					Statement timeLoopRsStmt = conn.createStatement();
 
 					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-							+ "' and timestampGrp ='" + timeStampPeriodList.get(timeLoop) + "' ORDER BY Time DESC ";
+							+ "' and timestampGrp ='" + new Timestamp(timeStampPeriodList.get(timeLoop).getTime()) + "' ORDER BY Time DESC ";
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRsHighLowClose.next()) {
