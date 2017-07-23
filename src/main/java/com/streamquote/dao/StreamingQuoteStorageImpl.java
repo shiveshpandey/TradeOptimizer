@@ -44,7 +44,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 	@Override
 	public void initializeJDBCConn() {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.initializeJDBCConn");
+		// LOGGER.info("Entry StreamingQuoteStorageImpl.initializeJDBCConn");
 		dtTmFmt.setTimeZone(TimeZone.getTimeZone("IST"));
 		dtTmFmtNoSeconds.setTimeZone(TimeZone.getTimeZone("IST"));
 		try {
@@ -55,12 +55,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} catch (SQLException e) {
 			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): SQLException on getConnection");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.initializeJDBCConn");
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.initializeJDBCConn");
 	}
 
 	@Override
 	public void closeJDBCConn() {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.closeJDBCConn");
+		// LOGGER.info("Entry StreamingQuoteStorageImpl.closeJDBCConn");
 		if (conn != null) {
 			try {
 				conn.close();
@@ -70,12 +70,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.closeJDBCConn(): WARNING: DB connection already null");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.closeJDBCConn");
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.closeJDBCConn");
 	}
 
 	@Override
 	public void createDaysStreamingQuoteTable(String date) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.createDaysStreamingQuoteTable");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.createDaysStreamingQuoteTable");
 		if (conn != null) {
 			Statement stmt = conn.createStatement();
 			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
@@ -148,13 +149,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.createDaysStreamingQuoteTable");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.createDaysStreamingQuoteTable");
 	}
 
 	@SuppressWarnings("deprecation")
 	@Override
 	public void storeData(ArrayList<Tick> ticks) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.storeData");
+		// LOGGER.info("Entry StreamingQuoteStorageImpl.storeData");
 		if (conn != null) {
 
 			try {
@@ -207,12 +209,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.storeData");
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.storeData");
 	}
 
 	@Override
 	public ArrayList<Long> getTopPrioritizedTokenList(int i) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.getTopPrioritizedTokenList");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.getTopPrioritizedTokenList");
 		ArrayList<Long> instrumentList = new ArrayList<Long>();
 		if (conn != null) {
 			try {
@@ -233,7 +236,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.getTopPrioritizedTokenList");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.getTopPrioritizedTokenList");
 		return instrumentList;
 	}
 
@@ -287,7 +291,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 	@Override
 	public void saveInstrumentDetails(List<Instrument> instrumentList, Timestamp time) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.saveInstrumentDetails()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.saveInstrumentDetails()");
 		if (conn != null) {
 
 			try {
@@ -326,12 +331,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						"StreamingQuoteStorageImpl.saveInstrumentDetails(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.saveInstrumentDetails()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.saveInstrumentDetails()");
 	}
 
 	@Override
 	public String[] getInstrumentDetailsOnTokenId(String instrumentToken) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
 		String[] param = new String[3];
 		if (conn != null) {
 			try {
@@ -354,13 +361,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: DB conn is null !!!");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
 		return param;
 	}
 
 	@Override
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.saveGeneratedSignals()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.saveGeneratedSignals()");
 		if (conn != null) {
 			try {
 				String sql = "INSERT INTO " + quoteTable + "_signal "
@@ -395,11 +404,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						"StreamingQuoteStorageImpl.saveGeneratedSignals(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
 			}
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
 	}
 
 	private boolean updateOldSignalInSignalTable(String instrument, String processSignal) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.updateOldSignalInSignalTable()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.updateOldSignalInSignalTable()");
 		if (conn != null) {
 			try {
 				String[] signalAndPrice = processSignal.split(",");
@@ -433,14 +443,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.updateOldSignalInSignalTable()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.updateOldSignalInSignalTable()");
 		return true;
 	}
 
 	@SuppressWarnings("deprecation")
 	@Override
 	public void calculateAndStoreStrategySignalParameters(String instrumentToken, Date endingTimeToMatch) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters()");
 		if (conn != null) {
 			try {
 				Date endDateTime = dtTmFmt.parse(dtTmFmt.format(endingTimeToMatch));
@@ -481,7 +493,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					Statement timeLoopRsStmt = conn.createStatement();
 
 					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-							+ "' and timestampGrp ='" + new Timestamp(timeStampPeriodList.get(timeLoop).getTime()) + "' ORDER BY Time DESC ";
+							+ "' and timestampGrp ='" + new Timestamp(timeStampPeriodList.get(timeLoop).getTime())
+							+ "' ORDER BY Time DESC ";
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRsHighLowClose.next()) {
@@ -582,11 +595,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info(
 					"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: DB conn is null !!!");
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters()");
 	}
 
 	private void lowHighCloseRsiStrategy(String instrumentToken) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 
 		String openSql = "SELECT close,rsi,usedForZigZagSignal,id FROM " + quoteTable
 				+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!=" + StreamingConfig.MAX_VALUE
@@ -662,12 +677,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			stmtForUpdate.close();
 		}
-		LOGGER.info("Exit StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 	}
 
 	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low,
 			Double high, Double close) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable()");
 
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
@@ -709,14 +726,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		signalContainer.r1 = new RSISignalParam(rsiSignalParamList, close);
 		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable()");
 
 		return signalContainer;
 	}
 
 	private SignalContainer whenPsarPreviousSignalsAvailableButNotRsiAndMacd(String instrumentToken, Double low,
 			Double high, Double close) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.whenPsarPreviousSignalsAvailableButNotRsiAndMacd()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.whenPsarPreviousSignalsAvailableButNotRsiAndMacd()");
 
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
@@ -761,14 +780,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		signalContainer.r1 = new RSISignalParam(rsiSignalParamList, close);
 		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.whenPsarPreviousSignalsAvailableButNotRsiAndMacd()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.whenPsarPreviousSignalsAvailableButNotRsiAndMacd()");
 
 		return signalContainer;
 	}
 
 	private SignalContainer whenPsarRsiPreviousSignalsAvailableButNotMacd(String instrumentToken, Double low,
 			Double high, Double close) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.whenPsarRsiPreviousSignalsAvailableButNotMacd()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.whenPsarRsiPreviousSignalsAvailableButNotMacd()");
 
 		String openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
 				+ "' ORDER BY Time DESC LIMIT 35 ";
@@ -802,14 +823,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		stmt.close();
 		signalContainer.m1 = new MACDSignalParam(macdSignalParamList, close);
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.whenPsarRsiPreviousSignalsAvailableButNotMacd()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.whenPsarRsiPreviousSignalsAvailableButNotMacd()");
 
 		return signalContainer;
 	}
 
 	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsAvailable(ResultSet openRs, Double low, Double high,
 			Double close) throws SQLException {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsAvailable()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsAvailable()");
 
 		SignalContainer signalContainer = new SignalContainer();
 		signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
@@ -822,14 +845,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				openRs.getDouble("strategySignal"), openRs.getDouble("differenceMinusSignal"),
 				openRs.getDouble("macdSignal"));
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsAvailable()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsAvailable()");
 
 		return signalContainer;
 	}
 
 	@Override
 	public void getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 
 		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
 			try {
@@ -858,13 +883,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
 		}
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 
 	}
 
 	@Override
 	public Map<Long, String> calculateSignalsFromStrategyParams(ArrayList<Long> instrumentList) {
-		LOGGER.info("Entry StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams()");
 
 		Map<Long, String> signalList = new HashMap<Long, String>();
 
@@ -982,7 +1009,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info("StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams(): ERROR: DB conn is null !!!");
 		}
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams()");
 
 		return signalList;
 	}
@@ -990,7 +1018,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	@Override
 	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList) {
 
-		LOGGER.info("Entry StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 
 		if (conn != null && instrumentVolatilityScoreList != null && instrumentVolatilityScoreList.size() > 0) {
 			try {
@@ -1017,13 +1046,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
 		}
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 	}
 
 	@Override
 	public void markTradableInstruments(List<InstrumentVolatilityScore> instrumentVolatilityScoreList) {
 
-		LOGGER.info("Entry StreamingQuoteStorageImpl.markTradableInstruments()");
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.markTradableInstruments()");
 
 		if (conn != null && instrumentVolatilityScoreList != null && instrumentVolatilityScoreList.size() > 0) {
 			try {
@@ -1049,7 +1080,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info("StreamingQuoteStorageImpl.markTradableInstruments(): ERROR: DB conn is null !!!");
 		}
 
-		LOGGER.info("Exit StreamingQuoteStorageImpl.markTradableInstruments()");
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.markTradableInstruments()");
 
 	}
 }

@@ -93,7 +93,7 @@ public class TradeOptimizer {
 
 	@RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
 	public String authRedirectWithTokenPost(@RequestParam String status, @RequestParam String request_token) {
-		LOGGER.info("Entry TradeOptimizer.authRedirectWithTokenPost()");
+		// LOGGER.info("Entry TradeOptimizer.authRedirectWithTokenPost()");
 		try {
 			UserModel userModel = kiteconnect.requestAccessToken(request_token, StreamingConfig.API_SECRET_KEY);
 			kiteconnect.setAccessToken(userModel.accessToken);
@@ -103,13 +103,13 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage());
 			return "error";
 		}
-		LOGGER.info("Exit TradeOptimizer.authRedirectWithTokenPost()");
+		// LOGGER.info("Exit TradeOptimizer.authRedirectWithTokenPost()");
 		return "index";
 	}
 
 	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
-		LOGGER.info("Entry TradeOptimizer.localRedirect()");
+		// LOGGER.info("Entry TradeOptimizer.localRedirect()");
 		kiteconnect.registerHook(new SessionExpiryHook() {
 			@Override
 			public void sessionExpired() {
@@ -119,13 +119,13 @@ public class TradeOptimizer {
 		});
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
-		LOGGER.info("Exit TradeOptimizer.localRedirect()");
+		// LOGGER.info("Exit TradeOptimizer.localRedirect()");
 		return redirectView;
 	}
 
 	public void downloadNSEReportsCSVs() {
 
-		LOGGER.info("Entry TradeOptimizer.downloadNSEReportsCSVs()");
+		// LOGGER.info("Entry TradeOptimizer.downloadNSEReportsCSVs()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 
@@ -162,12 +162,12 @@ public class TradeOptimizer {
 		}
 
 		streamingQuoteStorage.saveInstrumentVolatilityDetails(instrumentVolatilityScoreList);
-		LOGGER.info("Exit TradeOptimizer.downloadNSEReportsCSVs()");
+		// LOGGER.info("Exit TradeOptimizer.downloadNSEReportsCSVs()");
 	}
 
 	public void markTradableInstruments() {
 
-		LOGGER.info("Entry TradeOptimizer.markTradableInstruments()");
+		// LOGGER.info("Entry TradeOptimizer.markTradableInstruments()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 
@@ -202,11 +202,11 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 		}
 		streamingQuoteStorage.markTradableInstruments(instrumentVolatilityScoreList);
-		LOGGER.info("Exit TradeOptimizer.markTradableInstruments()");
+		// LOGGER.info("Exit TradeOptimizer.markTradableInstruments()");
 	}
 
 	public void fetchNSEActiveSymbolList() {
-		LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
+		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		Map<String, Double> stocksSymbolArray = new HashMap<String, Double>();
@@ -238,12 +238,12 @@ public class TradeOptimizer {
 			}
 		}
 		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
-		LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
+		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
 
 	public void startProcess() {
 		try {
-			LOGGER.info("Entry TradeOptimizer.startProcess()");
+			// LOGGER.info("Entry TradeOptimizer.startProcess()");
 			tmFmt.setTimeZone(timeZone);
 			dtFmt.setTimeZone(timeZone);
 			dtTmFmt.setTimeZone(timeZone);
@@ -271,11 +271,11 @@ public class TradeOptimizer {
 		} catch (JSONException | ParseException e) {
 			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage());
 		}
-		LOGGER.info("Exit TradeOptimizer.startProcess()");
+		// LOGGER.info("Exit TradeOptimizer.startProcess()");
 	}
 
 	private void tickerSettingInitialization() {
-		LOGGER.info("Entry TradeOptimizer.tickerSettingInitialization()");
+		// LOGGER.info("Entry TradeOptimizer.tickerSettingInitialization()");
 
 		tickerProvider = new KiteTicker(kiteconnect);
 		tickerProvider.setTryReconnection(true);
@@ -318,11 +318,11 @@ public class TradeOptimizer {
 					streamingQuoteStorage.storeData(ticks);
 			}
 		});
-		LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
+		// LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
 	}
 
 	protected ArrayList<Tick> testingTickerData(ArrayList<Long> quoteStreamingInstrumentsArr) {
-		LOGGER.info("Entry TradeOptimizer.testingTickerData()");
+		// LOGGER.info("Entry TradeOptimizer.testingTickerData()");
 
 		ArrayList<Tick> ticks = new ArrayList<Tick>();
 		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
@@ -347,12 +347,12 @@ public class TradeOptimizer {
 			tick.setLastTradedPrice(tick.getClosePrice());
 			ticks.add(tick);
 		}
-		LOGGER.info("Exit TradeOptimizer.testingTickerData()");
+		// LOGGER.info("Exit TradeOptimizer.testingTickerData()");
 		return ticks;
 	}
 
 	private void createInitialDayTables() {
-		LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
+		// LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
 		if (streamingQuoteStorage != null) {
 
 			DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
@@ -366,11 +366,12 @@ public class TradeOptimizer {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 		}
-		LOGGER.info("Exit TradeOptimizer.createInitialDayTables()");
+		// LOGGER.info("Exit TradeOptimizer.createInitialDayTables()");
 	}
 
 	private void dayClosingStocksRoundOffOperations() throws KiteException {
-		LOGGER.info("Entry TradeOptimizer.dayClosingStocksRoundOffOperations()");
+		// LOGGER.info("Entry
+		// TradeOptimizer.dayClosingStocksRoundOffOperations()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -410,11 +411,12 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		LOGGER.info("Exit TradeOptimizer.dayClosingStocksRoundOffOperations()");
+		// LOGGER.info("Exit
+		// TradeOptimizer.dayClosingStocksRoundOffOperations()");
 	}
 
 	private void placeOrdersBasedOnSignals() {
-		LOGGER.info("Entry TradeOptimizer.placeOrdersBasedOnSignals()");
+		// LOGGER.info("Entry TradeOptimizer.placeOrdersBasedOnSignals()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -446,7 +448,7 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		LOGGER.info("Exit TradeOptimizer.placeOrdersBasedOnSignals()");
+		// LOGGER.info("Exit TradeOptimizer.placeOrdersBasedOnSignals()");
 	}
 
 	private List<Order> getOrderListToPlaceAsPerStrategySignals() {
@@ -454,7 +456,8 @@ public class TradeOptimizer {
 	}
 
 	private void startLiveStreamOfSelectedInstruments() {
-		LOGGER.info("Entry TradeOptimizer.startLiveStreamOfSelectedInstruments()");
+		// LOGGER.info("Entry
+		// TradeOptimizer.startLiveStreamOfSelectedInstruments()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -481,11 +484,13 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		LOGGER.info("Exit TradeOptimizer.startLiveStreamOfSelectedInstruments()");
+		// LOGGER.info("Exit
+		// TradeOptimizer.startLiveStreamOfSelectedInstruments()");
 	}
 
 	private void fetchAndProcessInstrumentsPriorityRelatedData() {
-		LOGGER.info("Entry TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
+		// LOGGER.info("Entry
+		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 
 		try {
 			instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
@@ -512,12 +517,14 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 		}
 
-		LOGGER.info("Exit TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
+		// LOGGER.info("Exit
+		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 	}
 
 	private void roundOfNonPerformingBoughtStocks(ArrayList<Long> quoteStreamingInstrumentsArr,
 			ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws KiteException {
-		LOGGER.info("Entry TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+		// LOGGER.info("Entry
+		// TradeOptimizer.roundOfNonPerformingBoughtStocks()");
 
 		ArrayList<Long> unSubList = new ArrayList<Long>();
 		ArrayList<Long> subList = new ArrayList<Long>();
@@ -595,11 +602,13 @@ public class TradeOptimizer {
 			}
 		}
 
-		LOGGER.info("Exit TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+		// LOGGER.info("Exit
+		// TradeOptimizer.roundOfNonPerformingBoughtStocks()");
 	}
 
 	private void applyStrategiesAndGenerateSignals() {
-		LOGGER.info("Entry TradeOptimizer.applyStrategiesAndGenerateSignals()");
+		// LOGGER.info("Entry
+		// TradeOptimizer.applyStrategiesAndGenerateSignals()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -635,11 +644,12 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		LOGGER.info("Exit TradeOptimizer.applyStrategiesAndGenerateSignals()");
+		// LOGGER.info("Exit
+		// TradeOptimizer.applyStrategiesAndGenerateSignals()");
 	}
 
 	private void startStreamingQuote() {
-		LOGGER.info("Entry TradeOptimizer.startStreamingQuote()");
+		// LOGGER.info("Entry TradeOptimizer.startStreamingQuote()");
 		tokenListForTick = getInstrumentTokensList();
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
@@ -657,7 +667,7 @@ public class TradeOptimizer {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 		}
-		LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");
+		// LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");
 	}
 
 	private ArrayList<Long> getInstrumentTokensList() {
@@ -668,12 +678,12 @@ public class TradeOptimizer {
 	}
 
 	private void stopStreamingQuote() {
-		LOGGER.info("Entry TradeOptimizer.stopStreamingQuote()");
+		// LOGGER.info("Entry TradeOptimizer.stopStreamingQuote()");
 		tickerProvider.disconnect();
 
 		if (streamingQuoteStorage != null) {
 			streamingQuoteStorage.closeJDBCConn();
 		}
-		LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
+		// LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
 	}
 }
