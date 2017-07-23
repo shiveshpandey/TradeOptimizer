@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 
 import com.streamquote.utils.StreamingConfig;
 import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.InstrumentVolatilityScore;
 import com.trade.optimizer.models.Order;
 import com.trade.optimizer.models.Tick;
 import com.trade.optimizer.signal.parameter.MACDSignalParam;
@@ -94,29 +95,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
-						+ "_hist (ID int NOT NULL AUTO_INCREMENT,time timestamp,InstrumentToken varchar(32),"
-						+ " LastTradedPrice DECIMAL(20,4), LastTradedQty BIGINT , AvgTradedPrice DECIMAL(20,4) , Volume BIGINT , "
-						+ " BuyQty BIGINT, SellQty BIGINT, OpenPrice DECIMAL(20,4), HighPrice DECIMAL(20,4), LowPrice DECIMAL(20,4), "
-						+ " ClosePrice DECIMAL(20,4), TickType varchar(32), PRIMARY KEY (ID),CONSTRAINT UC_hist UNIQUE (time,InstrumentToken)) "
-						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
-				stmt.executeUpdate(sql);
-			} catch (SQLException e) {
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
-			}
-			try {
-				sql = "CREATE TABLE " + quoteTable
-						+ "_priority (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32), PriorityPoint DECIMAL(20,4)  "
-						+ ",PRIMARY KEY (ID),CONSTRAINT UC_priority UNIQUE (time,InstrumentToken,PriorityPoint)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
-				stmt.executeUpdate(sql);
-			} catch (SQLException e) {
-				LOGGER.info(
-						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
-			}
-			try {
-				sql = "CREATE TABLE " + quoteTable
 						+ "_Signal (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
 						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
 						+ "TradePrice DECIMAL(20,4)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
@@ -128,10 +106,11 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable + "_instrumentDetails "
-						+ "(ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32) ,exchangeToken varchar(32) ,"
+						+ "(ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32),dailyVolatility DECIMAL(20,4),"
+						+ "annualVolatility DECIMAL(20,4),currentVolatility DECIMAL(20,4),PriorityPoint DECIMAL(20,4),tradable varchar(32),exchangeToken varchar(32),"
 						+ "tradingsymbol varchar(32) ,name varchar(32) , last_price varchar(32) ,tickSize varchar(32), expiry varchar(32),"
 						+ "instrumentType varchar(32), segment varchar(32) ,exchange varchar(32), strike varchar(32) ,lotSize varchar(32) ,"
-						+ " PRIMARY KEY (ID),CONSTRAINT UC_instrumentDetails UNIQUE (instrumentToken,tradingsymbol)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
 			} catch (SQLException e) {
@@ -239,7 +218,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_priority ORDER BY Time,PriorityPoint DESC LIMIT " + i + "";
+						+ "_instrumentDetails where tradable='tradable' ORDER BY Time,PriorityPoint,dailyVolatility DESC LIMIT "
+						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
 					instrumentList.add(Long.valueOf(openRs.getString(1)));
@@ -848,42 +828,27 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public ArrayList<String> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
+	public void getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
 		LOGGER.info("Entry StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
-
-		ArrayList<String> instrumentList = new ArrayList<String>();
-		ArrayList<String> tradingSymbols = new ArrayList<String>();
 
 		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT InstrumentToken, tradingsymbol FROM " + quoteTable
-						+ "_instrumentdetails where tradingsymbol in (";
-
+				String openSql = "UPDATE " + quoteTable
+						+ "_instrumentDetails SET PriorityPoint = ?, currentVolatility = ? where tradingSymbol = ? ";
+				PreparedStatement prepStmt = conn.prepareStatement(openSql);
 				Object[] symbolKeys = stocksSymbolArray.keySet().toArray();
 				for (int i = 0; i < symbolKeys.length; i++) {
-					openSql = openSql + "'" + (String) symbolKeys[i] + "',";
-				}
-				openSql = openSql.substring(0, openSql.length() - 1) + ")";
-				ResultSet openRs = stmt.executeQuery(openSql);
 
-				while (openRs.next()) {
-					instrumentList.add(openRs.getString(1));
-					tradingSymbols.add(openRs.getString(2));
-				}
+					prepStmt.setDouble(1, stocksSymbolArray.get(symbolKeys[i]));
+					prepStmt.setDouble(2, stocksSymbolArray.get(symbolKeys[i]));
+					prepStmt.setString(3, (String) symbolKeys[i]);
 
-				openSql = "INSERT INTO " + quoteTable + "_priority " + "(Time, InstrumentToken, PriorityPoint) "
-						+ "values(?,?,?)";
-				PreparedStatement prepStmt = conn.prepareStatement(openSql);
-				for (int index = 0; index < instrumentList.size(); index++) {
-
-					prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
-					prepStmt.setString(2, instrumentList.get(index));
-					prepStmt.setDouble(3, stocksSymbolArray.get(tradingSymbols.get(index)));
 					prepStmt.executeUpdate();
 				}
 				prepStmt.close();
 				stmt.close();
+
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
@@ -895,7 +860,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		LOGGER.info("Exit StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 
-		return instrumentList;
 	}
 
 	@Override
@@ -1021,5 +985,71 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		LOGGER.info("Exit StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams()");
 
 		return signalList;
+	}
+
+	@Override
+	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList) {
+
+		LOGGER.info("Entry StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+
+		if (conn != null && instrumentVolatilityScoreList != null && instrumentVolatilityScoreList.size() > 0) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "UPDATE " + quoteTable
+						+ "_instrumentDetails SET dailyVolatility = ?, annualVolatility = ? where tradingSymbol = ? ";
+				PreparedStatement prepStmt = conn.prepareStatement(openSql);
+				for (int index = 0; index < instrumentVolatilityScoreList.size(); index++) {
+
+					prepStmt.setDouble(1, instrumentVolatilityScoreList.get(index).getDailyVolatility());
+					prepStmt.setDouble(2, instrumentVolatilityScoreList.get(index).getAnnualVolatility());
+					prepStmt.setString(3, instrumentVolatilityScoreList.get(index).getInstrumentName());
+
+					prepStmt.executeUpdate();
+				}
+				prepStmt.close();
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
+		}
+
+		LOGGER.info("Exit StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+	}
+
+	@Override
+	public void markTradableInstruments(List<InstrumentVolatilityScore> instrumentVolatilityScoreList) {
+
+		LOGGER.info("Entry StreamingQuoteStorageImpl.markTradableInstruments()");
+
+		if (conn != null && instrumentVolatilityScoreList != null && instrumentVolatilityScoreList.size() > 0) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "UPDATE " + quoteTable
+						+ "_instrumentDetails SET tradable = ? where tradingSymbol = ? ";
+				PreparedStatement prepStmt = conn.prepareStatement(openSql);
+				for (int index = 0; index < instrumentVolatilityScoreList.size(); index++) {
+
+					prepStmt.setString(1, instrumentVolatilityScoreList.get(index).getTradable());
+					prepStmt.setString(2, instrumentVolatilityScoreList.get(index).getInstrumentName());
+
+					prepStmt.executeUpdate();
+				}
+				prepStmt.close();
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.markTradableInstruments(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.markTradableInstruments(): ERROR: DB conn is null !!!");
+		}
+
+		LOGGER.info("Exit StreamingQuoteStorageImpl.markTradableInstruments()");
+
 	}
 }

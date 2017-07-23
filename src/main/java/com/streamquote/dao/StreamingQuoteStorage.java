@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.InstrumentVolatilityScore;
 import com.trade.optimizer.models.Order;
 import com.trade.optimizer.models.Tick;
 
@@ -31,9 +32,13 @@ public interface StreamingQuoteStorage {
 
 	public void storeData(ArrayList<Tick> ticks);
 
-	public ArrayList<String> getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray);
+	public void getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray);
 
 	void calculateAndStoreStrategySignalParameters(String instrumentToken, Date timeNow);
 
 	public Map<Long, String> calculateSignalsFromStrategyParams(ArrayList<Long> instrumentList);
+
+	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
+
+	public void markTradableInstruments(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
 }

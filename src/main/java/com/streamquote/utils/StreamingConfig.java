@@ -47,6 +47,8 @@ public class StreamingConfig {
 	public static String HIST_DATA_START_DATE = "2017-07-01";
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;
+	public static final String nseVolatilityDataUrl = "https://www.nseindia.com/archives/nsccl/volt/CMVOLT_21072017.CSV";
+	public static final String nifty100InstrumentCsvUrl = "https://www.nseindia.com/content/indices/ind_nifty100list.csv";
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
 		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;
