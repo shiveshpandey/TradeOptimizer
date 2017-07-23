@@ -1,7 +1,7 @@
 package com.trade.optimizer.signal.parameter;
 
 public class SignalContainer {
-	public PSarSignalParam p1;
-	public RSISignalParam r1;
-	public MACDSignalParam m1;
+	public PSarSignalParam p1 = new PSarSignalParam();
+	public RSISignalParam r1 = new RSISignalParam();
+	public MACDSignalParam m1 = new MACDSignalParam();
 }

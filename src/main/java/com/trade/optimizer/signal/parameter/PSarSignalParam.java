@@ -80,6 +80,9 @@ public class PSarSignalParam {
 		this.eP_pSarXaccFactor = this.eP_pSar * this.accFactor;
 	}
 
+	public PSarSignalParam() {
+	}
+
 	public Double getHigh() {
 		return high;
 	}

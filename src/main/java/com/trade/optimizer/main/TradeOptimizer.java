@@ -115,6 +115,7 @@ public class TradeOptimizer {
 			@Override
 			public void sessionExpired() {
 				LOGGER.info("session expired");
+				localRedirect();
 			}
 		});
 		RedirectView redirectView = new RedirectView();
@@ -183,12 +184,12 @@ public class TradeOptimizer {
 
 			applyStrategiesAndGenerateSignals();
 
-			executeOrdersOnSignals();
+			// executeOrdersOnSignals();
 
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
-			closingDayRoundOffOperations();
-		} catch (JSONException | ParseException | KiteException e) {
+			// closingDayRoundOffOperations();
+		} catch (JSONException | ParseException e) {
 			e.printStackTrace();
 		}
 	}
@@ -209,6 +210,13 @@ public class TradeOptimizer {
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
 			public void onConnected() {
+				if (null != tokenListForTick
+						&& tickerProvider.getSubscribedTokenList().size() != tokenListForTick.size())
+					try {
+						tickerProvider.subscribe(tokenListForTick);
+					} catch (IOException | WebSocketException | KiteException e) {
+						e.printStackTrace();
+					}
 			}
 		});
 
@@ -222,8 +230,9 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				//if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
-				//	ticks = testingTickerData(quoteStreamingInstrumentsArr);
+				// if (null != quoteStreamingInstrumentsArr &&
+				// quoteStreamingInstrumentsArr.size() > 0)
+				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 			}
@@ -483,7 +492,7 @@ public class TradeOptimizer {
 							}
 
 							histDataStreamStartDateTime = todaysDate + " " + tmFmt.format(new Date());
-							Thread.sleep(900 * seconds);
+							Thread.sleep(10 * 3600 * seconds);
 							histDataStreamEndDateTime = todaysDate + " " + tmFmt.format(new Date());
 						} else {
 							runnable = false;
@@ -525,7 +534,7 @@ public class TradeOptimizer {
 				}
 			}
 			if (newQuote) {
-				unSubList.add(quoteStreamingInstrumentsArr.get(index));
+				subList.add(quoteStreamingInstrumentsArr.get(index));
 			}
 		}
 		List<Order> orders = tradeOperations.getOrders(kiteconnect);

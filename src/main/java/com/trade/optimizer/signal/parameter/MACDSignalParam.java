@@ -6,11 +6,13 @@ import com.streamquote.utils.StreamingConfig;
 
 public class MACDSignalParam {
 
+	Double differenceMinusSignal = StreamingConfig.MAX_VALUE;
+	Double macdSignal = StreamingConfig.MAX_VALUE;
 	Double close = StreamingConfig.MAX_VALUE;
 	Double fastEma = StreamingConfig.MAX_VALUE;
 	Double slowEma = StreamingConfig.MAX_VALUE;
 	Double difference = StreamingConfig.MAX_VALUE;
-	static int fastEmaPeriods = 9;
+	static int fastEmaPeriods = 10;
 	static int slowEmaPeriods = 14;
 	static int signalEmaPeriods = 6;
 	static double fastEmaAccFactor = (double) 2 / (fastEmaPeriods + 1);
@@ -48,18 +50,52 @@ public class MACDSignalParam {
 				this.signal = this.signal + rsiSignalParamList.get(j).difference;
 			}
 			this.signal = this.signal / (signalEmaPeriods);
+			this.differenceMinusSignal = this.difference - this.signal;
+
+			if (this.differenceMinusSignal > 0.0 && rsiSignalParamList.get(0).differenceMinusSignal < 0.0)
+				this.macdSignal = 2.0;
+			else if (this.differenceMinusSignal < 0.0 && rsiSignalParamList.get(0).differenceMinusSignal > 0.0
+					&& rsiSignalParamList.get(0).differenceMinusSignal != StreamingConfig.MAX_VALUE)
+				this.macdSignal = 0.0;
+			if (rsiSignalParamList.get(0).macdSignal == 2.0 && this.differenceMinusSignal > 0.0)
+				this.macdSignal = 2.0;
+			else if (rsiSignalParamList.get(0).macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
+				this.macdSignal = 0.0;
+
 		} else if (rsiSignalParamList.size() >= (slowEmaPeriods + signalEmaPeriods - 1)) {
 			this.signal = ((this.difference - rsiSignalParamList.get(0).signal) * signalEmaAccFactor)
 					+ rsiSignalParamList.get(0).signal;
+			this.differenceMinusSignal = this.difference - this.signal;
+
+			if (this.differenceMinusSignal > 0.0 && rsiSignalParamList.get(0).differenceMinusSignal < 0.0)
+				this.macdSignal = 2.0;
+			else if (this.differenceMinusSignal < 0.0 && rsiSignalParamList.get(0).differenceMinusSignal > 0.0
+					&& rsiSignalParamList.get(0).differenceMinusSignal != StreamingConfig.MAX_VALUE)
+				this.macdSignal = 0.0;
+			if (rsiSignalParamList.get(0).macdSignal == 2.0 && this.differenceMinusSignal > 0.0)
+				this.macdSignal = 2.0;
+			else if (rsiSignalParamList.get(0).macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
+				this.macdSignal = 0.0;
 		}
 	}
 
-	public MACDSignalParam(Double close, Double fastEma, Double slowEma, Double signal) {
+	public MACDSignalParam(Double close, Double fastEma, Double slowEma, Double signal, Double differenceMinusSignal,
+			Double macdSignal) {
 
 		this.fastEma = ((close - fastEma) * fastEmaAccFactor) + fastEma;
 		this.slowEma = ((close - slowEma) * slowEmaAccFactor) + slowEma;
 		this.difference = this.fastEma - this.slowEma;
 		this.signal = ((this.difference - signal) * signalEmaAccFactor) + signal;
+		this.differenceMinusSignal = this.difference - this.signal;
+
+		if (this.differenceMinusSignal > 0.0 && differenceMinusSignal < 0.0)
+			this.macdSignal = 2.0;
+		else if (this.differenceMinusSignal < 0.0 && differenceMinusSignal > 0.0)
+			this.macdSignal = 0.0;
+		if (macdSignal == 2.0 && this.differenceMinusSignal > 0.0)
+			this.macdSignal = 2.0;
+		else if (macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
+			this.macdSignal = 0.0;
 	}
 
 	public MACDSignalParam() {
@@ -103,5 +139,23 @@ public class MACDSignalParam {
 
 	public void setSignal(Double signal) {
 		this.signal = signal;
+	}
+
+	public Double getDifferenceMinusSignal() {
+		return differenceMinusSignal;
+	}
+
+	public Double getMacdSignal() {
+		return macdSignal;
+	}
+
+	public void setDifferenceMinusSignal(Double differenceMinusSignal) {
+		this.differenceMinusSignal = differenceMinusSignal;
+
+	}
+
+	public void setMacdSignal(Double macdSignal) {
+		this.macdSignal = macdSignal;
+
 	}
 }

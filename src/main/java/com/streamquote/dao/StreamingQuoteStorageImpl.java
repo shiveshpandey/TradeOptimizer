@@ -137,12 +137,23 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
+						+ "_SignalNew (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
+						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
+						+ "TradePrice DECIMAL(20,4)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+				stmt.executeUpdate(sql);
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage());
+			}
+			try {
+				sql = "CREATE TABLE " + quoteTable
 						+ "_signalParams (ID int NOT NULL AUTO_INCREMENT,time timestamp, instrumentToken varchar(32), high DECIMAL(26,11) ,"
 						+ " low DECIMAL(26,11) ,close DECIMAL(26,11) ,pSar DECIMAL(26,11) , eP DECIMAL(26,11) ,eP_pSar DECIMAL(26,11) ,"
 						+ "accFactor DECIMAL(26,11) ,eP_pSarXaccFactor DECIMAL(26,11) ,trend DECIMAL(26,11) ,upMove DECIMAL(26,11) ,"
 						+ "downMove DECIMAL(26,11) ,avgUpMove DECIMAL(26,11) , avgDownMove DECIMAL(26,11) ,relativeStrength DECIMAL(26,11),"
 						+ "RSI DECIMAL(26,11) ,fastEma DECIMAL(26,11) , slowEma DECIMAL(26,11) ,difference DECIMAL(26,11) ,"
-						+ " strategySignal  DECIMAL(26,11) ,timestampGrp timestamp,PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " strategySignal  DECIMAL(26,11) ,differenceMinusSignal DECIMAL(26,11) ,macdSignal DECIMAL(26,11) ,timestampGrp timestamp,usedForSignal varchar(32),usedForZigZagSignal varchar(32),PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 
 				stmt.executeUpdate(sql);
 
@@ -803,15 +814,23 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						signalContainer = this.whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(instrumentToken, low,
 								high, close);
 					}
+
 					String sql = "INSERT INTO " + quoteTable + "_signalParams "
 							+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
-							+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal,timestampGrp) "
-							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+							+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal,timestampGrp,usedForSignal,differenceMinusSignal,macdSignal,usedForZigZagSignal) "
+							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 					PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
 
-					PSarSignalParam p = signalContainer.p1;
-					RSISignalParam r = signalContainer.r1;
-					MACDSignalParam m = signalContainer.m1;
+					PSarSignalParam p = new PSarSignalParam();
+					RSISignalParam r = new RSISignalParam();
+					MACDSignalParam m = new MACDSignalParam();
+
+					if (null != signalContainer && null != signalContainer.p1)
+						p = signalContainer.p1;
+					if (null != signalContainer && null != signalContainer.p1)
+						r = signalContainer.r1;
+					if (null != signalContainer && null != signalContainer.p1)
+						m = signalContainer.m1;
 
 					prepStmtInsertSignalParams.setTimestamp(1,
 							new Timestamp(dtTmFmt.parse(dtTmFmt.format(new Date())).getTime()));
@@ -836,10 +855,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmtInsertSignalParams.setDouble(19, m.getSlowEma());
 					prepStmtInsertSignalParams.setDouble(20, m.getDifference());
 					prepStmtInsertSignalParams.setDouble(21, m.getSignal());
+					prepStmtInsertSignalParams.setString(23, "");
+					prepStmtInsertSignalParams.setDouble(24, m.getDifferenceMinusSignal());
+					prepStmtInsertSignalParams.setDouble(25, m.getMacdSignal());
+					prepStmtInsertSignalParams.setString(26, "");
 					prepStmtInsertSignalParams.executeUpdate();
 
 					prepStmtInsertSignalParams.close();
 					timeLoopRsStmt.close();
+
+					lowHighZigZagTypeBuySellStrategy(instrumentToken);
 				}
 			} catch (SQLException | ParseException e) {
 				LOGGER.info(
@@ -851,6 +876,101 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info(
 					"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: DB conn is null !!!");
 		}
+	}
+
+	private void lowHighZigZagTypeBuySellStrategy(String instrumentToken) throws SQLException {
+		String openSql = "SELECT high, low, close,rsi,usedForZigZagSignal,id FROM " + quoteTable
+				+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' ORDER BY Time DESC LIMIT 28 ";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(openSql);
+		Double high = 0.0, firstHigh = 0.0, rsi = 0.0, low = StreamingConfig.MAX_VALUE,
+				firstLow = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
+		boolean firstRecord = true;
+		int signal = 1;
+		int loopSize = 0, firstRowId = 0;
+		String isUnUsedRecord = "";
+		while (rs.next()) {
+			loopSize++;
+			if (firstRecord) {
+				firstHigh = rs.getDouble("high");
+				rsi = rs.getDouble("rsi");
+				firstLow = rs.getDouble("low");
+				firstClose = rs.getDouble("close");
+				isUnUsedRecord = rs.getString("usedForZigZagSignal");
+				firstRowId = rs.getInt("id");
+				firstRecord = false;
+			}
+			if (rs.getDouble("high") >= high) {
+				high = rs.getDouble("high");
+			}
+			if (rs.getDouble("low") <= low) {
+				low = rs.getDouble("low");
+			}
+		}
+
+		if (firstHigh >= high) {
+			signal = 0;
+		}
+		if (firstLow <= low) {
+			signal = 2;
+		}
+		if (loopSize >= 14 && !"usedForZigZagSignal".equalsIgnoreCase(isUnUsedRecord) && signal != 1 && !firstRecord
+				&& rsi != 0.0 && rsi < 65.0 && rsi > 35.0) {
+			String sql = "INSERT INTO " + quoteTable + "_signalNew "
+					+ "(time,instrumentToken,quantity,processSignal,status,TradePrice) " + "values(?,?,?,?,?,?)";
+			PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+			prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
+			prepStmt.setString(2, instrumentToken);
+			prepStmt.setString(3, "0");
+			if (signal == 2)
+				prepStmt.setString(4, "BUY");
+			else
+				prepStmt.setString(4, "SELL");
+			prepStmt.setString(5, "active");
+			prepStmt.setDouble(6, firstClose);
+			prepStmt.executeUpdate();
+			prepStmt.close();
+
+			Statement stmtForUpdate = conn.createStatement();
+			if (firstRowId > 0) {
+				sql = "update " + quoteTable
+						+ "_SignalParams set usedForZigZagSignal ='usedForZigZagSignal' where id in(" + firstRowId
+						+ ")";
+				stmtForUpdate.executeUpdate(sql);
+			}
+			stmtForUpdate.close();
+
+		} else if (loopSize >= 14 && !"usedForZigZagSignal".equalsIgnoreCase(isUnUsedRecord) && !firstRecord
+				&& rsi != 0.0 && (rsi >= 65.0 || rsi <= 35.0)) {
+
+			String sql = "INSERT INTO " + quoteTable + "_signalNew "
+					+ "(time,instrumentToken,quantity,processSignal,status,TradePrice) " + "values(?,?,?,?,?,?)";
+			PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+			prepStmt.setTimestamp(1, new Timestamp(new Date().getTime()));
+			prepStmt.setString(2, instrumentToken);
+			prepStmt.setString(3, "0");
+			if (rsi >= 65.0)
+				prepStmt.setString(4, "SELL");
+			else
+				prepStmt.setString(4, "BUY");
+			prepStmt.setString(5, "active");
+			prepStmt.setDouble(6, firstClose);
+			prepStmt.executeUpdate();
+			prepStmt.close();
+
+			Statement stmtForUpdate = conn.createStatement();
+			if (firstRowId > 0) {
+				sql = "update " + quoteTable
+						+ "_SignalParams set usedForZigZagSignal ='usedForZigZagSignal' where id in(" + firstRowId
+						+ ")";
+				stmtForUpdate.executeUpdate(sql);
+			}
+			stmtForUpdate.close();
+
+		}
+
 	}
 
 	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low,
@@ -879,6 +999,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
+			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
+			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
 			macdSignalParamList.add(macdSignalParam);
 
 			rsiSignalParam.setClose(openRs.getDouble("close"));
@@ -925,6 +1047,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
+			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
+			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
 			macdSignalParamList.add(macdSignalParam);
 
 			rsiSignalParam.setClose(openRs.getDouble("close"));
@@ -969,6 +1093,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setFastEma(openRs.getDouble("fastEma"));
 			macdSignalParam.setSlowEma(openRs.getDouble("slowEma"));
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
+			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
+			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
 			macdSignalParamList.add(macdSignalParam);
 		}
 		stmt.close();
@@ -986,7 +1112,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				openRs.getDouble("downMove"), openRs.getDouble("avgUpMove"), openRs.getDouble("avgDownMove"),
 				openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"));
 		signalContainer.m1 = new MACDSignalParam(close, openRs.getDouble("fastEma"), openRs.getDouble("slowEma"),
-				openRs.getDouble("strategySignal"));
+				openRs.getDouble("strategySignal"), openRs.getDouble("differenceMinusSignal"),
+				openRs.getDouble("macdSignal"));
 		return signalContainer;
 	}
 
@@ -1050,33 +1177,98 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 				String openSql;
 				for (int count = 0; count < instrumentList.size(); count++) {
-					openSql = "SELECT trend,rSI,difference,strategySignal,close FROM " + quoteTable
+					openSql = "SELECT trend,rSI,difference,strategySignal,close,id,usedForSignal FROM " + quoteTable
 							+ "_SignalParams where InstrumentToken ='" + instrumentList.get(count)
-							+ "' ORDER BY Time DESC LIMIT 2 ";
+							+ "' ORDER BY Time DESC LIMIT 4 ";
 
 					ResultSet openRs = stmt.executeQuery(openSql);
+
 					boolean firstDataSet = true;
-					Double macdSignalCurr = 0.0;
-					Integer trend = 1;
-					Double rsi = 0.0;
+					boolean secondDataSet = false;
+					boolean thirdDataSet = false;
+
+					Double macdSignalTempLvlVal = StreamingConfig.MAX_VALUE,
+							macdSignalCurrLvl = StreamingConfig.MAX_VALUE,
+							macdSignalPrevLvl1 = StreamingConfig.MAX_VALUE,
+							macdSignalPrevLvl2 = StreamingConfig.MAX_VALUE,
+							macdSignalPrevLvl3 = StreamingConfig.MAX_VALUE;
+
+					Integer trend = 1, firstRowId = 0;
+					Double rsiCurr = 0.0, rsiPrev = 0.0;
 					Double price = 0.0;
+					String isUnUsedRecord = "";
 					while (openRs.next()) {
 						if (StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
 								&& StreamingConfig.MAX_VALUE != openRs.getDouble("strategySignal")) {
-							Double macdSignalPrev = openRs.getDouble("difference") - openRs.getDouble("strategySignal");
+							macdSignalTempLvlVal = openRs.getDouble("difference") - openRs.getDouble("strategySignal");
 							if (firstDataSet) {
-								macdSignalCurr = macdSignalPrev;
+								macdSignalCurrLvl = macdSignalTempLvlVal;
 								trend = openRs.getInt("trend");
-								rsi = openRs.getDouble("rSI");
+								rsiCurr = openRs.getDouble("rSI");
 								price = openRs.getDouble("close");
+								firstRowId = openRs.getInt("id");
+								isUnUsedRecord = openRs.getString("usedForSignal");
 								firstDataSet = false;
-							} else if (!firstDataSet) {
-								if (trend == 2 && rsi < 70 && rsi > 30
-										&& (macdSignalCurr > 0.0 && macdSignalPrev < 0.0)) {
+								secondDataSet = true;
+							} else if (secondDataSet) {
+								macdSignalPrevLvl1 = macdSignalTempLvlVal;
+								rsiPrev = openRs.getDouble("rSI");
+								secondDataSet = false;
+								thirdDataSet = true;
+							} else if (thirdDataSet) {
+								macdSignalPrevLvl2 = macdSignalTempLvlVal;
+								thirdDataSet = false;
+							}
+
+							if ((!firstDataSet && !secondDataSet && !thirdDataSet
+									&& !"used".equalsIgnoreCase(isUnUsedRecord)
+									&& StreamingConfig.MAX_VALUE != macdSignalCurrLvl
+									&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl1
+									&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl2
+									&& StreamingConfig.MAX_VALUE != macdSignalTempLvlVal)
+									|| (macdSignalCurrLvl > 0.0 && macdSignalPrevLvl1 < 0.0
+											&& StreamingConfig.MAX_VALUE != macdSignalCurrLvl)
+									|| (macdSignalCurrLvl < 0.0 && macdSignalPrevLvl1 > 0.0
+											&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl1)) {
+								if (!firstDataSet && !secondDataSet && !thirdDataSet)
+									macdSignalPrevLvl3 = macdSignalTempLvlVal;
+
+								if (trend == 2 && ((rsiPrev != 0.0 && rsiPrev < 40.0 && rsiCurr >= 40.0)
+										|| (macdSignalCurrLvl >= 0.0 && macdSignalPrevLvl1 <= 0.0
+												&& macdSignalPrevLvl2 <= 0.0 && macdSignalPrevLvl3 <= 0.0
+												&& macdSignalCurrLvl > macdSignalPrevLvl1
+												&& macdSignalPrevLvl1 > macdSignalPrevLvl2
+												&& macdSignalPrevLvl2 > macdSignalPrevLvl3))) {
 									signalList.put(instrumentList.get(count), "BUY," + price);
-								} else if (trend == 0 && rsi > 70 && rsi < 30
-										&& (macdSignalCurr < 0.0 && macdSignalPrev > 0.0)) {
+									Statement stmtForUpdate = conn.createStatement();
+									if (null != firstRowId && firstRowId > 0) {
+										openSql = "update " + quoteTable
+												+ "_SignalParams set usedForSignal ='used' where id in(" + firstRowId
+												+ ")";
+										stmtForUpdate.executeUpdate(openSql);
+									}
+									stmtForUpdate.close();
+
+								} else if (trend == 0 && ((rsiCurr >= 60.0 && rsiPrev > 60.0)
+										|| (StreamingConfig.MAX_VALUE != macdSignalCurrLvl
+												&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl1
+												&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl2
+												&& StreamingConfig.MAX_VALUE != macdSignalPrevLvl3
+												&& macdSignalCurrLvl <= 0.0 && macdSignalPrevLvl1 >= 0.0
+												&& macdSignalPrevLvl2 >= 0.0 && macdSignalPrevLvl3 >= 0.0
+												&& macdSignalCurrLvl < macdSignalPrevLvl1
+												&& macdSignalPrevLvl1 < macdSignalPrevLvl2
+												&& macdSignalPrevLvl2 < macdSignalPrevLvl3))) {
 									signalList.put(instrumentList.get(count), "SELL," + price);
+
+									Statement stmtForUpdate = conn.createStatement();
+									if (null != firstRowId && firstRowId > 0) {
+										openSql = "update " + quoteTable
+												+ "_SignalParams set usedForSignal ='used' where id in(" + firstRowId
+												+ ")";
+										stmtForUpdate.executeUpdate(openSql);
+									}
+									stmtForUpdate.close();
 								}
 							}
 						}
