@@ -259,9 +259,9 @@ public class TradeOptimizer {
 
 			fetchAndProcessInstrumentsPriorityRelatedData();
 
-			// startLiveStreamOfSelectedInstruments();
+			startLiveStreamOfSelectedInstruments();
 
-			// applyStrategiesAndGenerateSignals();
+			applyStrategiesAndGenerateSignals();
 
 			// placeOrdersBasedOnSignals();
 
@@ -312,9 +312,8 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				// if (null != quoteStreamingInstrumentsArr &&
-				// quoteStreamingInstrumentsArr.size() > 0)
-				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
+				if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
+					ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 			}
