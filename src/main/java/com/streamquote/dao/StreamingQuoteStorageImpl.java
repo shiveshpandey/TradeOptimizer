@@ -218,7 +218,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' ORDER BY Time,PriorityPoint,dailyVolatility DESC LIMIT "
+						+ "_instrumentDetails where tradable='tradable' and (PriorityPoint!='null' or dailyVolatility >= 2.0) ORDER BY Time,PriorityPoint,dailyVolatility DESC LIMIT "
 						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {

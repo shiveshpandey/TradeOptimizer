@@ -63,7 +63,7 @@ public class TradeOptimizer {
 	private boolean liveStreamFirstRun = false;
 	private boolean tickerStarted = false;
 
-	private int tokenCountForTrade = 10;
+	private int tokenCountForTrade = 30;
 	private int seconds = 1000;
 
 	private StreamingQuoteStorage streamingQuoteStorage = new StreamingQuoteStorageImpl();
