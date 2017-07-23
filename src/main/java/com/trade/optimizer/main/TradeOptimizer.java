@@ -38,12 +38,10 @@ import org.springframework.web.servlet.view.RedirectView;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.streamquote.dao.StreamingQuoteStorage;
 import com.streamquote.dao.StreamingQuoteStorageImpl;
-import com.streamquote.model.StreamingQuoteModeQuote;
 import com.streamquote.utils.StreamingConfig;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
 import com.trade.optimizer.kiteconnect.SessionExpiryHook;
-import com.trade.optimizer.models.HistoricalData;
 import com.trade.optimizer.models.Holding;
 import com.trade.optimizer.models.Instrument;
 import com.trade.optimizer.models.Order;
@@ -76,15 +74,13 @@ public class TradeOptimizer {
 	private KiteTicker tickerProvider;
 
 	private String url = kiteconnect.getLoginUrl();
-	private String todaysDate, quoteStartTime, quoteEndTime, histQuoteStartTime, histQuoteEndTime;
-	private String histDataStreamEndDateTime = StreamingConfig.HIST_DATA_END_DATE,
-			histDataStreamStartDateTime = StreamingConfig.HIST_DATA_START_DATE;
+	private String todaysDate, quoteStartTime, quoteEndTime;
 
 	private SimpleDateFormat dtTmZFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
 	private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
 	private DateFormat tmFmt = new SimpleDateFormat("HH:mm:ss");
 	private DateFormat dtTmFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	private Date timeStart, timeEnd, histTimeStart, histTimeEnd;
+	private Date timeStart, timeEnd;
 	private TimeZone timeZone = TimeZone.getTimeZone("IST");
 
 	@Autowired
@@ -96,34 +92,38 @@ public class TradeOptimizer {
 
 	@RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
 	public String authRedirectWithTokenPost(@RequestParam String status, @RequestParam String request_token) {
+		LOGGER.info("Entry TradeOptimizer.authRedirectWithTokenPost()");
 		try {
 			UserModel userModel = kiteconnect.requestAccessToken(request_token, StreamingConfig.API_SECRET_KEY);
 			kiteconnect.setAccessToken(userModel.accessToken);
 			kiteconnect.setPublicToken(userModel.publicToken);
 			startProcess();
 		} catch (JSONException | KiteException e) {
-			e.printStackTrace();
+			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage());
 			return "error";
 		}
+		LOGGER.info("Exit TradeOptimizer.authRedirectWithTokenPost()");
 		return "index";
 	}
 
 	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
-
+		LOGGER.info("Entry TradeOptimizer.localRedirect()");
 		kiteconnect.registerHook(new SessionExpiryHook() {
 			@Override
 			public void sessionExpired() {
-				LOGGER.info("session expired");
+				LOGGER.info("Error TradeOptimizer.localRedirect(): Session Expired");
 				localRedirect();
 			}
 		});
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
+		LOGGER.info("Exit TradeOptimizer.localRedirect()");
 		return redirectView;
 	}
 
 	public void fetchNSEActiveSymbolList() {
+		LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		Map<String, Double> stocksSymbolArray = new HashMap<String, Double>();
@@ -152,55 +152,55 @@ public class TradeOptimizer {
 										.valueOf(arr.getJSONObject(i).getString("tradedQuantity").replaceAll(",", ""))
 										/ 100000)));
 			} catch (IOException e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 		}
 		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+		LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
 
 	public void startProcess() {
 		try {
+			LOGGER.info("Entry TradeOptimizer.startProcess()");
 			tmFmt.setTimeZone(timeZone);
 			dtFmt.setTimeZone(timeZone);
 			dtTmFmt.setTimeZone(timeZone);
 			dtTmZFmt.setTimeZone(timeZone);
 
 			todaysDate = dtFmt.format(Calendar.getInstance(timeZone).getTime());
-			histDataStreamEndDateTime = todaysDate;
 			quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
 			quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
-			histQuoteStartTime = todaysDate + " " + StreamingConfig.HISTORICAL_DATA_STREAM_START_TIME;
-			histQuoteEndTime = todaysDate + " " + StreamingConfig.HISTORICAL_DATA_STREAM_END_TIME;
 			timeStart = dtTmFmt.parse(quoteStartTime);
 			timeEnd = dtTmFmt.parse(quoteEndTime);
-			histTimeStart = dtTmFmt.parse(histQuoteStartTime);
-			histTimeEnd = dtTmFmt.parse(histQuoteEndTime);
 
 			createInitialDayTables();
 
-			startStreamForHistoricalInstrumentsData();
+			fetchAndProcessInstrumentsPriorityRelatedData();
 
 			startLiveStreamOfSelectedInstruments();
 
 			applyStrategiesAndGenerateSignals();
 
-			// executeOrdersOnSignals();
+			// placeOrdersBasedOnSignals();
 
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
-			// closingDayRoundOffOperations();
+			// dayClosingStocksRoundOffOperations();
 		} catch (JSONException | ParseException e) {
-			e.printStackTrace();
+			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage());
 		}
+		LOGGER.info("Exit TradeOptimizer.startProcess()");
 	}
 
 	private void tickerSettingInitialization() {
+		LOGGER.info("Entry TradeOptimizer.tickerSettingInitialization()");
+
 		tickerProvider = new KiteTicker(kiteconnect);
 		tickerProvider.setTryReconnection(true);
 		try {
 			tickerProvider.setTimeIntervalForReconnection(5);
 		} catch (KiteException e) {
-			e.printStackTrace();
+			LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 		}
 		tickerProvider.setMaxRetries(-1);
 
@@ -215,7 +215,7 @@ public class TradeOptimizer {
 					try {
 						tickerProvider.subscribe(tokenListForTick);
 					} catch (IOException | WebSocketException | KiteException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 			}
 		});
@@ -237,9 +237,11 @@ public class TradeOptimizer {
 					streamingQuoteStorage.storeData(ticks);
 			}
 		});
+		LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
 	}
 
 	protected ArrayList<Tick> testingTickerData(ArrayList<Long> quoteStreamingInstrumentsArr) {
+		LOGGER.info("Entry TradeOptimizer.testingTickerData()");
 
 		ArrayList<Tick> ticks = new ArrayList<Tick>();
 		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
@@ -264,10 +266,12 @@ public class TradeOptimizer {
 			tick.setLastTradedPrice(tick.getClosePrice());
 			ticks.add(tick);
 		}
+		LOGGER.info("Exit TradeOptimizer.testingTickerData()");
 		return ticks;
 	}
 
 	private void createInitialDayTables() {
+		LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
 		if (streamingQuoteStorage != null) {
 
 			DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
@@ -278,12 +282,15 @@ public class TradeOptimizer {
 				streamingQuoteStorage.createDaysStreamingQuoteTable(
 						quoteTableDtFmt.format(Calendar.getInstance(timeZone).getTime()));
 			} catch (SQLException e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 		}
+		LOGGER.info("Exit TradeOptimizer.createInitialDayTables()");
 	}
 
-	private void closingDayRoundOffOperations() throws KiteException {
+	private void dayClosingStocksRoundOffOperations() throws KiteException {
+		LOGGER.info("Entry TradeOptimizer.dayClosingStocksRoundOffOperations()");
+
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -312,19 +319,22 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (KiteException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (Exception e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 				}
 			}
 		});
 		t.start();
+		LOGGER.info("Exit TradeOptimizer.dayClosingStocksRoundOffOperations()");
 	}
 
-	private void executeOrdersOnSignals() {
+	private void placeOrdersBasedOnSignals() {
+		LOGGER.info("Entry TradeOptimizer.placeOrdersBasedOnSignals()");
+
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -345,16 +355,17 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (KiteException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (Exception e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 				}
 			}
 		});
 		t.start();
+		LOGGER.info("Exit TradeOptimizer.placeOrdersBasedOnSignals()");
 	}
 
 	private List<Order> getOrderListToPlaceAsPerStrategySignals() {
@@ -362,6 +373,8 @@ public class TradeOptimizer {
 	}
 
 	private void startLiveStreamOfSelectedInstruments() {
+		LOGGER.info("Entry TradeOptimizer.startLiveStreamOfSelectedInstruments()");
+
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -379,137 +392,73 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (Exception e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 				}
 			}
 		});
 		t.start();
+		LOGGER.info("Exit TradeOptimizer.startLiveStreamOfSelectedInstruments()");
 	}
 
-	@SuppressWarnings("unused")
-	private void threadEnabledHistoricalDataFetch(List<Instrument> instrumentList) {
-		StreamingQuoteModeQuote quote = null;
-		HistoricalData historicalDataList = null, histData = null;
-		ArrayList<StreamingQuoteModeQuote> quoteList = null;
-		Instrument instrument = null;
-		double priorityPoint = 0;
-
-		for (int index = 0; index < instrumentList.size(); index++) {
-			try {
-				instrument = instrumentList.get(index);
-				quoteList = new ArrayList<StreamingQuoteModeQuote>();
-				priorityPoint = 0;
-				historicalDataList = tradeOperations.getHistoricalData(kiteconnect, histDataStreamStartDateTime,
-						histDataStreamEndDateTime, "minute", Long.toString(instrument.getInstrument_token()));
-
-				for (int count = 0; count < historicalDataList.dataArrayList.size(); count++) {
-					histData = historicalDataList.dataArrayList.get(count);
-					priorityPoint += (Double.valueOf(histData.volume) / 1000);
-					quote = new StreamingQuoteModeQuote(historicalDataList.dataArrayList.get(count).timeStamp,
-							Long.toString(instrument.getInstrument_token()), new Double(0), new Long(0), new Double(0),
-							Long.valueOf(histData.volume), new Long(0), new Long(0), new Double(histData.open),
-							new Double(histData.high), new Double(histData.low), new Double(histData.close));
-					quoteList.add(quote);
-				}
-				quoteList.get(0).ltp = priorityPoint;
-				streamingQuoteStorage.storeData(quoteList, "minute");
-			} catch (ArithmeticException e) {
-				if (e.getMessage().trim().equalsIgnoreCase("/ by zero"))
-					continue;
-				else {
-					e.printStackTrace();
-					continue;
-				}
-			} catch (KiteException e) {
-				if (e.message.equalsIgnoreCase("No candles found based on token and time and candleType or Server busy")
-						&& e.code == 400)
-					continue;
-				else {
-					LOGGER.info(e.message);
-					continue;
-				}
-			}
-		}
-	}
-
-	private void startStreamForHistoricalInstrumentsData() {
+	private void fetchAndProcessInstrumentsPriorityRelatedData() {
+		LOGGER.info("Entry TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 
 		Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
 
 			@Override
 			public void run() {
-				while (runnable) {
+				while (firstTimeDayHistoryRun) {
 					try {
-						Date timeNow = Calendar.getInstance(timeZone).getTime();
-						if (timeNow.compareTo(histTimeStart) >= 0 && timeNow.compareTo(histTimeEnd) <= 0) {
-							if (firstTimeDayHistoryRun) {
-								try {
-									instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
-									streamingQuoteStorage.saveInstrumentDetails(instrumentList,
-											new Timestamp(new Date().getTime()));
+						try {
+							instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+							streamingQuoteStorage.saveInstrumentDetails(instrumentList,
+									new Timestamp(new Date().getTime()));
 
-									/*
-									 * instrumentList.addAll(tradeOperations
-									 * .getInstrumentsForExchange(kiteconnect,
-									 * "BSE"));
-									 * instrumentList.addAll(tradeOperations
-									 * .getInstrumentsForExchange(kiteconnect,
-									 * "NFO"));
-									 * instrumentList.addAll(tradeOperations
-									 * .getInstrumentsForExchange(kiteconnect,
-									 * "BFO"));
-									 */
-									firstTimeDayHistoryRun = false;
-								} catch (KiteException e) {
-									LOGGER.info(e.message);
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-							}
-
-							// List<Instrument> instrument = instrumentList;
-							// threadEnabledHistoricalDataFetch(instrument);
-
-							ArrayList<Long> previousQuoteStreamingInstrumentsArr = quoteStreamingInstrumentsArr;
-
-							fetchNSEActiveSymbolList();
-
-							quoteStreamingInstrumentsArr = streamingQuoteStorage
-									.getTopPrioritizedTokenList(tokenCountForTrade);
-							try {
-								if (null != quoteStreamingInstrumentsArr
-										&& null != previousQuoteStreamingInstrumentsArr)
-									roundOfNonPerformingBoughtStocks(quoteStreamingInstrumentsArr,
-											previousQuoteStreamingInstrumentsArr);
-							} catch (KiteException e) {
-								e.printStackTrace();
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-
-							histDataStreamStartDateTime = todaysDate + " " + tmFmt.format(new Date());
-							Thread.sleep(10 * 3600 * seconds);
-							histDataStreamEndDateTime = todaysDate + " " + tmFmt.format(new Date());
-						} else {
-							runnable = false;
+							/*
+							 * instrumentList.addAll(tradeOperations
+							 * .getInstrumentsForExchange(kiteconnect, "BSE"));
+							 * instrumentList.addAll(tradeOperations
+							 * .getInstrumentsForExchange(kiteconnect, "NFO"));
+							 * instrumentList.addAll(tradeOperations
+							 * .getInstrumentsForExchange(kiteconnect, "BFO"));
+							 */
+							firstTimeDayHistoryRun = false;
+						} catch (KiteException e) {
+							LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
+						} catch (Exception e) {
+							LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 						}
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+						ArrayList<Long> previousQuoteStreamingInstrumentsArr = quoteStreamingInstrumentsArr;
+
+						fetchNSEActiveSymbolList();
+
+						quoteStreamingInstrumentsArr = streamingQuoteStorage
+								.getTopPrioritizedTokenList(tokenCountForTrade);
+						try {
+							if (null != quoteStreamingInstrumentsArr && null != previousQuoteStreamingInstrumentsArr)
+								roundOfNonPerformingBoughtStocks(quoteStreamingInstrumentsArr,
+										previousQuoteStreamingInstrumentsArr);
+						} catch (KiteException e) {
+							LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
+						} catch (Exception e) {
+							LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
+						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 				}
 			}
 		});
 		t.start();
+		LOGGER.info("Exit TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 	}
 
 	private void roundOfNonPerformingBoughtStocks(ArrayList<Long> quoteStreamingInstrumentsArr,
 			ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws KiteException {
+		LOGGER.info("Entry TradeOptimizer.roundOfNonPerformingBoughtStocks()");
 
 		ArrayList<Long> unSubList = new ArrayList<Long>();
 		ArrayList<Long> subList = new ArrayList<Long>();
@@ -575,7 +524,7 @@ public class TradeOptimizer {
 			try {
 				tickerProvider.connect();
 			} catch (WebSocketException | IOException e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 			tickerStarted = true;
 		}
@@ -585,11 +534,14 @@ public class TradeOptimizer {
 			try {
 				tickerProvider.subscribe(subList);
 			} catch (IOException | WebSocketException e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
+		LOGGER.info("Exit TradeOptimizer.roundOfNonPerformingBoughtStocks()");
 	}
 
 	private void applyStrategiesAndGenerateSignals() {
+		LOGGER.info("Entry TradeOptimizer.applyStrategiesAndGenerateSignals()");
+
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -616,17 +568,19 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					} catch (Exception e) {
-						e.printStackTrace();
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 					}
 				}
 			}
 		});
 		t.start();
+		LOGGER.info("Exit TradeOptimizer.applyStrategiesAndGenerateSignals()");
 	}
 
 	private void startStreamingQuote() {
+		LOGGER.info("Entry TradeOptimizer.startStreamingQuote()");
 		tokenListForTick = getInstrumentTokensList();
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
@@ -639,11 +593,12 @@ public class TradeOptimizer {
 					liveStreamFirstRun = false;
 				}
 			} catch (IOException | WebSocketException | KiteException e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			} catch (Exception e) {
-				e.printStackTrace();
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
 			}
 		}
+		LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");
 	}
 
 	private ArrayList<Long> getInstrumentTokensList() {
@@ -654,10 +609,12 @@ public class TradeOptimizer {
 	}
 
 	private void stopStreamingQuote() {
+		LOGGER.info("Entry TradeOptimizer.stopStreamingQuote()");
 		tickerProvider.disconnect();
 
 		if (streamingQuoteStorage != null) {
 			streamingQuoteStorage.closeJDBCConn();
 		}
+		LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
 	}
 }
