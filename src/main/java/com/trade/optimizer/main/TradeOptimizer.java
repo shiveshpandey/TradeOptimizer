@@ -312,8 +312,9 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				//if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
-				//	ticks = testingTickerData(quoteStreamingInstrumentsArr);
+				// if (null != quoteStreamingInstrumentsArr &&
+				// quoteStreamingInstrumentsArr.size() > 0)
+				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 			}
@@ -654,10 +655,12 @@ public class TradeOptimizer {
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
 				if (liveStreamFirstRun) {
-					if (!tickerStarted || (null!=tickerProvider && tickerProvider.getSubscribedTokenList().size()==0 && tokenListForTick.size()>0))
+					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokenList().size() == 0
+							&& tokenListForTick.size() > 0))
 						tickerSettingInitialization();
 					tickerProvider.connect();
-					if (!tickerStarted || (null!=tickerProvider && tickerProvider.getSubscribedTokenList().size()==0 && tokenListForTick.size()>0))
+					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokenList().size() == 0
+							&& tokenListForTick.size() > 0))
 						tickerProvider.subscribe(tokenListForTick);
 					tickerStarted = true;
 				}

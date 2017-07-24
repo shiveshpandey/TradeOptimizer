@@ -494,7 +494,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
 							+ "' and timestampGrp ='" + new Timestamp(timeStampPeriodList.get(timeLoop).getTime())
-							+ "' ORDER BY Time DESC ";
+							+ "' ORDER BY id DESC ";
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
 					while (openRsHighLowClose.next()) {
@@ -509,7 +509,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					}
 
 					openSql = "SELECT * FROM " + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken
-							+ "' ORDER BY Time DESC LIMIT 1 ";
+							+ "' ORDER BY id DESC LIMIT 1 ";
 					ResultSet openRsSignalParams = timeLoopRsStmt.executeQuery(openSql);
 
 					SignalContainer signalContainer = null;
@@ -608,7 +608,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				+ " ORDER BY id DESC LIMIT 26 ";
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(openSql);
-		Double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0, firstClose = StreamingConfig.MAX_VALUE,
+		double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0, firstClose = StreamingConfig.MAX_VALUE,
 				lowRsi = StreamingConfig.MAX_VALUE, highRsi = 0.0, firstRsi = 0.0;
 		boolean firstRecord = true;
 		int signalClose = 1, signalRsi = 1;
@@ -912,15 +912,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					boolean secondDataSet = false;
 					boolean thirdDataSet = false;
 
-					Double macdSignalTempLvlVal = StreamingConfig.MAX_VALUE,
+					double macdSignalTempLvlVal = StreamingConfig.MAX_VALUE,
 							macdSignalCurrLvl = StreamingConfig.MAX_VALUE,
 							macdSignalPrevLvl1 = StreamingConfig.MAX_VALUE,
 							macdSignalPrevLvl2 = StreamingConfig.MAX_VALUE,
 							macdSignalPrevLvl3 = StreamingConfig.MAX_VALUE;
 
-					Integer trend = 1, firstRowId = 0;
-					Double rsiCurr = 0.0, rsiPrev = 0.0;
-					Double price = 0.0;
+					int trend = 1, firstRowId = 0;
+					double rsiCurr = 0.0, rsiPrev = 0.0;
+					double price = 0.0;
 					String isUnUsedRecord = "";
 					while (openRs.next()) {
 						if (StreamingConfig.MAX_VALUE != openRs.getDouble("rSI")
@@ -966,7 +966,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 												&& macdSignalPrevLvl2 > macdSignalPrevLvl3))) {
 									signalList.put(instrumentList.get(count), "BUY," + price);
 									Statement stmtForUpdate = conn.createStatement();
-									if (null != firstRowId && firstRowId > 0) {
+									if (firstRowId > 0) {
 										openSql = "update " + quoteTable
 												+ "_SignalParams set usedForSignal ='used' where id in(" + firstRowId
 												+ ")";
@@ -987,7 +987,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 									signalList.put(instrumentList.get(count), "SELL," + price);
 
 									Statement stmtForUpdate = conn.createStatement();
-									if (null != firstRowId && firstRowId > 0) {
+									if (firstRowId > 0) {
 										openSql = "update " + quoteTable
 												+ "_SignalParams set usedForSignal ='used' where id in(" + firstRowId
 												+ ")";
