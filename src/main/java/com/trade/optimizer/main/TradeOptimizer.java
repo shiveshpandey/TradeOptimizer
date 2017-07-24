@@ -654,10 +654,10 @@ public class TradeOptimizer {
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
 				if (liveStreamFirstRun) {
-					if (!tickerStarted)
+					if (!tickerStarted || (null!=tickerProvider && tickerProvider.getSubscribedTokenList().size()==0 && tokenListForTick.size()>0))
 						tickerSettingInitialization();
 					tickerProvider.connect();
-					if (!tickerStarted)
+					if (!tickerStarted || (null!=tickerProvider && tickerProvider.getSubscribedTokenList().size()==0 && tokenListForTick.size()>0))
 						tickerProvider.subscribe(tokenListForTick);
 					tickerStarted = true;
 				}

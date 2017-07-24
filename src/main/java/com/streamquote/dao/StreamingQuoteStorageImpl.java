@@ -605,7 +605,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		String openSql = "SELECT close,rsi,usedForZigZagSignal,id FROM " + quoteTable
 				+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!=" + StreamingConfig.MAX_VALUE
-				+ " ORDER BY Time DESC LIMIT 26 ";
+				+ " ORDER BY id DESC LIMIT 26 ";
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(openSql);
 		Double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0, firstClose = StreamingConfig.MAX_VALUE,
