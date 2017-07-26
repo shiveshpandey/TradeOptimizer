@@ -63,7 +63,7 @@ public class TradeOptimizer {
 	private boolean liveStreamFirstRun = false;
 	private boolean tickerStarted = false;
 
-	private int tokenCountForTrade = 30;
+	private int tokenCountForTrade = 50;
 	private int seconds = 1000;
 
 	private StreamingQuoteStorage streamingQuoteStorage = new StreamingQuoteStorageImpl();
@@ -77,9 +77,7 @@ public class TradeOptimizer {
 	private String url = kiteconnect.getLoginUrl();
 	private String todaysDate, quoteStartTime, quoteEndTime;
 
-	private SimpleDateFormat dtTmZFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
 	private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
-	private DateFormat tmFmt = new SimpleDateFormat("HH:mm:ss");
 	private DateFormat dtTmFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private Date timeStart, timeEnd;
 
@@ -146,6 +144,7 @@ public class TradeOptimizer {
 					if (!firstLine) {
 						instrumentVolatilityScore = new InstrumentVolatilityScore();
 						instrumentVolatilityScore.setInstrumentName(readData[1]);
+						instrumentVolatilityScore.setPrice(Double.parseDouble(readData[2]));
 						instrumentVolatilityScore.setDailyVolatility(Double.parseDouble(readData[6]) * 100.0);
 						instrumentVolatilityScore.setAnnualVolatility(Double.parseDouble(readData[7]) * 100.0);
 
@@ -170,7 +169,7 @@ public class TradeOptimizer {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 
-		HttpGet get = new HttpGet(StreamingConfig.nifty100InstrumentCsvUrl);
+		HttpGet get = new HttpGet(StreamingConfig.nifty200InstrumentCsvUrl);
 		get.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		get.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
 		instrumentVolatilityScoreList = new ArrayList<InstrumentVolatilityScore>();
@@ -208,7 +207,7 @@ public class TradeOptimizer {
 		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
-		Map<String, Double> stocksSymbolArray = new HashMap<String, Double>();
+		Map<String, InstrumentVolatilityScore> stocksSymbolArray = new HashMap<String, InstrumentVolatilityScore>();
 		Double j = 1000.0;
 		for (int count = 0; count < StreamingConfig.stockListCollectingUrls.length; count++) {
 
@@ -228,8 +227,25 @@ public class TradeOptimizer {
 				JSONArray arr = obj.getJSONArray("data");
 
 				for (int i = 0; i < arr.length(); i++) {
-					if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol")))
-						stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"), j);
+					if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol"))) {
+						InstrumentVolatilityScore instrumentVolatilityScore = new InstrumentVolatilityScore();
+						instrumentVolatilityScore.setInstrumentName(arr.getJSONObject(i).getString("symbol"));
+						instrumentVolatilityScore.setCurrentVolatility(j);
+						instrumentVolatilityScore.setDailyVolatility(j);
+
+						double a = Double.parseDouble(arr.getJSONObject(i).getString("ltp"));
+						double b = Double.parseDouble(arr.getJSONObject(i).getString("previousPrice"));
+						double c = Double.parseDouble(arr.getJSONObject(i).getString("netPrice"));
+
+						if (a >= b && a >= c)
+							instrumentVolatilityScore.setPrice(a);
+						else if (b >= a && b >= c)
+							instrumentVolatilityScore.setPrice(b);
+						else if (c >= a && c >= b)
+							instrumentVolatilityScore.setPrice(c);
+
+						stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"), instrumentVolatilityScore);
+					}
 					j = j - 1.0;
 				}
 			} catch (IOException e) {
@@ -258,7 +274,7 @@ public class TradeOptimizer {
 
 			applyStrategiesAndGenerateSignals();
 
-			// placeOrdersBasedOnSignals();
+			placeOrdersBasedOnSignals();
 
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
@@ -317,35 +333,38 @@ public class TradeOptimizer {
 		// LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
 	}
 
-	protected ArrayList<Tick> testingTickerData(ArrayList<Long> quoteStreamingInstrumentsArr) {
-		// LOGGER.info("Entry TradeOptimizer.testingTickerData()");
-
-		ArrayList<Tick> ticks = new ArrayList<Tick>();
-		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
-			Tick tick = new Tick();
-			tick.setToken(Integer.parseInt(quoteStreamingInstrumentsArr.get(i).toString()));
-			tick.setClosePrice(2000.0 + Math.random() * (5.0));
-			tick.setLowPrice(tick.getClosePrice() - (Math.random() * (3.0 * Math.random())));
-			tick.setHighPrice(tick.getClosePrice() + (Math.random() * (3.0 * Math.random())));
-			if (Math.random() > 0.5)
-				tick.setClosePrice(tick.getClosePrice() - Math.random());
-			else
-				tick.setClosePrice(tick.getClosePrice() + Math.random());
-			if (Math.random() > 0.5)
-				tick.setLowPrice(tick.getLowPrice() - Math.random());
-			else
-				tick.setLowPrice(tick.getLowPrice() + Math.random());
-			if (Math.random() > 0.5)
-				tick.setHighPrice(tick.getHighPrice() - Math.random());
-			else
-				tick.setHighPrice(tick.getHighPrice() + Math.random());
-
-			tick.setLastTradedPrice(tick.getClosePrice());
-			ticks.add(tick);
-		}
-		// LOGGER.info("Exit TradeOptimizer.testingTickerData()");
-		return ticks;
-	}
+	// protected ArrayList<Tick> testingTickerData(ArrayList<Long>
+	// quoteStreamingInstrumentsArr) {
+	// // LOGGER.info("Entry TradeOptimizer.testingTickerData()");
+	//
+	// ArrayList<Tick> ticks = new ArrayList<Tick>();
+	// for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
+	// Tick tick = new Tick();
+	// tick.setToken(Integer.parseInt(quoteStreamingInstrumentsArr.get(i).toString()));
+	// tick.setClosePrice(2000.0 + Math.random() * (5.0));
+	// tick.setLowPrice(tick.getClosePrice() - (Math.random() * (3.0 *
+	// Math.random())));
+	// tick.setHighPrice(tick.getClosePrice() + (Math.random() * (3.0 *
+	// Math.random())));
+	// if (Math.random() > 0.5)
+	// tick.setClosePrice(tick.getClosePrice() - Math.random());
+	// else
+	// tick.setClosePrice(tick.getClosePrice() + Math.random());
+	// if (Math.random() > 0.5)
+	// tick.setLowPrice(tick.getLowPrice() - Math.random());
+	// else
+	// tick.setLowPrice(tick.getLowPrice() + Math.random());
+	// if (Math.random() > 0.5)
+	// tick.setHighPrice(tick.getHighPrice() - Math.random());
+	// else
+	// tick.setHighPrice(tick.getHighPrice() + Math.random());
+	//
+	// tick.setLastTradedPrice(tick.getClosePrice());
+	// ticks.add(tick);
+	// }
+	// // LOGGER.info("Exit TradeOptimizer.testingTickerData()");
+	// return ticks;
+	// }
 
 	private void createInitialDayTables() {
 		// LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
@@ -388,7 +407,7 @@ public class TradeOptimizer {
 							}
 							for (int index = 0; index < holdings.size(); index++) {
 								tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
-										holdings.get(index).quantity, streamingQuoteStorage);
+										"0.0", holdings.get(index).quantity, streamingQuoteStorage);
 							}
 						} else {
 							Thread.sleep(10 * seconds);
@@ -426,7 +445,7 @@ public class TradeOptimizer {
 							for (int index = 0; index < signalList.size(); index++)
 								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
 										signalList.get(index).transactionType, signalList.get(index).quantity,
-										streamingQuoteStorage);
+										signalList.get(index).price, streamingQuoteStorage);
 							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
@@ -517,90 +536,101 @@ public class TradeOptimizer {
 		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 	}
 
-	private void roundOfNonPerformingBoughtStocks(ArrayList<Long> quoteStreamingInstrumentsArr,
-			ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws KiteException {
-		// LOGGER.info("Entry
-		// TradeOptimizer.roundOfNonPerformingBoughtStocks()");
-
-		ArrayList<Long> unSubList = new ArrayList<Long>();
-		ArrayList<Long> subList = new ArrayList<Long>();
-		for (int index = 0; index < previousQuoteStreamingInstrumentsArr.size(); index++) {
-			boolean quoteExistInNewList = false;
-			for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
-				if (quoteStreamingInstrumentsArr.get(count).longValue() == previousQuoteStreamingInstrumentsArr
-						.get(index).longValue()) {
-					quoteExistInNewList = true;
-				}
-			}
-			if (!quoteExistInNewList) {
-				unSubList.add(previousQuoteStreamingInstrumentsArr.get(index));
-			}
-		}
-		for (int index = 0; index < quoteStreamingInstrumentsArr.size(); index++) {
-			boolean newQuote = true;
-			for (int count = 0; count < previousQuoteStreamingInstrumentsArr.size(); count++) {
-				if (quoteStreamingInstrumentsArr.get(index).longValue() == previousQuoteStreamingInstrumentsArr
-						.get(count).longValue()) {
-					newQuote = false;
-				}
-			}
-			if (newQuote) {
-				subList.add(quoteStreamingInstrumentsArr.get(index));
-			}
-		}
-		List<Order> orders = tradeOperations.getOrders(kiteconnect);
-		if (null != orders && orders.size() > 0)
-			for (int index = 0; index < orders.size(); index++) {
-				boolean OrderCancelRequired = true;
-				for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
-					if (orders.get(index).tradingSymbol
-							.equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
-						OrderCancelRequired = false;
-					}
-				}
-				if (OrderCancelRequired) {
-					if (orders.get(index).status.equalsIgnoreCase("OPEN"))
-						tradeOperations.cancelOrder(kiteconnect, orders.get(index));
-				}
-			}
-
-		Holding holdingList = tradeOperations.getHoldings(kiteconnect);
-		List<Holding> holdings = new ArrayList<Holding>();
-		if (null != holdingList && null != holdingList.holdings)
-			holdings = holdingList.holdings;
-		for (int index = 0; index < holdings.size(); index++) {
-			boolean orderSellOutRequired = true;
-			for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++) {
-				if (holdings.get(index).instrumentToken
-						.equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
-					orderSellOutRequired = false;
-				}
-			}
-			if (orderSellOutRequired) {
-				tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
-						holdings.get(index).quantity, streamingQuoteStorage);
-			}
-		}
-
-		if (liveStreamFirstRun) {
-			try {
-				if (!tickerStarted)
-					tickerSettingInitialization();
-				tickerProvider.connect();
-				if (null != unSubList && unSubList.size() > 0)
-					tickerProvider.unsubscribe(unSubList);
-				if (null != subList && subList.size() > 0) {
-					tickerProvider.subscribe(subList);
-					tickerStarted = true;
-				}
-			} catch (WebSocketException | IOException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
-			}
-		}
-
-		// LOGGER.info("Exit
-		// TradeOptimizer.roundOfNonPerformingBoughtStocks()");
-	}
+	// private void roundOfNonPerformingBoughtStocks(ArrayList<Long>
+	// quoteStreamingInstrumentsArr,
+	// ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws
+	// KiteException {
+	// // LOGGER.info("Entry
+	// // TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+	//
+	// ArrayList<Long> unSubList = new ArrayList<Long>();
+	// ArrayList<Long> subList = new ArrayList<Long>();
+	// for (int index = 0; index < previousQuoteStreamingInstrumentsArr.size();
+	// index++) {
+	// boolean quoteExistInNewList = false;
+	// for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++)
+	// {
+	// if (quoteStreamingInstrumentsArr.get(count).longValue() ==
+	// previousQuoteStreamingInstrumentsArr
+	// .get(index).longValue()) {
+	// quoteExistInNewList = true;
+	// }
+	// }
+	// if (!quoteExistInNewList) {
+	// unSubList.add(previousQuoteStreamingInstrumentsArr.get(index));
+	// }
+	// }
+	// for (int index = 0; index < quoteStreamingInstrumentsArr.size(); index++)
+	// {
+	// boolean newQuote = true;
+	// for (int count = 0; count < previousQuoteStreamingInstrumentsArr.size();
+	// count++) {
+	// if (quoteStreamingInstrumentsArr.get(index).longValue() ==
+	// previousQuoteStreamingInstrumentsArr
+	// .get(count).longValue()) {
+	// newQuote = false;
+	// }
+	// }
+	// if (newQuote) {
+	// subList.add(quoteStreamingInstrumentsArr.get(index));
+	// }
+	// }
+	// List<Order> orders = tradeOperations.getOrders(kiteconnect);
+	// if (null != orders && orders.size() > 0)
+	// for (int index = 0; index < orders.size(); index++) {
+	// boolean OrderCancelRequired = true;
+	// for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++)
+	// {
+	// if (orders.get(index).tradingSymbol
+	// .equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
+	// OrderCancelRequired = false;
+	// }
+	// }
+	// if (OrderCancelRequired) {
+	// if (orders.get(index).status.equalsIgnoreCase("OPEN"))
+	// tradeOperations.cancelOrder(kiteconnect, orders.get(index));
+	// }
+	// }
+	//
+	// Holding holdingList = tradeOperations.getHoldings(kiteconnect);
+	// List<Holding> holdings = new ArrayList<Holding>();
+	// if (null != holdingList && null != holdingList.holdings)
+	// holdings = holdingList.holdings;
+	// for (int index = 0; index < holdings.size(); index++) {
+	// boolean orderSellOutRequired = true;
+	// for (int count = 0; count < quoteStreamingInstrumentsArr.size(); count++)
+	// {
+	// if (holdings.get(index).instrumentToken
+	// .equalsIgnoreCase(quoteStreamingInstrumentsArr.get(count).toString())) {
+	// orderSellOutRequired = false;
+	// }
+	// }
+	// if (orderSellOutRequired) {
+	// tradeOperations.placeOrder(kiteconnect,
+	// holdings.get(index).instrumentToken, "SELL",
+	// holdings.get(index).quantity, streamingQuoteStorage);
+	// }
+	// }
+	//
+	// if (liveStreamFirstRun) {
+	// try {
+	// if (!tickerStarted)
+	// tickerSettingInitialization();
+	// tickerProvider.connect();
+	// if (null != unSubList && unSubList.size() > 0)
+	// tickerProvider.unsubscribe(unSubList);
+	// if (null != subList && subList.size() > 0) {
+	// tickerProvider.subscribe(subList);
+	// tickerStarted = true;
+	// }
+	// } catch (WebSocketException | IOException e) {
+	// LOGGER.info("Error TradeOptimizer :- " + e.getMessage());
+	// }
+	// }
+	//
+	// // LOGGER.info("Exit
+	// // TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+	// }
 
 	private void applyStrategiesAndGenerateSignals() {
 		// LOGGER.info("Entry

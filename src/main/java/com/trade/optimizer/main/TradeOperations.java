@@ -48,7 +48,7 @@ public class TradeOperations {
 	 * @param streamingQuoteDAOModeQuote
 	 */
 	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity,
-			StreamingQuoteStorage streamingQuoteDAOModeQuote) throws KiteException {
+			String tradePrice, StreamingQuoteStorage streamingQuoteDAOModeQuote) throws KiteException {
 		/**
 		 * Place order method requires a map argument which contains,
 		 * tradingsymbol, exchange, transaction_type, order_type, quantity,
@@ -71,13 +71,14 @@ public class TradeOperations {
 		param.put("exchange", instrumentDetails[2]);
 		param.put("transaction_type", buyOrSell);
 		param.put("validity", "DAY");
-		param.put("price", "158.0");
+		param.put("price", tradePrice);
 		param.put("trigger_price", "157.5");
 		param.put("tag", "myTag"); // tag is optional and it cannot be more
 									// than 8 characters and only
 									// alphanumeric is allowed
 		// Order order = kiteconnect.placeOrder(param, "regular");
-		LOGGER.info("Order Placed for : " + instrumentDetails[1]);
+		LOGGER.info(
+				"Order Placed for : " + instrumentDetails[1] + " ,Price: " + tradePrice + " ,Quantity: " + quantity);
 	}
 
 	/** Place bracket order. */

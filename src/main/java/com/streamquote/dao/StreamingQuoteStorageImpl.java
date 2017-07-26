@@ -250,13 +250,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken,ProcessSignal,Quantity,Time,id,TradePrice FROM " + quoteTable
-						+ "_Signal where status ='active'";
+						+ "_SignalNew where status ='active'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				List<Integer> idList = new ArrayList<Integer>();
 
 				while (openRs.next()) {
 					Order order = new Order();
-					order.symbol = String.valueOf(openRs.getString(1));
+					order.symbol = fetchTradingSymbolFromInstrumentDetails(openRs.getString(1));
 					order.transactionType = String.valueOf(openRs.getString(2));
 					order.quantity = String.valueOf(openRs.getString(3));
 					order.price = String.valueOf(openRs.getString(6));
@@ -265,7 +265,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				}
 				if (null != idList && idList.size() > 0) {
 					stmt = conn.createStatement();
-					openSql = "update " + quoteTable + "_Signal set status ='orderPlaced' where id in("
+					openSql = "update " + quoteTable + "_SignalNew set status ='orderPlaced' where id in("
 							+ commaSeperatedIDs(idList) + ")";
 					stmt.executeUpdate(openSql);
 				}
@@ -386,7 +386,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							String[] signalAndPrice = signalArray.split(",");
 							prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
 							prepStmt.setString(2, instrumentList.get(index).toString());
-							prepStmt.setString(3, "0");
+							prepStmt.setString(3,
+									fetchLotSizeFromInstrumentDetails(instrumentList.get(index).toString()));
 							prepStmt.setString(4, signalAndPrice[0]);
 							prepStmt.setString(5, "active");
 							prepStmt.setDouble(6, Double.parseDouble(signalAndPrice[1]));
@@ -407,6 +408,34 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		}
 		// LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
+	}
+
+	private String fetchLotSizeFromInstrumentDetails(String instrumentToken) throws SQLException {
+		String lotSize = "";
+		Statement stmt = conn.createStatement();
+		String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
+				+ instrumentToken + "'";
+		ResultSet openRs = stmt.executeQuery(openSql);
+
+		while (openRs.next()) {
+			lotSize = openRs.getString(1);
+		}
+		stmt.close();
+		return lotSize;
+	}
+
+	private String fetchTradingSymbolFromInstrumentDetails(String instrumentToken) throws SQLException {
+		String lotSize = "";
+		Statement stmt = conn.createStatement();
+		String openSql = "SELECT tradingsymbol FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
+				+ instrumentToken + "'";
+		ResultSet openRs = stmt.executeQuery(openSql);
+
+		while (openRs.next()) {
+			lotSize = openRs.getString(1);
+		}
+		stmt.close();
+		return lotSize;
 	}
 
 	private boolean updateOldSignalInSignalTable(String instrument, String processSignal) {
@@ -672,7 +701,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
 				prepStmt.setString(2, instrumentToken);
-				prepStmt.setString(3, "0");
+				prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken));
 				if (signalClose == 2)
 					prepStmt.setString(4, "BUY");
 				else
@@ -877,7 +906,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public void getInstrumentTokenIdsFromSymbols(Map<String, Double> stocksSymbolArray) {
+	public void getInstrumentTokenIdsFromSymbols(Map<String, InstrumentVolatilityScore> stocksSymbolArray) {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
 
@@ -885,14 +914,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "UPDATE " + quoteTable
-						+ "_instrumentDetails SET PriorityPoint = ?, currentVolatility = ? where tradingSymbol = ? ";
+						+ "_instrumentDetails SET PriorityPoint = ?, currentVolatility = ?, last_price = ?, lotSize = ? where tradingSymbol = ? ";
 				PreparedStatement prepStmt = conn.prepareStatement(openSql);
 				Object[] symbolKeys = stocksSymbolArray.keySet().toArray();
 				for (int i = 0; i < symbolKeys.length; i++) {
 
-					prepStmt.setDouble(1, stocksSymbolArray.get(symbolKeys[i]));
-					prepStmt.setDouble(2, stocksSymbolArray.get(symbolKeys[i]));
-					prepStmt.setString(3, (String) symbolKeys[i]);
+					prepStmt.setDouble(1, stocksSymbolArray.get(symbolKeys[i]).getDailyVolatility());
+					prepStmt.setDouble(2, stocksSymbolArray.get(symbolKeys[i]).getCurrentVolatility());
+					prepStmt.setString(3, String.valueOf(stocksSymbolArray.get(symbolKeys[i]).getPrice()));
+					prepStmt.setString(4, String.valueOf(stocksSymbolArray.get(symbolKeys[i]).getLotSize()));
+					prepStmt.setString(5, (String) symbolKeys[i]);
 
 					prepStmt.executeUpdate();
 				}
@@ -1050,13 +1081,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "UPDATE " + quoteTable
-						+ "_instrumentDetails SET dailyVolatility = ?, annualVolatility = ? where tradingSymbol = ? ";
+						+ "_instrumentDetails SET dailyVolatility = ?, annualVolatility = ?, last_price = ?, lotSize = ? where tradingSymbol = ? ";
 				PreparedStatement prepStmt = conn.prepareStatement(openSql);
 				for (int index = 0; index < instrumentVolatilityScoreList.size(); index++) {
 
 					prepStmt.setDouble(1, instrumentVolatilityScoreList.get(index).getDailyVolatility());
 					prepStmt.setDouble(2, instrumentVolatilityScoreList.get(index).getAnnualVolatility());
-					prepStmt.setString(3, instrumentVolatilityScoreList.get(index).getInstrumentName());
+					prepStmt.setString(3, String.valueOf(instrumentVolatilityScoreList.get(index).getPrice()));
+					prepStmt.setString(4, String.valueOf(instrumentVolatilityScoreList.get(index).getLotSize()));
+					prepStmt.setString(5, instrumentVolatilityScoreList.get(index).getInstrumentName());
 
 					prepStmt.executeUpdate();
 				}

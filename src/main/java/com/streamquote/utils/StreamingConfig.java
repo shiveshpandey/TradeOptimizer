@@ -2,10 +2,11 @@ package com.streamquote.utils;
 
 public class StreamingConfig {
 
-	public static final String QUOTE_STREAMING_START_TIME = "09:15:01";
-	public static final String QUOTE_STREAMING_END_TIME = "15:30:01";
-	public static final String HISTORICAL_DATA_STREAM_START_TIME = "09:15:01";
-	public static final String HISTORICAL_DATA_STREAM_END_TIME = "15:30:01";
+	public static final String QUOTE_STREAMING_START_TIME = "09:22:01";
+	public static final String QUOTE_STREAMING_END_TIME = "15:10:01";
+	public static final String HISTORICAL_DATA_STREAM_START_TIME = "09:22:01";
+	public static final String HISTORICAL_DATA_STREAM_END_TIME = "15:10:01";
+	public static final int averagePerScriptInvestment = 50000;
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
@@ -48,7 +49,7 @@ public class StreamingConfig {
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;
 	public static final String nseVolatilityDataUrl = "https://www.nseindia.com/archives/nsccl/volt/CMVOLT_21072017.CSV";
-	public static final String nifty100InstrumentCsvUrl = "https://www.nseindia.com/content/indices/ind_nifty100list.csv";
+	public static final String nifty200InstrumentCsvUrl = "https://www.nseindia.com/content/indices/ind_nifty200list.csv";
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
 		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;
