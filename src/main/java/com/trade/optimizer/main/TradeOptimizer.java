@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
@@ -249,7 +250,7 @@ public class TradeOptimizer {
     public void startProcess() {
         try {
             // LOGGER.info("Entry TradeOptimizer.startProcess()");
-
+            TimeZone.setDefault(TimeZone.getTimeZone("IST"));
             todaysDate = dtFmt.format(Calendar.getInstance().getTime());
             quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
             quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;

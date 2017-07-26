@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.logging.Logger;
 
 import com.streamquote.utils.StreamingConfig;
@@ -46,8 +47,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
     public void initializeJDBCConn() {
         // LOGGER.info("Entry StreamingQuoteStorageImpl.initializeJDBCConn");
         try {
+            TimeZone.setDefault(TimeZone.getTimeZone("IST"));
             Class.forName(JDBC_DRIVER);
             conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            Statement timeLoopRsStmt = conn.createStatement();
+            timeLoopRsStmt.executeQuery("SET GLOBAL time_zone = '+5:30'");
+            timeLoopRsStmt.close();
         } catch (ClassNotFoundException e) {
             LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: "
                     + JDBC_DRIVER);
@@ -515,8 +520,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
                     openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='"
                             + instrumentToken + "' and timestampGrp ='"
-                            + new Timestamp(timeStampPeriodList.get(timeLoop).getTime())
-                            + "' ORDER BY id DESC ";
+                            + timeStampPeriodList.get(timeLoop) + "' ORDER BY id DESC ";
                     ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
                     boolean firstRecord = true;
                     while (openRsHighLowClose.next()) {
@@ -529,6 +533,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
                             firstRecord = false;
                         }
                     }
+                    if (null == low || null == high || null == close)
+                        continue;
 
                     openSql = "SELECT * FROM " + quoteTable
                             + "_SignalParams where InstrumentToken ='" + instrumentToken
@@ -628,83 +634,108 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
     private void lowHighCloseRsiStrategy(String instrumentToken) throws SQLException {
         // LOGGER.info("Entry
         // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+        int id = 0, firstRowId = 0, lastRowId = 0;
+        int loopSize = 0;
+        do {
+            String openSql = "SELECT max(id) as maxId FROM " + quoteTable
+                    + "_SignalParams where InstrumentToken ='" + instrumentToken
+                    + "' and usedForZigZagSignal='usedForZigZagSignal' ";
+            Statement stmt1 = conn.createStatement();
+            ResultSet rs1 = stmt1.executeQuery(openSql);
+            while (rs1.next()) {
+                id = rs1.getInt("maxId");
+            }
+            stmt1.close();
+            openSql = "select * from (SELECT close,rsi,usedForZigZagSignal,id FROM " + quoteTable
+                    + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
+                    + StreamingConfig.MAX_VALUE + " and id>" + id
+                    + " ORDER BY id ASC LIMIT 26)  a order by id desc";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(openSql);
+            double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0,
+                    firstClose = StreamingConfig.MAX_VALUE, lowRsi = StreamingConfig.MAX_VALUE,
+                    highRsi = 0.0, firstRsi = 0.0;
+            boolean firstRecord = true;
+            int signalClose = 1, signalRsi = 1;
+            loopSize = 0;
+            String isUnUsedRecord = "";
 
-        String openSql = "SELECT close,rsi,usedForZigZagSignal,id FROM " + quoteTable
-                + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
-                + StreamingConfig.MAX_VALUE + " ORDER BY id DESC LIMIT 26 ";
-        Statement stmt = conn.createStatement();
-        ResultSet rs = stmt.executeQuery(openSql);
-        double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0,
-                firstClose = StreamingConfig.MAX_VALUE, lowRsi = StreamingConfig.MAX_VALUE,
-                highRsi = 0.0, firstRsi = 0.0;
-        boolean firstRecord = true;
-        int signalClose = 1, signalRsi = 1;
-        int loopSize = 0, firstRowId = 0;
-        String isUnUsedRecord = "";
+            while (rs.next()) {
+                loopSize++;
+                if (firstRecord) {
+                    firstRsi = rs.getDouble("rsi");
+                    firstClose = rs.getDouble("close");
+                    isUnUsedRecord = rs.getString("usedForZigZagSignal");
+                    firstRowId = rs.getInt("id");
+                    firstRecord = false;
+                }
+                lastRowId = rs.getInt("id");
+                if (rs.getDouble("close") >= highClose) {
+                    highClose = rs.getDouble("close");
+                }
+                if (rs.getDouble("close") <= lowClose) {
+                    lowClose = rs.getDouble("close");
+                }
+                if (rs.getDouble("rsi") >= highRsi) {
+                    highRsi = rs.getDouble("rsi");
+                }
+                if (rs.getDouble("rsi") <= lowRsi) {
+                    lowRsi = rs.getDouble("rsi");
+                }
+            }
+            stmt.close();
+            if (firstClose == highClose) {
+                signalClose = 0;
+            }
+            if (firstClose == lowClose) {
+                signalClose = 2;
+            }
+            if (firstRsi == highRsi) {
+                signalRsi = 0;
+            }
+            if (firstRsi == lowRsi) {
+                signalRsi = 2;
+            }
+            if (loopSize >= 9 && !"usedForZigZagSignal".equalsIgnoreCase(isUnUsedRecord)
+                    && signalRsi != 1 && signalRsi == signalClose && !firstRecord
+                    && firstRsi != 0.0) {
+                String sql = "INSERT INTO " + quoteTable + "_signalNew "
+                        + "(time,instrumentToken,quantity,processSignal,status,TradePrice) "
+                        + "values(?,?,?,?,?,?)";
+                PreparedStatement prepStmt = conn.prepareStatement(sql);
 
-        while (rs.next()) {
-            loopSize++;
-            if (firstRecord) {
-                firstRsi = rs.getDouble("rsi");
-                firstClose = rs.getDouble("close");
-                isUnUsedRecord = rs.getString("usedForZigZagSignal");
-                firstRowId = rs.getInt("id");
-                firstRecord = false;
-            }
-            if (rs.getDouble("close") >= highClose) {
-                highClose = rs.getDouble("close");
-            }
-            if (rs.getDouble("close") <= lowClose) {
-                lowClose = rs.getDouble("close");
-            }
-            if (rs.getDouble("rsi") >= highRsi) {
-                highRsi = rs.getDouble("rsi");
-            }
-            if (rs.getDouble("rsi") <= lowRsi) {
-                lowRsi = rs.getDouble("rsi");
-            }
-        }
+                prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+                prepStmt.setString(2, instrumentToken);
+                prepStmt.setString(3, "0");
+                if (signalClose == 2)
+                    prepStmt.setString(4, "BUY");
+                else
+                    prepStmt.setString(4, "SELL");
+                prepStmt.setString(5, "active");
+                prepStmt.setDouble(6, firstClose);
+                prepStmt.executeUpdate();
+                prepStmt.close();
 
-        if (firstClose == highClose) {
-            signalClose = 0;
-        }
-        if (firstClose == lowClose) {
-            signalClose = 2;
-        }
-        if (firstRsi == highRsi) {
-            signalRsi = 0;
-        }
-        if (firstRsi == lowRsi) {
-            signalRsi = 2;
-        }
-        if (loopSize >= 9 && !"usedForZigZagSignal".equalsIgnoreCase(isUnUsedRecord)
-                && signalRsi != 1 && signalRsi == signalClose && !firstRecord && firstRsi != 0.0) {
-            String sql = "INSERT INTO " + quoteTable + "_signalNew "
-                    + "(time,instrumentToken,quantity,processSignal,status,TradePrice) "
-                    + "values(?,?,?,?,?,?)";
-            PreparedStatement prepStmt = conn.prepareStatement(sql);
+                Statement stmtForUpdate = conn.createStatement();
+                if (firstRowId > 0) {
+                    sql = "update " + quoteTable
+                            + "_SignalParams set usedForZigZagSignal ='usedForZigZagSignal' where id in("
+                            + firstRowId + ")";
+                    stmtForUpdate.executeUpdate(sql);
+                }
+                stmtForUpdate.close();
+            } else if (loopSize == 26) {
+                Statement stmtForUpdate = conn.createStatement();
+                if (lastRowId > 0) {
+                    String sql = "update " + quoteTable
+                            + "_SignalParams set usedForZigZagSignal ='usedForZigZagSignal' where id in("
+                            + lastRowId + ")";
+                    stmtForUpdate.executeUpdate(sql);
+                }
+                stmtForUpdate.close();
 
-            prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-            prepStmt.setString(2, instrumentToken);
-            prepStmt.setString(3, "0");
-            if (signalClose == 2)
-                prepStmt.setString(4, "BUY");
-            else
-                prepStmt.setString(4, "SELL");
-            prepStmt.setString(5, "active");
-            prepStmt.setDouble(6, firstClose);
-            prepStmt.executeUpdate();
-            prepStmt.close();
-
-            Statement stmtForUpdate = conn.createStatement();
-            if (firstRowId > 0) {
-                sql = "update " + quoteTable
-                        + "_SignalParams set usedForZigZagSignal ='usedForZigZagSignal' where id in("
-                        + firstRowId + ")";
-                stmtForUpdate.executeUpdate(sql);
             }
-            stmtForUpdate.close();
-        }
+        } while (firstRowId > id && loopSize == 26);
         // LOGGER.info("Exit
         // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
     }
