@@ -2,11 +2,9 @@ package com.streamquote.utils;
 
 public class StreamingConfig {
 
-	public static final String QUOTE_STREAMING_START_TIME = "09:22:01";
-	public static final String QUOTE_STREAMING_END_TIME = "15:10:01";
-	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:01";
-	public static final String HISTORICAL_DATA_STREAM_START_TIME = "09:22:01";
-	public static final String HISTORICAL_DATA_STREAM_END_TIME = "15:10:01";
+	public static final String QUOTE_STREAMING_START_TIME = "09:00:00";
+	public static final String QUOTE_STREAMING_END_TIME = "15:10:00";
+	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";
 	public static final int averagePerScriptInvestment = 50000;
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
@@ -44,9 +42,6 @@ public class StreamingConfig {
 																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json"
 																										 */ };
 
-	public static String HIST_DATA_END_DATE = null;
-	public static boolean tickerConnectionErrorOccured = false;
-	public static String HIST_DATA_START_DATE = "2017-07-01";
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;
 	public static final String nseVolatilityDataUrl = "https://www.nseindia.com/archives/nsccl/volt/CMVOLT_21072017.CSV";

@@ -62,6 +62,7 @@ public class TradeOptimizer {
 
 	private boolean liveStreamFirstRun = false;
 	private boolean tickerStarted = false;
+	private boolean backendReadyForProcessing = false;
 
 	private int tokenCountForTrade = 50;
 	private int seconds = 1000;
@@ -97,12 +98,12 @@ public class TradeOptimizer {
 			kiteconnect.setPublicToken(userModel.publicToken);
 			startProcess();
 		} catch (KiteException e) {
-			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.message+ " >> " + e.code);
+			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.message + " >> " + e.code);
 			return "error";
 		} catch (JSONException e) {
-            LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage() +" >> " + e.getCause());
-            return "error";
-        }
+			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage() + " >> " + e.getCause());
+			return "error";
+		}
 		// LOGGER.info("Exit TradeOptimizer.authRedirectWithTokenPost()");
 		return "index";
 	}
@@ -155,11 +156,11 @@ public class TradeOptimizer {
 					}
 					firstLine = false;
 				} catch (Exception e) {
-					LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+					LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 				}
 			}
 		} catch (IOException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 		}
 
 		streamingQuoteStorage.saveInstrumentVolatilityDetails(instrumentVolatilityScoreList);
@@ -196,11 +197,11 @@ public class TradeOptimizer {
 					}
 					firstLine = false;
 				} catch (Exception e) {
-					LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+					LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 				}
 			}
 		} catch (IOException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 		}
 		streamingQuoteStorage.markTradableInstruments(instrumentVolatilityScoreList);
 		// LOGGER.info("Exit TradeOptimizer.markTradableInstruments()");
@@ -228,34 +229,42 @@ public class TradeOptimizer {
 
 				JSONObject obj = new JSONObject(lineAll);
 				JSONArray arr = obj.getJSONArray("data");
+				if (null != arr)
+					for (int i = 0; i < arr.length(); i++) {
+						try {
+							if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol"))) {
+								InstrumentVolatilityScore instrumentVolatilityScore = new InstrumentVolatilityScore();
+								instrumentVolatilityScore.setInstrumentName(arr.getJSONObject(i).getString("symbol"));
+								instrumentVolatilityScore.setCurrentVolatility(j);
+								instrumentVolatilityScore.setDailyVolatility(j);
 
-				for (int i = 0; i < arr.length(); i++) {
-					if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol"))) {
-						InstrumentVolatilityScore instrumentVolatilityScore = new InstrumentVolatilityScore();
-						instrumentVolatilityScore.setInstrumentName(arr.getJSONObject(i).getString("symbol"));
-						instrumentVolatilityScore.setCurrentVolatility(j);
-						instrumentVolatilityScore.setDailyVolatility(j);
+								double a = Double
+										.parseDouble(arr.getJSONObject(i).getString("ltp").replaceAll(",", ""));
+								double b = Double.parseDouble(
+										arr.getJSONObject(i).getString("previousPrice").replaceAll(",", ""));
+								double c = Double
+										.parseDouble(arr.getJSONObject(i).getString("netPrice").replaceAll(",", ""));
 
-						double a = Double.parseDouble(arr.getJSONObject(i).getString("ltp").replaceAll(",", ""));
-						double b = Double.parseDouble(arr.getJSONObject(i).getString("previousPrice").replaceAll(",", ""));
-						double c = Double.parseDouble(arr.getJSONObject(i).getString("netPrice").replaceAll(",", ""));
+								if (a >= b && a >= c)
+									instrumentVolatilityScore.setPrice(a);
+								else if (b >= a && b >= c)
+									instrumentVolatilityScore.setPrice(b);
+								else if (c >= a && c >= b)
+									instrumentVolatilityScore.setPrice(c);
 
-						if (a >= b && a >= c)
-							instrumentVolatilityScore.setPrice(a);
-						else if (b >= a && b >= c)
-							instrumentVolatilityScore.setPrice(b);
-						else if (c >= a && c >= b)
-							instrumentVolatilityScore.setPrice(c);
-
-						stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"), instrumentVolatilityScore);
+								stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"),
+										instrumentVolatilityScore);
+							}
+							j = j - 1.0;
+						} catch (Exception e) {
+							LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						}
 					}
-					j = j - 1.0;
-				}
 			} catch (IOException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
-		streamingQuoteStorage.getInstrumentTokenIdsFromSymbols(stocksSymbolArray);
+		streamingQuoteStorage.saveInstrumentTokenPriority(stocksSymbolArray);
 		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
 
@@ -283,9 +292,9 @@ public class TradeOptimizer {
 
 			// checkAndProcessPendingOrdersOnMarketQueue();
 
-			// dayClosingStocksRoundOffOperations();
+			dayClosingStocksRoundOffOperations();
 		} catch (JSONException | ParseException e) {
-			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() +" >> " + e.getCause());
+			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
 		// LOGGER.info("Exit TradeOptimizer.startProcess()");
 	}
@@ -298,7 +307,7 @@ public class TradeOptimizer {
 		try {
 			tickerProvider.setTimeIntervalForReconnection(5);
 		} catch (KiteException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.message+ " >> " + e.code);
+			LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 		}
 		tickerProvider.setMaxRetries(-1);
 
@@ -313,10 +322,10 @@ public class TradeOptimizer {
 					try {
 						tickerProvider.subscribe(tokenListForTick);
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message+ " >> " + e.code);
+						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 					} catch (IOException | WebSocketException e) {
-                        LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
-                    }
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+					}
 			}
 		});
 
@@ -384,13 +393,13 @@ public class TradeOptimizer {
 				streamingQuoteStorage
 						.createDaysStreamingQuoteTable(quoteTableDtFmt.format(Calendar.getInstance().getTime()));
 			} catch (SQLException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		// LOGGER.info("Exit TradeOptimizer.createInitialDayTables()");
 	}
 
-	private void dayClosingStocksRoundOffOperations() throws KiteException {
+	private void dayClosingStocksRoundOffOperations() {
 		// LOGGER.info("Entry
 		// TradeOptimizer.dayClosingStocksRoundOffOperations()");
 
@@ -402,31 +411,32 @@ public class TradeOptimizer {
 				while (runnable) {
 					try {
 						Date timeNow = Calendar.getInstance().getTime();
-						if (timeNow.compareTo(timeEnd) >= 0) {
-							runnable = false;
+						if (timeNow.compareTo(timeEnd) >= 0 && backendReadyForProcessing) {
 							List<Order> orderList = tradeOperations.getOrders(kiteconnect);
 							List<Holding> holdings = tradeOperations.getHoldings(kiteconnect).holdings;
-
-							for (int index = 0; index < orderList.size(); index++) {
-								if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
-									tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
+							if (null != orderList && orderList.size() > 0)
+								for (int index = 0; index < orderList.size(); index++) {
+									if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
+										tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
+									}
 								}
-							}
-							for (int index = 0; index < holdings.size(); index++) {
-								tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
-										"0.0", holdings.get(index).quantity, streamingQuoteStorage);
-							}
+							if (null != holdings && holdings.size() > 0)
+								for (int index = 0; index < holdings.size(); index++) {
+									tradeOperations.placeOrder(kiteconnect, holdings.get(index).instrumentToken, "SELL",
+											"0.0", holdings.get(index).quantity, streamingQuoteStorage);
+								}
+							runnable = false;
 						} else {
 							Thread.sleep(10 * seconds);
 							runnable = true;
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message+ " >> " + e.code);
+						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -448,22 +458,24 @@ public class TradeOptimizer {
 					try {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
-							for (int index = 0; index < signalList.size(); index++)
-								tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
-										signalList.get(index).transactionType, signalList.get(index).quantity,
-										signalList.get(index).price, streamingQuoteStorage);
+							if (backendReadyForProcessing) {
+								List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
+								for (int index = 0; index < signalList.size(); index++)
+									tradeOperations.placeOrder(kiteconnect, signalList.get(index).symbol,
+											signalList.get(index).transactionType, signalList.get(index).quantity,
+											signalList.get(index).price, streamingQuoteStorage);
+							}
 							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message+ " >> " + e.code);
+						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -489,7 +501,8 @@ public class TradeOptimizer {
 					try {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							startStreamingQuote();
+							if (backendReadyForProcessing)
+								startStreamingQuote();
 							Thread.sleep(10 * seconds);
 						} else {
 							runnable = false;
@@ -497,9 +510,9 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -512,56 +525,64 @@ public class TradeOptimizer {
 	private void fetchAndProcessInstrumentsPriorityRelatedData() {
 		// LOGGER.info("Entry
 		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
-        Thread t = new Thread(new Runnable() {
-            private boolean runnable = true;
+		Thread t = new Thread(new Runnable() {
+			private boolean runnable = true;
 
-            @Override
-            public void run() {
+			@Override
+			public void run() {
 
-                while (runnable) {
-                   try {
-                        Date timeNow = Calendar.getInstance().getTime();
-                        if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0 && timeNow.compareTo(timeForPrioritySetting) <= 0) {
-                       runnable=true;
-                       Thread.sleep(60 * seconds);
-                       }else if(timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0 && timeNow.compareTo(timeForPrioritySetting) > 0){
-                            try{instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
-			streamingQuoteStorage.saveInstrumentDetails(instrumentList,
-					new Timestamp(Calendar.getInstance().getTime().getTime()));
+				while (runnable) {
+					try {
+						Date timeNow = Calendar.getInstance().getTime();
+						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0
+								&& timeNow.compareTo(timeForPrioritySetting) < 0) {
+							runnable = true;
+							Thread.sleep(30 * seconds);
+						} else if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0
+								&& timeNow.compareTo(timeForPrioritySetting) >= 0) {
+							try {
+								instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+								streamingQuoteStorage.saveInstrumentDetails(instrumentList,
+										new Timestamp(Calendar.getInstance().getTime().getTime()));
 
-			/*
-			 * instrumentList.addAll(tradeOperations
-			 * .getInstrumentsForExchange(kiteconnect, "BSE"));
-			 * instrumentList.addAll(tradeOperations
-			 * .getInstrumentsForExchange(kiteconnect, "NFO"));
-			 * instrumentList.addAll(tradeOperations
-			 * .getInstrumentsForExchange(kiteconnect, "BFO"));
-			 */
-			fetchNSEActiveSymbolList();
-			downloadNSEReportsCSVs();
-			markTradableInstruments();
+								/*
+								 * instrumentList.addAll(tradeOperations
+								 * .getInstrumentsForExchange(kiteconnect,
+								 * "BSE"));
+								 * instrumentList.addAll(tradeOperations
+								 * .getInstrumentsForExchange(kiteconnect,
+								 * "NFO"));
+								 * instrumentList.addAll(tradeOperations
+								 * .getInstrumentsForExchange(kiteconnect,
+								 * "BFO"));
+								 */
+								fetchNSEActiveSymbolList();
+								downloadNSEReportsCSVs();
+								markTradableInstruments();
 
-			quoteStreamingInstrumentsArr = streamingQuoteStorage.getTopPrioritizedTokenList(tokenCountForTrade);
-			liveStreamFirstRun = true;
-			 runnable = false;
-		} catch (KiteException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.message+ " >> " + e.code);
-		} catch (Exception e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
-		}		
-                    } else {
-                        runnable = false;
-                    }
+								quoteStreamingInstrumentsArr = streamingQuoteStorage
+										.getTopPrioritizedTokenList(tokenCountForTrade);
+								liveStreamFirstRun = true;
+								backendReadyForProcessing = true;
+								runnable = false;
+							} catch (KiteException e) {
+								LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+							} catch (Exception e) {
+								LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+							}
+						} else {
+							runnable = false;
+						}
 
-                } catch (InterruptedException e) {
-                    LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
-                } catch (Exception e) {
-                    LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
-                }
-            }
-        }
-    });
-    t.start();
+					} catch (InterruptedException e) {
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+					} catch (Exception e) {
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+					}
+				}
+			}
+		});
+		t.start();
 
 		// LOGGER.info("Exit
 		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
@@ -655,7 +676,8 @@ public class TradeOptimizer {
 	// tickerStarted = true;
 	// }
 	// } catch (WebSocketException | IOException e) {
-	// LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+	// LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " +
+	// e.getCause());
 	// }
 	// }
 	//
@@ -677,15 +699,18 @@ public class TradeOptimizer {
 					try {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							ArrayList<Long> instrumentList = getInstrumentTokensList();
-							Map<Long, String> signalList = new HashMap<Long, String>();
+							if (backendReadyForProcessing) {
+								ArrayList<Long> instrumentList = getInstrumentTokensList();
+								Map<Long, String> signalList = new HashMap<Long, String>();
 
-							if (null != instrumentList && instrumentList.size() > 0) {
-								for (int i = 0; i < instrumentList.size(); i++)
-									streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
-											instrumentList.get(i).toString(), timeNow);
-								signalList = streamingQuoteStorage.calculateSignalsFromStrategyParams(instrumentList);
-								streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
+								if (null != instrumentList && instrumentList.size() > 0) {
+									for (int i = 0; i < instrumentList.size(); i++)
+										streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
+												instrumentList.get(i).toString(), timeNow);
+									signalList = streamingQuoteStorage
+											.calculateSignalsFromStrategyParams(instrumentList);
+									streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
+								}
 							}
 							Thread.sleep(60 * seconds);
 						} else {
@@ -693,9 +718,9 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -721,11 +746,11 @@ public class TradeOptimizer {
 					tickerStarted = true;
 				}
 			} catch (IOException | WebSocketException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			} catch (KiteException e) {
-                LOGGER.info("Error TradeOptimizer :- " + e.message +" >> " + e.code);
-            } catch (Exception e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " + e.getCause());
+				LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+			} catch (Exception e) {
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		// LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");

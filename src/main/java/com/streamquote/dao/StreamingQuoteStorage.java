@@ -32,7 +32,7 @@ public interface StreamingQuoteStorage {
 
 	public void storeData(ArrayList<Tick> ticks);
 
-	public void getInstrumentTokenIdsFromSymbols(Map<String, InstrumentVolatilityScore> stocksSymbolArray);
+	public void saveInstrumentTokenPriority(Map<String, InstrumentVolatilityScore> stocksSymbolArray);
 
 	void calculateAndStoreStrategySignalParameters(String instrumentToken, Date timeNow);
 
