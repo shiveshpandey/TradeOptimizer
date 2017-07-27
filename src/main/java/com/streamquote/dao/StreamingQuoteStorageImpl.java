@@ -94,7 +94,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
@@ -105,7 +105,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable + "_instrumentDetails "
@@ -119,7 +119,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
@@ -130,7 +130,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
@@ -146,7 +146,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: DB conn is null !!!");
@@ -194,14 +194,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						LOGGER.info(
 								"StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 										+ tick);
-						LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
+						LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage() + ">>" + e.getCause());
 					}
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
 				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
 						+ ticks);
-				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage());
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			if (conn != null) {
@@ -223,7 +223,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' and (PriorityPoint!='null' or dailyVolatility >= 2.0) ORDER BY Time,PriorityPoint,dailyVolatility DESC LIMIT "
+						+ "_instrumentDetails where tradable='tradable' and (PriorityPoint > 0.0 or dailyVolatility >= 2.0) ORDER BY PriorityPoint DESC,dailyVolatility DESC LIMIT "
 						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
@@ -233,7 +233,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
@@ -273,7 +273,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else
 
@@ -300,8 +300,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				String sql = "INSERT INTO " + quoteTable + "_instrumentDetails "
 						+ "(time,instrumentToken,exchangeToken,tradingsymbol,name,last_price,"
-						+ "tickSize,expiry,instrumentType,segment,exchange,strike,lotSize) "
-						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+						+ "tickSize,expiry,instrumentType,segment,exchange,strike,lotSize,PriorityPoint,currentVolatility,annualVolatility) "
+						+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 				for (int index = 0; index < instrumentList.size(); index++) {
 					Instrument instrument = instrumentList.get(index);
@@ -319,7 +319,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmt.setString(11, instrument.getExchange());
 					prepStmt.setString(12, instrument.getStrike());
 					prepStmt.setString(13, String.valueOf(instrument.getLot_size()));
-					prepStmt.executeUpdate();
+					prepStmt.setDouble(14, 0.0);
+                    prepStmt.setDouble(15, 0.0);
+                    prepStmt.setDouble(16, 0.0);
+                    prepStmt.executeUpdate();
 				}
 				prepStmt.close();
 			} catch (SQLException e) {
@@ -358,7 +361,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: DB conn is null !!!");
@@ -469,7 +472,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.updateOldSignalInSignalTable(): ERROR: DB conn is null !!!");
@@ -620,7 +623,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException | ParseException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 				e.printStackTrace();
 			}
 		} else {
@@ -933,7 +936,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
@@ -1059,7 +1062,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.calculateSignalsFromStrategyParams(): ERROR: DB conn is null !!!");
@@ -1098,7 +1101,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
@@ -1132,7 +1135,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.markTradableInstruments(): ERROR: SQLException on fetching data from Table, cause: "
-								+ e.getMessage());
+								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.markTradableInstruments(): ERROR: DB conn is null !!!");

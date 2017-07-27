@@ -4,6 +4,7 @@ public class StreamingConfig {
 
 	public static final String QUOTE_STREAMING_START_TIME = "09:22:01";
 	public static final String QUOTE_STREAMING_END_TIME = "15:10:01";
+	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:01";
 	public static final String HISTORICAL_DATA_STREAM_START_TIME = "09:22:01";
 	public static final String HISTORICAL_DATA_STREAM_END_TIME = "15:10:01";
 	public static final int averagePerScriptInvestment = 50000;
