@@ -29,18 +29,16 @@ public class StreamingConfig {
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopValue1.json",
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/niftyGainers1.json",
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/niftyLosers1.json",
-			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/allTopGainers1.json"/*
-																										 * ,
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/allTopLosers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/fnoGainers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/fnoLosers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/secLt20Gainers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/secLt20Losers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/secGt20Gainers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/secGt20Losers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/jrNiftyGainers1.json",
-																										 * "https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json"
-																										 */ };
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/allTopGainers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/allTopLosers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/fnoGainers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/fnoLosers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/secLt20Gainers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/secLt20Losers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/secGt20Gainers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/secGt20Losers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/jrNiftyGainers1.json",
+			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json" };
 
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;

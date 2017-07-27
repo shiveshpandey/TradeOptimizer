@@ -125,7 +125,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				sql = "CREATE TABLE " + quoteTable
 						+ "_SignalNew (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32) , "
 						+ " Quantity varchar(32) , ProcessSignal varchar(32) , Status varchar(32) ,PRIMARY KEY (ID),"
-						+ "TradePrice DECIMAL(20,4)) " + " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ "TradePrice DECIMAL(20,4),signalParamKey int) "
+						+ " ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 			} catch (SQLException e) {
 				LOGGER.info(
@@ -702,7 +703,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			if (loopSize >= 9 && !"usedForZigZagSignal".equalsIgnoreCase(isUnUsedRecord) && signalRsi != 1
 					&& signalRsi == signalClose && !firstRecord && firstRsi != 0.0) {
 				String sql = "INSERT INTO " + quoteTable + "_signalNew "
-						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice) " + "values(?,?,?,?,?,?)";
+						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+						+ "values(?,?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
 				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
@@ -714,6 +716,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmt.setString(4, "SELL");
 				prepStmt.setString(5, "active");
 				prepStmt.setDouble(6, firstClose);
+				prepStmt.setDouble(7, firstRowId);
 				prepStmt.executeUpdate();
 				prepStmt.close();
 
