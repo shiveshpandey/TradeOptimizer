@@ -339,11 +339,15 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				// if (null != quoteStreamingInstrumentsArr &&
-				// quoteStreamingInstrumentsArr.size() > 0)
-				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
+				else if (tickerStarted && (null != tickerProvider && null != tokenListForTick 
+				        && tickerProvider.getSubscribedTokenList().size() != tokenListForTick.size()))
+               try{     
+                   tickerProvider.reconnect(tokenListForTick);
+			} catch (Exception e) {
+                LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+            }
 			}
 		});
 		// LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
