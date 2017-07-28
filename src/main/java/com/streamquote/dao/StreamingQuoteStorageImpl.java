@@ -140,7 +140,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "accFactor DECIMAL(26,11) ,eP_pSarXaccFactor DECIMAL(26,11) ,trend DECIMAL(26,11) ,upMove DECIMAL(26,11) ,"
 						+ "downMove DECIMAL(26,11) ,avgUpMove DECIMAL(26,11) , avgDownMove DECIMAL(26,11) ,relativeStrength DECIMAL(26,11),"
 						+ "RSI DECIMAL(26,11) ,fastEma DECIMAL(26,11) , slowEma DECIMAL(26,11) ,difference DECIMAL(26,11) ,"
-						+ " strategySignal  DECIMAL(26,11) ,differenceMinusSignal DECIMAL(26,11) ,macdSignal DECIMAL(26,11) ,timestampGrp timestamp,usedForSignal varchar(32),usedForZigZagSignal varchar(32),PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ " strategySignal  DECIMAL(26,11) ,differenceMinusSignal DECIMAL(26,11) ,macdSignal DECIMAL(26,11) ,"
+						+ "timestampGrp timestamp, usedForSignal varchar(32),usedForZigZagSignal varchar(32), ContinueTrackOfPsarTrend int,"
+						+ " ContinueTrackOfMacdTrend int, ContinueTrackOfRsiTrend int, PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 
 				stmt.executeUpdate(sql);
 
@@ -226,7 +228,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' and (PriorityPoint > 0.0 or dailyVolatility >= 2.0) ORDER BY PriorityPoint DESC,dailyVolatility DESC LIMIT "
+						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and (PriorityPoint > 0.0 or dailyVolatility >= 2.0) ORDER BY PriorityPoint DESC,dailyVolatility DESC LIMIT "
 						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
@@ -344,16 +346,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public String[] getInstrumentDetailsOnTokenId(String instrumentToken) {
+	public String[] getInstrumentDetailsOnTradingsymbol(String tradingsymbol) {
 		// LOGGER.info("Entry
-		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
+		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol()");
 		String[] param = new String[3];
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
 
 				String openSql = "SELECT lotSize,tradingsymbol,exchange FROM " + quoteTable
-						+ "_instrumentDetails WHERE instrumentToken='" + instrumentToken + "'";
+						+ "_instrumentDetails WHERE tradingsymbol='" + tradingsymbol + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
 					param[0] = openRs.getString(1);
@@ -363,14 +365,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				stmt.close();
 			} catch (SQLException e) {
 				LOGGER.info(
-						"StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: SQLException on fetching data from Table, cause: "
+						"StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
-			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol(): ERROR: DB conn is null !!!");
 		}
 		// LOGGER.info("Exit
-		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTokenId()");
+		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol()");
 		return param;
 	}
 
@@ -575,8 +577,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					String sql = "INSERT INTO " + quoteTable + "_signalParams "
 							+ "(Time, InstrumentToken, high,low,close,pSar,eP,eP_pSar,accFactor,eP_pSarXaccFactor,trend,"
-							+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal,timestampGrp,usedForSignal,differenceMinusSignal,macdSignal,usedForZigZagSignal) "
-							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+							+ "upMove,downMove,avgUpMove,avgDownMove,relativeStrength,RSI,fastEma,slowEma,difference,strategySignal,"
+							+ "timestampGrp,usedForSignal,differenceMinusSignal,macdSignal,usedForZigZagSignal,ContinueTrackOfPsarTrend,"
+							+ "ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend) "
+							+ "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 					PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
 
 					PSarSignalParam p = new PSarSignalParam();
@@ -617,6 +621,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmtInsertSignalParams.setDouble(24, m.getDifferenceMinusSignal());
 					prepStmtInsertSignalParams.setDouble(25, m.getMacdSignal());
 					prepStmtInsertSignalParams.setString(26, "");
+					prepStmtInsertSignalParams.setInt(27, p.getContinueTrackOfPsarTrend());
+					prepStmtInsertSignalParams.setInt(28, m.getContinueTrackOfMacdTrend());
+					prepStmtInsertSignalParams.setInt(29, r.getContinueTrackOfRsiTrend());
 					prepStmtInsertSignalParams.executeUpdate();
 
 					prepStmtInsertSignalParams.close();
@@ -774,6 +781,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
 			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
 			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
+			macdSignalParam.setContinueTrackOfMacdTrend(openRs.getInt("continueTrackOfMacdTrend"));
 			macdSignalParamList.add(macdSignalParam);
 
 			rsiSignalParam.setClose(openRs.getDouble("close"));
@@ -782,6 +790,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParam.setAvgDownMove(openRs.getDouble("avgDownMove"));
 			rsiSignalParam.setAvgDownMove(openRs.getDouble("avgDownMove"));
 			rsiSignalParam.setRelativeStrength(openRs.getDouble("relativeStrength"));
+			rsiSignalParam.setContinueTrackOfRsiTrend(openRs.getInt("ContinueTrackOfRsiTrend"));
 			rsiSignalParam.setRSI(openRs.getDouble("rSI"));
 			rsiSignalParamList.add(rsiSignalParam);
 		}
@@ -815,7 +824,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			if (firstLoop) {
 				signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 						openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"),
-						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"));
+						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"),
+						openRs.getInt("continueTrackOfPsarTrend"));
 				firstLoop = false;
 			}
 			macdSignalParam = new MACDSignalParam();
@@ -828,6 +838,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
 			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
 			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
+			macdSignalParam.setContinueTrackOfMacdTrend(openRs.getInt("continueTrackOfMacdTrend"));
 			macdSignalParamList.add(macdSignalParam);
 
 			rsiSignalParam.setClose(openRs.getDouble("close"));
@@ -837,6 +848,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			rsiSignalParam.setAvgDownMove(openRs.getDouble("avgDownMove"));
 			rsiSignalParam.setRelativeStrength(openRs.getDouble("relativeStrength"));
 			rsiSignalParam.setRSI(openRs.getDouble("rSI"));
+			rsiSignalParam.setContinueTrackOfRsiTrend(openRs.getInt("ContinueTrackOfRsiTrend"));
 			rsiSignalParamList.add(rsiSignalParam);
 		}
 		stmt.close();
@@ -867,10 +879,12 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			if (firstLoop) {
 				signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 						openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"),
-						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"));
+						openRs.getDouble("eP_pSarXaccFactor"), openRs.getInt("trend"),
+						openRs.getInt("continueTrackOfPsarTrend"));
 				signalContainer.r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
 						openRs.getDouble("downMove"), openRs.getDouble("avgUpMove"), openRs.getDouble("avgDownMove"),
-						openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"));
+						openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"),
+						openRs.getInt("ContinueTrackOfRsiTrend"));
 				firstLoop = false;
 			}
 			macdSignalParam = new MACDSignalParam();
@@ -881,6 +895,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			macdSignalParam.setSignal(openRs.getDouble("strategySignal"));
 			macdSignalParam.setDifferenceMinusSignal(openRs.getDouble("differenceMinusSignal"));
 			macdSignalParam.setMacdSignal(openRs.getDouble("macdSignal"));
+			macdSignalParam.setContinueTrackOfMacdTrend(openRs.getInt("continueTrackOfMacdTrend"));
 			macdSignalParamList.add(macdSignalParam);
 		}
 		stmt.close();
@@ -900,13 +915,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		SignalContainer signalContainer = new SignalContainer();
 		signalContainer.p1 = new PSarSignalParam(high, low, openRs.getDouble("pSar"), openRs.getDouble("eP"),
 				openRs.getDouble("eP_pSar"), openRs.getDouble("accFactor"), openRs.getDouble("eP_pSarXaccFactor"),
-				openRs.getInt("trend"));
+				openRs.getInt("trend"), openRs.getInt("continueTrackOfPsarTrend"));
 		signalContainer.r1 = new RSISignalParam(openRs.getDouble("close"), close, openRs.getDouble("upMove"),
 				openRs.getDouble("downMove"), openRs.getDouble("avgUpMove"), openRs.getDouble("avgDownMove"),
-				openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"));
+				openRs.getDouble("relativeStrength"), openRs.getDouble("rSI"),
+				openRs.getInt("ContinueTrackOfRsiTrend"));
 		signalContainer.m1 = new MACDSignalParam(close, openRs.getDouble("fastEma"), openRs.getDouble("slowEma"),
 				openRs.getDouble("strategySignal"), openRs.getDouble("differenceMinusSignal"),
-				openRs.getDouble("macdSignal"));
+				openRs.getDouble("macdSignal"), openRs.getInt("continueTrackOfMacdTrend"));
 
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.whenPsarRsiMacdAll3sPreviousSignalsAvailable()");

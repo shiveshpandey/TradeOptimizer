@@ -19,6 +19,7 @@ public class MACDSignalParam {
 	static double slowEmaAccFactor = (double) 2 / (slowEmaPeriods + 1);
 	static double signalEmaAccFactor = (double) 2 / (signalEmaPeriods + 1);
 	Double signal = StreamingConfig.MAX_VALUE;
+	int continueTrackOfMacdTrend = 0;
 
 	public MACDSignalParam(List<MACDSignalParam> rsiSignalParamList, Double close) {
 		if (rsiSignalParamList.size() == fastEmaPeriods - 1) {
@@ -62,6 +63,11 @@ public class MACDSignalParam {
 			else if (rsiSignalParamList.get(0).macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
 				this.macdSignal = 0.0;
 
+			if (rsiSignalParamList.get(0).continueTrackOfMacdTrend >= 0 && this.macdSignal == 2.0)
+				this.continueTrackOfMacdTrend = rsiSignalParamList.get(0).continueTrackOfMacdTrend + 1;
+			else if (rsiSignalParamList.get(0).continueTrackOfMacdTrend <= 0 && this.macdSignal == 0.0)
+				this.continueTrackOfMacdTrend = rsiSignalParamList.get(0).continueTrackOfMacdTrend - 1;
+
 		} else if (rsiSignalParamList.size() >= (slowEmaPeriods + signalEmaPeriods - 1)) {
 			this.signal = ((this.difference - rsiSignalParamList.get(0).signal) * signalEmaAccFactor)
 					+ rsiSignalParamList.get(0).signal;
@@ -76,11 +82,16 @@ public class MACDSignalParam {
 				this.macdSignal = 2.0;
 			else if (rsiSignalParamList.get(0).macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
 				this.macdSignal = 0.0;
+
+			if (rsiSignalParamList.get(0).continueTrackOfMacdTrend >= 0 && this.macdSignal == 2.0)
+				this.continueTrackOfMacdTrend = rsiSignalParamList.get(0).continueTrackOfMacdTrend + 1;
+			else if (rsiSignalParamList.get(0).continueTrackOfMacdTrend <= 0 && this.macdSignal == 0.0)
+				this.continueTrackOfMacdTrend = rsiSignalParamList.get(0).continueTrackOfMacdTrend - 1;
 		}
 	}
 
 	public MACDSignalParam(Double close, Double fastEma, Double slowEma, Double signal, Double differenceMinusSignal,
-			Double macdSignal) {
+			Double macdSignal, int continueTrackOfMacdTrend) {
 
 		this.fastEma = ((close - fastEma) * fastEmaAccFactor) + fastEma;
 		this.slowEma = ((close - slowEma) * slowEmaAccFactor) + slowEma;
@@ -96,6 +107,11 @@ public class MACDSignalParam {
 			this.macdSignal = 2.0;
 		else if (macdSignal == 0.0 && this.differenceMinusSignal < 0.0)
 			this.macdSignal = 0.0;
+
+		if (continueTrackOfMacdTrend >= 0 && this.macdSignal == 2.0)
+			this.continueTrackOfMacdTrend = continueTrackOfMacdTrend + 1;
+		else if (continueTrackOfMacdTrend <= 0 && this.macdSignal == 0.0)
+			this.continueTrackOfMacdTrend = continueTrackOfMacdTrend - 1;
 	}
 
 	public MACDSignalParam() {
@@ -157,5 +173,13 @@ public class MACDSignalParam {
 	public void setMacdSignal(Double macdSignal) {
 		this.macdSignal = macdSignal;
 
+	}
+
+	public int getContinueTrackOfMacdTrend() {
+		return continueTrackOfMacdTrend;
+	}
+
+	public void setContinueTrackOfMacdTrend(int continueTrackOfMacdTrend) {
+		this.continueTrackOfMacdTrend = continueTrackOfMacdTrend;
 	}
 }

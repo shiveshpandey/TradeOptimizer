@@ -47,7 +47,7 @@ public class TradeOperations {
 	 * @param quantity
 	 * @param streamingQuoteDAOModeQuote
 	 */
-	public void placeOrder(KiteConnect kiteconnect, String instrumentToken, String buyOrSell, String quantity,
+	public void placeOrder(KiteConnect kiteconnect, String tradingSymbol, String buyOrSell, String quantity,
 			String tradePrice, StreamingQuoteStorage streamingQuoteDAOModeQuote) throws KiteException {
 		/**
 		 * Place order method requires a map argument which contains,
@@ -61,7 +61,7 @@ public class TradeOperations {
 		 * KiteException will have error message in it Success of this call
 		 * implies only order has been placed successfully, not order execution
 		 */
-		String[] instrumentDetails = streamingQuoteDAOModeQuote.getInstrumentDetailsOnTokenId(instrumentToken);
+		String[] instrumentDetails = streamingQuoteDAOModeQuote.getInstrumentDetailsOnTradingsymbol(tradingSymbol);
 		Map<String, Object> param = new HashMap<String, Object>();
 
 		param.put("quantity", quantity);

@@ -14,6 +14,7 @@ public class PSarSignalParam {
 	Double accFactor = 0.2;
 	Double eP_pSarXaccFactor = StreamingConfig.MAX_VALUE;
 	int trend = 1;
+	int continueTrackOfPsarTrend = 0;
 
 	public PSarSignalParam(Double high, Double low) {
 		this.high = high;
@@ -30,7 +31,7 @@ public class PSarSignalParam {
 	}
 
 	public PSarSignalParam(Double high, Double low, Double pSar, Double eP, Double eP_pSar, Double accFactor,
-			Double eP_pSarXaccFactor, int trend) {
+			Double eP_pSarXaccFactor, int trend, int continueTrackOfPsarTrend) {
 
 		this.high = high;
 		this.low = low;
@@ -78,6 +79,11 @@ public class PSarSignalParam {
 		}
 
 		this.eP_pSarXaccFactor = this.eP_pSar * this.accFactor;
+
+		if (continueTrackOfPsarTrend >= 0 && this.trend == 2)
+			this.continueTrackOfPsarTrend = continueTrackOfPsarTrend + 1;
+		else if (continueTrackOfPsarTrend <= 0 && this.trend == 0)
+			this.continueTrackOfPsarTrend = continueTrackOfPsarTrend - 1;
 	}
 
 	public PSarSignalParam() {
@@ -145,5 +151,13 @@ public class PSarSignalParam {
 
 	public void setTrend(int trend) {
 		this.trend = trend;
+	}
+
+	public int getContinueTrackOfPsarTrend() {
+		return continueTrackOfPsarTrend;
+	}
+
+	public void setContinueTrackOfPsarTrend(int continueTrackOfPsarTrend) {
+		this.continueTrackOfPsarTrend = continueTrackOfPsarTrend;
 	}
 }

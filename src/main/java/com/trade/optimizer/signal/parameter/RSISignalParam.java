@@ -14,6 +14,7 @@ public class RSISignalParam {
 	Double avgDownMove = StreamingConfig.MAX_VALUE;
 	Double relativeStrength = StreamingConfig.MAX_VALUE;
 	Double RSI = StreamingConfig.MAX_VALUE;
+	int continueTrackOfRsiTrend = 0;
 
 	public RSISignalParam(List<RSISignalParam> rsiSignalParamList, Double close) {
 		if (rsiSignalParamList.size() > 0) {
@@ -36,6 +37,13 @@ public class RSISignalParam {
 				if (this.avgDownMove > 0) {
 					this.relativeStrength = this.avgUpMove / this.avgDownMove;
 					this.RSI = 100 - (100 / (this.relativeStrength + 1));
+
+					if (rsiSignalParamList.get(0).continueTrackOfRsiTrend >= 0
+							&& this.RSI >= rsiSignalParamList.get(0).RSI)
+						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend + 1;
+					else if (rsiSignalParamList.get(0).continueTrackOfRsiTrend <= 0
+							&& this.RSI <= rsiSignalParamList.get(0).RSI)
+						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend - 1;
 				}
 			} else if (rsiSignalParamList.size() >= periods) {
 				this.avgUpMove = (rsiSignalParamList.get(0).avgUpMove * (periods - 1) + this.upMove) / periods;
@@ -43,13 +51,20 @@ public class RSISignalParam {
 				if (this.avgDownMove > 0) {
 					this.relativeStrength = this.avgUpMove / this.avgDownMove;
 					this.RSI = 100 - (100 / (this.relativeStrength + 1));
+
+					if (rsiSignalParamList.get(0).continueTrackOfRsiTrend >= 0
+							&& this.RSI >= rsiSignalParamList.get(0).RSI)
+						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend + 1;
+					else if (rsiSignalParamList.get(0).continueTrackOfRsiTrend <= 0
+							&& this.RSI <= rsiSignalParamList.get(0).RSI)
+						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend - 1;
 				}
 			}
 		}
 	}
 
 	public RSISignalParam(Double previousClose, Double close, Double upMove, Double downMove, Double avgUpMove,
-			Double avgDownMove, Double relativeStrength, Double rSI) {
+			Double avgDownMove, Double relativeStrength, Double rSI, int continueTrackOfRsiTrend) {
 
 		if (close > previousClose)
 			this.upMove = close - previousClose;
@@ -65,6 +80,11 @@ public class RSISignalParam {
 		if (this.avgDownMove > 0) {
 			this.relativeStrength = this.avgUpMove / this.avgDownMove;
 			this.RSI = 100 - (100 / (this.relativeStrength + 1));
+
+			if (continueTrackOfRsiTrend >= 0 && this.RSI >= rSI)
+				this.continueTrackOfRsiTrend = continueTrackOfRsiTrend + 1;
+			else if (continueTrackOfRsiTrend <= 0 && this.RSI <= rSI)
+				this.continueTrackOfRsiTrend = continueTrackOfRsiTrend - 1;
 		}
 	}
 
@@ -125,5 +145,13 @@ public class RSISignalParam {
 
 	public void setRSI(Double rSI) {
 		RSI = rSI;
+	}
+
+	public int getContinueTrackOfRsiTrend() {
+		return continueTrackOfRsiTrend;
+	}
+
+	public void setContinueTrackOfRsiTrend(int continueTrackOfRsiTrend) {
+		this.continueTrackOfRsiTrend = continueTrackOfRsiTrend;
 	}
 }

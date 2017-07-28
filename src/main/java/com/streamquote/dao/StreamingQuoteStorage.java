@@ -26,7 +26,7 @@ public interface StreamingQuoteStorage {
 
 	public void saveInstrumentDetails(List<Instrument> instrumentList, Timestamp time);
 
-	public String[] getInstrumentDetailsOnTokenId(String instrumentToken);
+	public String[] getInstrumentDetailsOnTradingsymbol(String tradingSymbol);
 
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList);
 
