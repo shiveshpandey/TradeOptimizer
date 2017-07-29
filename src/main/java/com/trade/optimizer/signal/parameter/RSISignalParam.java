@@ -42,7 +42,8 @@ public class RSISignalParam {
 							&& this.RSI >= rsiSignalParamList.get(0).RSI)
 						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend + 1;
 					else if (rsiSignalParamList.get(0).continueTrackOfRsiTrend <= 0
-							&& this.RSI <= rsiSignalParamList.get(0).RSI)
+							&& this.RSI <= rsiSignalParamList.get(0).RSI
+							&& rsiSignalParamList.get(0).RSI != StreamingConfig.MAX_VALUE)
 						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend - 1;
 				}
 			} else if (rsiSignalParamList.size() >= periods) {
@@ -56,7 +57,8 @@ public class RSISignalParam {
 							&& this.RSI >= rsiSignalParamList.get(0).RSI)
 						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend + 1;
 					else if (rsiSignalParamList.get(0).continueTrackOfRsiTrend <= 0
-							&& this.RSI <= rsiSignalParamList.get(0).RSI)
+							&& this.RSI <= rsiSignalParamList.get(0).RSI
+							&& rsiSignalParamList.get(0).RSI != StreamingConfig.MAX_VALUE)
 						this.continueTrackOfRsiTrend = rsiSignalParamList.get(0).continueTrackOfRsiTrend - 1;
 				}
 			}
@@ -83,7 +85,7 @@ public class RSISignalParam {
 
 			if (continueTrackOfRsiTrend >= 0 && this.RSI >= rSI)
 				this.continueTrackOfRsiTrend = continueTrackOfRsiTrend + 1;
-			else if (continueTrackOfRsiTrend <= 0 && this.RSI <= rSI)
+			else if (continueTrackOfRsiTrend <= 0 && this.RSI <= rSI && rSI != StreamingConfig.MAX_VALUE)
 				this.continueTrackOfRsiTrend = continueTrackOfRsiTrend - 1;
 		}
 	}

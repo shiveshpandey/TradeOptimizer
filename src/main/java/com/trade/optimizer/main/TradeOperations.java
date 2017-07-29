@@ -65,20 +65,28 @@ public class TradeOperations {
 		Map<String, Object> param = new HashMap<String, Object>();
 
 		param.put("quantity", quantity);
-		param.put("order_type", "SL");
+		param.put("order_type", "MARKET");
 		param.put("tradingsymbol", tradingSymbol);
-		param.put("product", "CNC");
-		param.put("exchange", instrumentDetails[2]);
+		param.put("product", "MIS");
+		param.put("exchange", instrumentDetails[1]);
 		param.put("transaction_type", buyOrSell);
-		param.put("validity", "DAY");
-		param.put("price", tradePrice);
-		param.put("trigger_price", "157.5");
+		param.put("validity", "IOC");
+		// param.put("price", tradePrice);
+		int quant = Integer.parseInt(quantity);
+		if (quant >= 500)
+			param.put("disclosed_quantity", "100");
+		else if (quant >= 100)
+			param.put("disclosed_quantity", "50");
+		else if (quant >= 25)
+			param.put("disclosed_quantity", "25");
+		else
+			param.put("disclosed_quantity", quantity);
+
 		param.put("tag", myTag); // tag is optional and it cannot be more
 									// than 8 characters and only
 									// alphanumeric is allowed
 		// Order order = kiteconnect.placeOrder(param, "regular");
-		LOGGER.info(
-				"Order Placed for : " + instrumentDetails[1] + " ,Price: " + tradePrice + " ,Quantity: " + quantity);
+		LOGGER.info("Order Placed for : " + tradingSymbol + " ,Price: " + tradePrice + " ,Quantity: " + quantity);
 	}
 
 	/** Place bracket order. */
@@ -157,15 +165,7 @@ public class TradeOperations {
 	 * @return
 	 */
 	public List<Order> getOrders(KiteConnect kiteconnect) throws KiteException {
-		// Get orders returns order model which will have list of orders inside,
-		// which can be accessed as follows,
-		Order order = kiteconnect.getOrders();
-		return order.orders;
-		// for (int i = 0; i < order1.orders.size(); i++) {
-		// LOGGER.info(order1.orders.get(i).tradingSymbol + " " +
-		// order1.orders.get(i).orderId);
-		// }
-		// LOGGER.info("list of orders size is " + order1.orders.size());
+		return kiteconnect.getOrders().orders;
 	}
 
 	/**
@@ -275,6 +275,7 @@ public class TradeOperations {
 	 * @param order
 	 */
 	public void cancelOrder(KiteConnect kiteconnect, Order order) throws KiteException {
+		// kiteconnect.cancelOrder(order.orderId, order.orderVariety);
 		LOGGER.info(order.orderId + " regular" + " cancelled");
 	}
 
@@ -333,9 +334,7 @@ public class TradeOperations {
 	/** Get instruments for the desired exchange. */
 	public List<Instrument> getInstrumentsForExchange(KiteConnect kiteconnect, String exchangeName)
 			throws KiteException, IOException {
-		// Get instruments for an exchange.
 		return kiteconnect.getInstruments(exchangeName);
-		// LOGGER.info(nseInstruments.size());
 	}
 
 	/**

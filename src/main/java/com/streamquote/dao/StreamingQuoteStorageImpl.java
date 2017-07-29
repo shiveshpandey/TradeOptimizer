@@ -369,18 +369,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	public String[] getInstrumentDetailsOnTradingsymbol(String tradingsymbol) {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol()");
-		String[] param = new String[3];
+		String[] param = new String[1];
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
 
-				String openSql = "SELECT lotSize,tradingsymbol,exchange FROM " + quoteTable
-						+ "_instrumentDetails WHERE tradingsymbol='" + tradingsymbol + "'";
+				String openSql = "SELECT exchange FROM " + quoteTable + "_instrumentDetails WHERE tradingsymbol='"
+						+ tradingsymbol + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
 					param[0] = openRs.getString(1);
-					param[1] = openRs.getString(2);
-					param[2] = openRs.getString(3);
 				}
 				stmt.close();
 			} catch (SQLException e) {
@@ -450,7 +448,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			lotSize = openRs.getString(1);
 		}
 		openSql = "SELECT time,quantity,processSignal FROM " + quoteTable + "_SignalNew where instrumentToken='"
-				+ instrumentToken + "' order by time desc";
+				+ instrumentToken + "'and status not in('REJECTED','CANCELLED') order by time desc";
 		openRs = stmt.executeQuery(openSql);
 
 		while (openRs.next()) {
