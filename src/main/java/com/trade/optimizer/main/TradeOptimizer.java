@@ -76,11 +76,11 @@ public class TradeOptimizer {
 	private KiteTicker tickerProvider;
 	private List<InstrumentVolatilityScore> instrumentVolatilityScoreList = new ArrayList<InstrumentVolatilityScore>();
 	private String url = kiteconnect.getLoginUrl();
-	private String todaysDate, quoteStartTime, quoteEndTime, quotePrioritySettingTime;
+	private String todaysDate, quoteStartTime, quoteEndTime, quotePrioritySettingTime, dbConnectionClosingTime;
 
 	private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
 	private DateFormat dtTmFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	private Date timeStart, timeEnd, timeForPrioritySetting;
+	private Date timeStart, timeEnd, timeForPrioritySetting, timeDBConnectionClosing;
 
 	@Autowired
 	ServletContext context;
@@ -276,14 +276,21 @@ public class TradeOptimizer {
 			quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
 			quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
 			quotePrioritySettingTime = todaysDate + " " + StreamingConfig.QUOTE_PRIORITY_SETTING_TIME;
+			dbConnectionClosingTime = todaysDate + " " + StreamingConfig.DB_CONNECTION_CLOSING_TIME;
 			timeStart = dtTmFmt.parse(quoteStartTime);
 			timeEnd = dtTmFmt.parse(quoteEndTime);
 			timeForPrioritySetting = dtTmFmt.parse(quotePrioritySettingTime);
+			timeDBConnectionClosing = dtTmFmt.parse(dbConnectionClosingTime);
 
 			createInitialDayTables();
 
-			fetchAndProcessInstrumentsPriorityRelatedData();
-
+			if (checkAndLoadIfBackEndReady()) {
+				quoteStreamingInstrumentsArr = streamingQuoteStorage.getTopPrioritizedTokenList(tokenCountForTrade);
+				liveStreamFirstRun = true;
+				backendReadyForProcessing = true;
+			} else {
+				fetchAndProcessInstrumentsPriorityRelatedData();
+			}
 			startLiveStreamOfSelectedInstruments();
 
 			applyStrategiesAndGenerateSignals();
@@ -297,6 +304,10 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
 		// LOGGER.info("Exit TradeOptimizer.startProcess()");
+	}
+
+	private boolean checkAndLoadIfBackEndReady() {
+		return streamingQuoteStorage.getBackendReadyFlag();
 	}
 
 	private void tickerSettingInitialization() {
@@ -389,12 +400,9 @@ public class TradeOptimizer {
 		// LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
 		if (streamingQuoteStorage != null) {
 
-			DateFormat quoteTableDtFmt = new SimpleDateFormat("ddMMyyyy");
-
 			streamingQuoteStorage.initializeJDBCConn();
 			try {
-				streamingQuoteStorage
-						.createDaysStreamingQuoteTable(quoteTableDtFmt.format(Calendar.getInstance().getTime()));
+				streamingQuoteStorage.createDaysStreamingQuoteTable();
 			} catch (SQLException e) {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
@@ -507,11 +515,12 @@ public class TradeOptimizer {
 							if (backendReadyForProcessing)
 								startStreamingQuote();
 							Thread.sleep(10 * seconds);
-						} else {
-							runnable = false;
+						} else if (timeNow.compareTo(timeEnd) >= 0 && timeNow.compareTo(timeDBConnectionClosing) <= 0) {
 							stopStreamingQuote();
+						} else {
+							closeDBConnection();
+							runnable = false;
 						}
-
 					} catch (InterruptedException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
@@ -567,6 +576,7 @@ public class TradeOptimizer {
 										.getTopPrioritizedTokenList(tokenCountForTrade);
 								liveStreamFirstRun = true;
 								backendReadyForProcessing = true;
+								streamingQuoteStorage.saveBackendReadyFlag(backendReadyForProcessing);
 								runnable = false;
 							} catch (KiteException e) {
 								LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
@@ -769,10 +779,14 @@ public class TradeOptimizer {
 	private void stopStreamingQuote() {
 		// LOGGER.info("Entry TradeOptimizer.stopStreamingQuote()");
 		tickerProvider.disconnect();
+		// LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
+	}
 
+	private void closeDBConnection() {
+		// LOGGER.info("Entry TradeOptimizer.closeDBConnection()");
 		if (streamingQuoteStorage != null) {
 			streamingQuoteStorage.closeJDBCConn();
 		}
-		// LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
+		// LOGGER.info("Exit TradeOptimizer.closeDBConnection()");
 	}
 }

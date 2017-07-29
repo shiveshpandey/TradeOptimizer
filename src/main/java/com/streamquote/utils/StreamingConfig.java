@@ -5,6 +5,8 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_START_TIME = "09:00:00";
 	public static final String QUOTE_STREAMING_END_TIME = "15:10:00";
 	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";
+	public static final String DB_CONNECTION_CLOSING_TIME = "15:30:00";
+
 	public static final int averagePerScriptInvestment = 50000;
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";

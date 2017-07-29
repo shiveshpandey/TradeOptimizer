@@ -52,6 +52,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			Statement timeLoopRsStmt = conn.createStatement();
 			timeLoopRsStmt.executeQuery("SET GLOBAL time_zone = '+5:30'");
 			timeLoopRsStmt.close();
+			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(
+					new SimpleDateFormat("ddMMyyyy").format(Calendar.getInstance().getTime()));
+
 		} catch (ClassNotFoundException e) {
 			LOGGER.info("StreamingQuoteStorageImpl.initializeJDBCConn(): ClassNotFoundException: " + JDBC_DRIVER);
 		} catch (SQLException e) {
@@ -76,13 +79,21 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public void createDaysStreamingQuoteTable(String date) throws SQLException {
+	public void createDaysStreamingQuoteTable() throws SQLException {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.createDaysStreamingQuoteTable");
 		if (conn != null) {
 			Statement stmt = conn.createStatement();
-			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(date);
 			String sql;
+			try {
+				sql = "CREATE TABLE " + quoteTable
+						+ "_ReadyFlag (backendReadyFlag int,time timestamp) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+				stmt.executeUpdate(sql);
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.createDaysStreamingQuoteTable(): ERROR: SQLException on creating Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
 			try {
 				sql = "CREATE TABLE " + quoteTable
 						+ " (ID int NOT NULL AUTO_INCREMENT,time timestamp, InstrumentToken varchar(32),"
@@ -394,8 +405,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							String[] signalAndPrice = signalArray.split(",");
 							prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
 							prepStmt.setString(2, instrumentList.get(index).toString());
-							prepStmt.setString(3,
-									fetchLotSizeFromInstrumentDetails(instrumentList.get(index).toString()));
+							prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(
+									instrumentList.get(index).toString(), signalAndPrice[0]));
 							prepStmt.setString(4, signalAndPrice[0]);
 							prepStmt.setString(5, "active");
 							prepStmt.setDouble(6, Double.parseDouble(signalAndPrice[1]));
@@ -418,9 +429,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
 	}
 
-	private String fetchLotSizeFromInstrumentDetails(String instrumentToken) throws SQLException {
+	private String fetchLotSizeFromInstrumentDetails(String instrumentToken, String buyOrSell) throws SQLException {
 		String lotSize = "";
 		Statement stmt = conn.createStatement();
+		int totalQuantityProcessed = 0;
 		String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
 				+ instrumentToken + "'";
 		ResultSet openRs = stmt.executeQuery(openSql);
@@ -428,6 +440,22 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		while (openRs.next()) {
 			lotSize = openRs.getString(1);
 		}
+		openSql = "SELECT time,quantity,processSignal FROM " + quoteTable + "_SignalNew where instrumentToken='"
+				+ instrumentToken + "' order by time desc";
+		openRs = stmt.executeQuery(openSql);
+
+		while (openRs.next()) {
+			if ("BUY".equalsIgnoreCase(openRs.getString(3)))
+				totalQuantityProcessed = totalQuantityProcessed + Integer.parseInt(openRs.getString(2));
+			else if ("SELL".equalsIgnoreCase(openRs.getString(3)))
+				totalQuantityProcessed = totalQuantityProcessed - Integer.parseInt(openRs.getString(2));
+		}
+
+		if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0)
+			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
+		else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
+			lotSize = totalQuantityProcessed + "";
+
 		stmt.close();
 		return lotSize;
 	}
@@ -516,11 +544,6 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					while (timeStampRs.next()) {
 						timeStampPeriodList.add(timeStampRs.getTimestamp("timestampGrp"));
 					}
-				}
-				if (null != idsList && idsList.size() > 0) {
-					openSql = "update " + quoteTable + " set usedForSignal ='used' where id in("
-							+ commaSeperatedIDs(idsList) + ")";
-					timeStampRsStmt.executeUpdate(openSql);
 				}
 				timeStampRsStmt.close();
 
@@ -629,8 +652,17 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmtInsertSignalParams.close();
 					timeLoopRsStmt.close();
 				}
+
 				if (null != idsList && idsList.size() > 0)
 					lowHighCloseRsiStrategy(instrumentToken);
+
+				if (null != idsList && idsList.size() > 0) {
+					Statement usedUpdateRsStmt = conn.createStatement();
+					openSql = "update " + quoteTable + " set usedForSignal ='used' where id in("
+							+ commaSeperatedIDs(idsList) + ")";
+					usedUpdateRsStmt.executeUpdate(openSql);
+					usedUpdateRsStmt.close();
+				}
 			} catch (SQLException | ParseException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters(): ERROR: SQLException on fetching data from Table, cause: "
@@ -716,11 +748,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
 				prepStmt.setString(2, instrumentToken);
-				prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken));
-				if (signalClose == 2)
+				if (signalClose == 2) {
 					prepStmt.setString(4, "BUY");
-				else
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+				} else {
 					prepStmt.setString(4, "SELL");
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+				}
 				prepStmt.setString(5, "active");
 				prepStmt.setDouble(6, firstClose);
 				prepStmt.setDouble(7, firstRowId);
@@ -1166,5 +1200,66 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.markTradableInstruments()");
 
+	}
+
+	@Override
+	public void saveBackendReadyFlag(boolean backendReadyForProcessing) {
+
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.saveBackendReadyFlag()");
+		if (conn != null) {
+			try {
+				String sql = "INSERT INTO " + quoteTable + "_ReadyFlag " + "(time,backendReadyFlag) " + "values(?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+				if (backendReadyForProcessing)
+					prepStmt.setInt(2, 1);
+				else
+					prepStmt.setInt(2, 0);
+				prepStmt.executeUpdate();
+				prepStmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		} else {
+			if (conn != null) {
+				LOGGER.info("StreamingQuoteStorageImpl.saveBackendReadyFlag(): ERROR: DB conn is null !!!");
+			} else {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.saveBackendReadyFlag(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+			}
+		}
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
+	}
+
+	@Override
+	public boolean getBackendReadyFlag() {
+
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.getBackendReadyFlag");
+		boolean backendReady = false;
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "SELECT backendReadyFlag FROM " + quoteTable
+						+ "_ReadyFlag  ORDER BY time DESC LIMIT 1";
+
+				ResultSet openRs = stmt.executeQuery(openSql);
+				while (openRs.next()) {
+					if (openRs.getInt(1) == 1)
+						backendReady = true;
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.getBackendReadyFlag(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.getBackendReadyFlag(): ERROR: DB conn is null !!!");
+		}
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.getBackendReadyFlag");
+		return backendReady;
 	}
 }

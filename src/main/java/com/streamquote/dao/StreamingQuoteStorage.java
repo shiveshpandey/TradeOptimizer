@@ -18,7 +18,7 @@ public interface StreamingQuoteStorage {
 
 	public void closeJDBCConn();
 
-	public void createDaysStreamingQuoteTable(String date) throws SQLException;
+	public void createDaysStreamingQuoteTable() throws SQLException;
 
 	public ArrayList<Long> getTopPrioritizedTokenList(int i);
 
@@ -41,4 +41,8 @@ public interface StreamingQuoteStorage {
 	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
 
 	public void markTradableInstruments(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
+
+	public void saveBackendReadyFlag(boolean backendReadyForProcessing);
+
+	public boolean getBackendReadyFlag();
 }
