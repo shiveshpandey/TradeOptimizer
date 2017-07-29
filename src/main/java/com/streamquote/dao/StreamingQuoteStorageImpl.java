@@ -276,6 +276,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					order.transactionType = String.valueOf(openRs.getString(2));
 					order.quantity = String.valueOf(openRs.getString(3));
 					order.price = String.valueOf(openRs.getString(6));
+					order.tag = String.valueOf(openRs.getInt(5));
 					idList.add(openRs.getInt(5));
 					orders.add(order);
 				}
@@ -305,6 +306,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		for (int i = 1; i < idList.size(); i++)
 			ids = ids + "," + idList.get(i);
 		return ids;
+	}
+
+	private String commaSeperatedLongIDs(List<Long> idList) {
+		String ids = "'" + String.valueOf(idList.get(0));
+
+		for (int i = 1; i < idList.size(); i++)
+			ids = ids + "','" + idList.get(i);
+		return ids + "'";
 	}
 
 	@Override
@@ -1261,5 +1270,80 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.getBackendReadyFlag");
 		return backendReady;
+	}
+
+	@Override
+	public ArrayList<String> tradingSymbolListOnInstrumentTokenId(ArrayList<Long> quoteStreamingInstrumentsArr) {
+
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.tradingSymbolListOnInstrumentTokenId()");
+		ArrayList<String> symbolList = new ArrayList<String>();
+		if (conn != null) {
+			try {
+				if (quoteStreamingInstrumentsArr.size() > 0) {
+					Statement stmt = conn.createStatement();
+
+					String openSql = "SELECT tradingsymbol FROM " + quoteTable
+							+ "_instrumentDetails WHERE instrumentToken in ("
+							+ commaSeperatedLongIDs(quoteStreamingInstrumentsArr) + ") order by instrumentToken desc";
+					ResultSet openRs = stmt.executeQuery(openSql);
+					while (openRs.next()) {
+						symbolList.add(openRs.getString(1));
+					}
+					stmt.close();
+				}
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.tradingSymbolListOnInstrumentTokenId(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.tradingSymbolListOnInstrumentTokenId(): ERROR: DB conn is null !!!");
+		}
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.tradingSymbolListOnInstrumentTokenId()");
+		return symbolList;
+
+	}
+
+	@Override
+	public void orderStatusSyncBetweenLocalAndMarket(String tradingSymbol, String transactionType, String quantity,
+			String status, String tagId) {
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket()");
+
+		if (conn != null) {
+			try {
+				if (null != tagId && !"".equalsIgnoreCase(tagId) && !"dayOff".equalsIgnoreCase(tagId)) {
+
+					Statement stmt = conn.createStatement();
+					String openSql = "SELECT id FROM " + quoteTable + "_SignalNew where id =" + tagId + " and status!='"
+							+ status + "' order by time desc";
+					ResultSet openRs = stmt.executeQuery(openSql);
+					int updateRequired = 0;
+					while (openRs.next()) {
+						updateRequired = openRs.getInt(1);
+					}
+
+					if (updateRequired != 0) {
+						openSql = "UPDATE " + quoteTable + "_SignalNew SET status = ? where id = ? ";
+						PreparedStatement prepStmt = conn.prepareStatement(openSql);
+						prepStmt.setString(1, status);
+						prepStmt.setInt(2, Integer.parseInt(tagId));
+						prepStmt.executeUpdate();
+						prepStmt.close();
+					}
+					stmt.close();
+				}
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket(): ERROR: DB conn is null !!!");
+		}
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket()");
 	}
 }

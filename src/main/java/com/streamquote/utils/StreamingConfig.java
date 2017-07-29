@@ -6,13 +6,14 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_END_TIME = "15:10:00";
 	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";
 	public static final String DB_CONNECTION_CLOSING_TIME = "15:30:00";
-
+	public static final int tokenCountForTrade = 50;
+	public static final int secondsValue = 1000;
 	public static final int averagePerScriptInvestment = 50000;
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
 	public static final String QUOTE_STREAMING_DB_PWD = "root";
-	public static final String QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER = "StreamingQuote";
+	public static final String QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER = "Zerodha";
 	public static final String QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER = "_Date_";
 
 	public static final String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "26-01-2017", "24-02-2017", "13-03-2017",

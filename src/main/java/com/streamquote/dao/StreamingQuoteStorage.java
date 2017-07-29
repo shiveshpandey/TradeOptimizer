@@ -45,4 +45,9 @@ public interface StreamingQuoteStorage {
 	public void saveBackendReadyFlag(boolean backendReadyForProcessing);
 
 	public boolean getBackendReadyFlag();
+
+	public ArrayList<String> tradingSymbolListOnInstrumentTokenId(ArrayList<Long> quoteStreamingInstrumentsArr);
+
+	public void orderStatusSyncBetweenLocalAndMarket(String tradingSymbol, String transactionType, String quantity,
+			String status, String tag);
 }
