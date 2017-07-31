@@ -408,8 +408,8 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
-					ticks = testingTickerData(quoteStreamingInstrumentsArr);
+				//if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
+				//	ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 				else if (tickerStarted && (null != tickerProvider && null != tokenListForTick
@@ -482,12 +482,13 @@ public class TradeOptimizer {
 					try {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeEnd) >= 0 && backendReadyForProcessing) {
-							List<Order> orderList = tradeOperations.getOrders(kiteconnect);
+							List<Order> orderList = new ArrayList<Order>();
+									streamingQuoteStorage.fetchAllOrdersForDayOffActivity(quoteStreamingInstrumentsArr);//tradeOperations.getOrders(kiteconnect);
 
 							if (null != orderList && orderList.size() > 0 && null != operatingTradingSymbolList
 									&& operatingTradingSymbolList.size() > 0)
 								for (int instrumentCount = 0; instrumentCount < operatingTradingSymbolList
-										.size(); instrumentCount++) {
+										.size(); instrumentCount++) {/*
 									int totalQuantity = 0;
 									for (int index = 0; index < orderList.size(); index++) {
 										if (orderList.get(index).tradingSymbol
@@ -520,7 +521,7 @@ public class TradeOptimizer {
 												streamingQuoteStorage);
 										needToWaitBeforeClosingThread = true;
 									}
-								}
+								*/}
 							if (!needToWaitBeforeClosingThread) {
 								runnable = false;
 								dayOffActivityPerformed = true;
@@ -534,8 +535,8 @@ public class TradeOptimizer {
 						}
 					} catch (InterruptedException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
-					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+					//} catch (KiteException e) {
+						//LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 					} catch (Exception e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}

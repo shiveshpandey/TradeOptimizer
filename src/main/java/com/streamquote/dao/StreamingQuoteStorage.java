@@ -26,7 +26,7 @@ public interface StreamingQuoteStorage {
 
 	public void saveInstrumentDetails(List<Instrument> instrumentList, Timestamp time);
 
-	public String[] getInstrumentDetailsOnTradingsymbol(String tradingSymbol);
+	public String getInstrumentDetailsOnTradingsymbol(String tradingSymbol);
 
 	public void saveGeneratedSignals(Map<Long, String> signalList, List<Long> instrumentList);
 
@@ -50,4 +50,6 @@ public interface StreamingQuoteStorage {
 
 	public void orderStatusSyncBetweenLocalAndMarket(String tradingSymbol, String transactionType, String quantity,
 			String status, String tag);
+
+	public void fetchAllOrdersForDayOffActivity(ArrayList<Long> quoteStreamingInstrumentsArr);
 }

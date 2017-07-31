@@ -61,14 +61,14 @@ public class TradeOperations {
 		 * KiteException will have error message in it Success of this call
 		 * implies only order has been placed successfully, not order execution
 		 */
-		String[] instrumentDetails = streamingQuoteDAOModeQuote.getInstrumentDetailsOnTradingsymbol(tradingSymbol);
+		String exchange = streamingQuoteDAOModeQuote.getInstrumentDetailsOnTradingsymbol(tradingSymbol);
 		Map<String, Object> param = new HashMap<String, Object>();
 
 		param.put("quantity", quantity);
 		param.put("order_type", "MARKET");
 		param.put("tradingsymbol", tradingSymbol);
 		param.put("product", "MIS");
-		param.put("exchange", instrumentDetails[1]);
+		param.put("exchange", exchange);
 		param.put("transaction_type", buyOrSell);
 		param.put("validity", "IOC");
 		// param.put("price", tradePrice);

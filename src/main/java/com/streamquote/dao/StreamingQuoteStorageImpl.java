@@ -272,7 +272,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 				while (openRs.next()) {
 					Order order = new Order();
-					order.symbol = fetchTradingSymbolFromInstrumentDetails(openRs.getString(1));
+					order.tradingSymbol = fetchTradingSymbolFromInstrumentDetails(openRs.getString(1));
 					order.transactionType = String.valueOf(openRs.getString(2));
 					order.quantity = String.valueOf(openRs.getString(3));
 					order.price = String.valueOf(openRs.getString(6));
@@ -366,10 +366,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public String[] getInstrumentDetailsOnTradingsymbol(String tradingsymbol) {
+	public String getInstrumentDetailsOnTradingsymbol(String tradingsymbol) {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.getInstrumentDetailsOnTradingsymbol()");
-		String[] param = new String[1];
+		String param = new String();
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
@@ -378,7 +378,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ tradingsymbol + "'";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
-					param[0] = openRs.getString(1);
+					param = openRs.getString(1);
 				}
 				stmt.close();
 			} catch (SQLException e) {
@@ -1343,5 +1343,81 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket()");
+	}
+
+	@Override
+	public void fetchAllOrdersForDayOffActivity(ArrayList<Long> quoteStreamingInstrumentsArr) {
+
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+				for (int index = 0; index < quoteStreamingInstrumentsArr.size(); index++) {
+					int totalQ = 0;
+					double tradeprice = 0.0;
+					String openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew where InstrumentToken ='"
+							+ quoteStreamingInstrumentsArr.get(index)
+							+ "' and ProcessSignal='BUY' group by ProcessSignal";
+					ResultSet openRs1 = stmt.executeQuery(openSql);
+
+					while (openRs1.next()) {
+						totalQ = openRs1.getInt(1);
+					}
+					openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew where InstrumentToken ='"
+							+ quoteStreamingInstrumentsArr.get(index)
+							+ "' and ProcessSignal='SELL' group by ProcessSignal";
+
+					ResultSet openRs2 = stmt.executeQuery(openSql);
+					while (openRs2.next()) {
+						totalQ = totalQ - Integer.parseInt(openRs2.getString(1));
+					}
+					openSql = "SELECT Tradeprice FROM " + quoteTable + "_SignalNew where InstrumentToken ='"
+							+ quoteStreamingInstrumentsArr.get(index) + "' order by id desc limit 1";
+
+					ResultSet openRs3 = stmt.executeQuery(openSql);
+					while (openRs3.next()) {
+						tradeprice = openRs3.getDouble(1);
+					}
+					if (totalQ > 0) {
+						String sql = "INSERT INTO " + quoteTable + "_signalNew "
+								+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+								+ "values(?,?,?,?,?,?,?)";
+						PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+						prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+						prepStmt.setString(2, quoteStreamingInstrumentsArr.get(index).toString());
+						prepStmt.setString(4, "SELL");
+						prepStmt.setString(3, totalQ + "");
+						prepStmt.setString(5, "dayOff");
+						prepStmt.setDouble(6, tradeprice);
+						prepStmt.setDouble(7, 0.0);
+						prepStmt.executeUpdate();
+						prepStmt.close();
+
+					} else if (totalQ < 0) {
+						String sql = "INSERT INTO " + quoteTable + "_signalNew "
+								+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+								+ "values(?,?,?,?,?,?,?)";
+						PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+						prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+						prepStmt.setString(2, quoteStreamingInstrumentsArr.get(index).toString());
+						prepStmt.setString(4, "BUY");
+						prepStmt.setString(3, (0 - totalQ) + "");
+						prepStmt.setString(5, "dayOff");
+						prepStmt.setDouble(6, tradeprice);
+						prepStmt.setDouble(7, 0.0);
+						prepStmt.executeUpdate();
+						prepStmt.close();
+					}
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: DB conn is null !!!");
+		}
 	}
 }
