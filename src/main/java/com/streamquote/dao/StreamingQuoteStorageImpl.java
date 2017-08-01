@@ -1368,9 +1368,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					ResultSet openRs2 = stmt.executeQuery(openSql);
 					while (openRs2.next()) {
-						totalQ = totalQ - Integer.parseInt(openRs2.getString(1));
+						totalQ = totalQ - openRs2.getInt(1);
 					}
-					openSql = "SELECT Tradeprice FROM " + quoteTable + "_SignalNew where InstrumentToken ='"
+					openSql = "SELECT close FROM " + quoteTable + "_Signalparams where InstrumentToken ='"
 							+ quoteStreamingInstrumentsArr.get(index) + "' order by id desc limit 1";
 
 					ResultSet openRs3 = stmt.executeQuery(openSql);
