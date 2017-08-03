@@ -297,13 +297,13 @@ public class TradeOptimizer {
 			}
 			startLiveStreamOfSelectedInstruments();
 
-			applyStrategiesAndGenerateSignals();
+			// applyStrategiesAndGenerateSignals();
 
-			placeOrdersBasedOnSignals();
+			// placeOrdersBasedOnSignals();
 
-			orderStatusSyncBetweenLocalAndMarket();
+			// orderStatusSyncBetweenLocalAndMarket();
 
-			dayClosingStocksRoundOffOperations();
+			// dayClosingStocksRoundOffOperations();
 
 		} catch (JSONException | ParseException e) {
 			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
@@ -408,8 +408,9 @@ public class TradeOptimizer {
 		tickerProvider.setOnTickerArrivalListener(new OnTick() {
 			@Override
 			public void onTick(ArrayList<Tick> ticks) {
-				//if (null != quoteStreamingInstrumentsArr && quoteStreamingInstrumentsArr.size() > 0)
-				//	ticks = testingTickerData(quoteStreamingInstrumentsArr);
+				// if (null != quoteStreamingInstrumentsArr &&
+				// quoteStreamingInstrumentsArr.size() > 0)
+				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeData(ticks);
 				else if (tickerStarted && (null != tickerProvider && null != tokenListForTick
@@ -418,6 +419,7 @@ public class TradeOptimizer {
 						tickerProvider.reconnect(tokenListForTick);
 					} catch (Exception e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						tickerStarted = false;
 					}
 			}
 		});
@@ -483,45 +485,53 @@ public class TradeOptimizer {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeEnd) >= 0 && backendReadyForProcessing) {
 							List<Order> orderList = new ArrayList<Order>();
-									streamingQuoteStorage.fetchAllOrdersForDayOffActivity(quoteStreamingInstrumentsArr);//tradeOperations.getOrders(kiteconnect);
+							streamingQuoteStorage.fetchAllOrdersForDayOffActivity(quoteStreamingInstrumentsArr);// tradeOperations.getOrders(kiteconnect);
 
 							if (null != orderList && orderList.size() > 0 && null != operatingTradingSymbolList
 									&& operatingTradingSymbolList.size() > 0)
 								for (int instrumentCount = 0; instrumentCount < operatingTradingSymbolList
-										.size(); instrumentCount++) {/*
-									int totalQuantity = 0;
-									for (int index = 0; index < orderList.size(); index++) {
-										if (orderList.get(index).tradingSymbol
-												.equalsIgnoreCase(operatingTradingSymbolList.get(instrumentCount))) {
-											if (orderList.get(index).status.equalsIgnoreCase("OPEN")) {
-												tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
-												needToWaitBeforeClosingThread = true;
-											}
-											if (orderList.get(index).status.equalsIgnoreCase("COMPLETE")
-													&& orderList.get(index).transactionType.equalsIgnoreCase("BUY")) {
-												totalQuantity = totalQuantity
-														+ Integer.parseInt(orderList.get(index).quantity);
-											}
-											if (orderList.get(index).status.equalsIgnoreCase("COMPLETE")
-													&& orderList.get(index).transactionType.equalsIgnoreCase("SELL")) {
-												totalQuantity = totalQuantity
-														- Integer.parseInt(orderList.get(index).quantity);
-											}
-										}
-									}
-									if (totalQuantity > 0) {
-										tradeOperations.placeOrder(kiteconnect,
-												operatingTradingSymbolList.get(instrumentCount), "SELL",
-												String.valueOf(totalQuantity), "0.0", "dayOff", streamingQuoteStorage);
-										needToWaitBeforeClosingThread = true;
-									} else if (totalQuantity < 0) {
-										tradeOperations.placeOrder(kiteconnect,
-												operatingTradingSymbolList.get(instrumentCount), "BUY",
-												String.valueOf(totalQuantity).replaceAll("-", ""), "0.0", "dayOff",
-												streamingQuoteStorage);
-										needToWaitBeforeClosingThread = true;
-									}
-								*/}
+										.size(); instrumentCount++) {
+									/*
+									 * int totalQuantity = 0; for (int index =
+									 * 0; index < orderList.size(); index++) {
+									 * if (orderList.get(index).tradingSymbol
+									 * .equalsIgnoreCase(
+									 * operatingTradingSymbolList.get(
+									 * instrumentCount))) { if
+									 * (orderList.get(index).status.
+									 * equalsIgnoreCase("OPEN")) {
+									 * tradeOperations.cancelOrder(kiteconnect,
+									 * orderList.get(index));
+									 * needToWaitBeforeClosingThread = true; }
+									 * if (orderList.get(index).status.
+									 * equalsIgnoreCase("COMPLETE") &&
+									 * orderList.get(index).transactionType.
+									 * equalsIgnoreCase("BUY")) { totalQuantity
+									 * = totalQuantity +
+									 * Integer.parseInt(orderList.get(index).
+									 * quantity); } if
+									 * (orderList.get(index).status.
+									 * equalsIgnoreCase("COMPLETE") &&
+									 * orderList.get(index).transactionType.
+									 * equalsIgnoreCase("SELL")) { totalQuantity
+									 * = totalQuantity -
+									 * Integer.parseInt(orderList.get(index).
+									 * quantity); } } } if (totalQuantity > 0) {
+									 * tradeOperations.placeOrder(kiteconnect,
+									 * operatingTradingSymbolList.get(
+									 * instrumentCount), "SELL",
+									 * String.valueOf(totalQuantity), "0.0",
+									 * "dayOff", streamingQuoteStorage);
+									 * needToWaitBeforeClosingThread = true; }
+									 * else if (totalQuantity < 0) {
+									 * tradeOperations.placeOrder(kiteconnect,
+									 * operatingTradingSymbolList.get(
+									 * instrumentCount), "BUY",
+									 * String.valueOf(totalQuantity).replaceAll(
+									 * "-", ""), "0.0", "dayOff",
+									 * streamingQuoteStorage);
+									 * needToWaitBeforeClosingThread = true; }
+									 */}
 							if (!needToWaitBeforeClosingThread) {
 								runnable = false;
 								dayOffActivityPerformed = true;
@@ -535,8 +545,9 @@ public class TradeOptimizer {
 						}
 					} catch (InterruptedException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
-					//} catch (KiteException e) {
-						//LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+						// } catch (KiteException e) {
+						// LOGGER.info("Error TradeOptimizer :- " + e.message +
+						// " >> " + e.code);
 					} catch (Exception e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 					}
@@ -860,10 +871,13 @@ public class TradeOptimizer {
 				}
 			} catch (IOException | WebSocketException e) {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				tickerStarted = false;
 			} catch (KiteException e) {
 				LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+				tickerStarted = false;
 			} catch (Exception e) {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				tickerStarted = false;
 			}
 		}
 		// LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");
