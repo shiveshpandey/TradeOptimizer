@@ -1141,10 +1141,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 			if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
 					&& firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
-					&& macdSignal == trend && (macdSignal == 2.0 || macdSignal == 0.0)
-					&& ((psarConTrend >= -2 && psarConTrend <= 2) || (macdConTrend >= -2 && macdConTrend <= 2))
-					&& ((psarConTrendPre >= 10 && macdConTrendPre >= 10)
-							|| (psarConTrendPre <= -10 && macdConTrendPre <= -10))) {
+					&& (macdSignal == 2.0 || macdSignal == 0.0)
+					&& ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 10 || psarConTrendPre <= -10)) 
+					|| (macdConTrend >= -1 && macdConTrend <= 1 && (macdConTrendPre >= 10 || macdConTrendPre <= -10)))) 
+			{
 				String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
 						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
 						+ "values(?,?,?,?,?,?,?)";
@@ -1178,7 +1178,177 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 	}
+	private void lowHighCloseChangingStrategy3(String instrumentToken) throws SQLException {
+        // LOGGER.info("Entry
+        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+        int id = 0, firstRowId = 0, lastRowId = 0;
+        int loopSize = 0;
+        do {
+            String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+                    + instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
+            Statement stmt1 = conn.createStatement();
+            ResultSet rs1 = stmt1.executeQuery(openSql);
+            while (rs1.next()) {
+                id = rs1.getInt("maxId");
+            }
+            stmt1.close();
+            openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
+                    + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
+                    + StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(openSql);
+            double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
+            boolean firstRecord = true;
+            double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
+            int psarConTrend = 0, macdConTrend = 0;
+            int psarConTrendPre = 0, macdConTrendPre = 0;
+            loopSize = 0;
+            String isUnUsedRecord = "";
 
+            while (rs.next()) {
+                loopSize++;
+                if (firstRecord) {
+                    firstClose = rs.getDouble("close");
+                    rsi = rs.getDouble("rsi");
+                    isUnUsedRecord = rs.getString("usedForZigZagSignal4");
+                    firstRowId = rs.getInt("id");
+                    trend = rs.getDouble("trend");
+                    macdSignal = rs.getDouble("macdSignal");
+                    psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
+                    macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
+                    firstRecord = false;
+                }
+                lastRowId = rs.getInt("id");
+                psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
+                macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
+            }
+            stmt.close();
+
+            if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
+                    && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
+                    && (macdSignal == 2.0 || macdSignal == 0.0)
+                    && ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 5 || psarConTrendPre <= -5)) 
+                    || (macdConTrend >= -1 && macdConTrend <= 1 && (macdConTrendPre >= 5 || macdConTrendPre <= -5)))) 
+            {
+                String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
+                        + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+                        + "values(?,?,?,?,?,?,?)";
+                PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+                prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+                prepStmt.setString(2, instrumentToken);
+                if (macdSignal == 0.0) {
+                    prepStmt.setString(4, "BUY");
+                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+                } else {
+                    prepStmt.setString(4, "SELL");
+                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+                }
+                prepStmt.setString(5, "active");
+                prepStmt.setDouble(6, firstClose);
+                prepStmt.setDouble(7, firstRowId);
+                prepStmt.executeUpdate();
+                prepStmt.close();
+
+            }
+            Statement stmtForUpdate = conn.createStatement();
+            if (lastRowId > 0 && loopSize == 2) {
+                String sql = "update " + quoteTable
+                        + "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
+                        + ")";
+                stmtForUpdate.executeUpdate(sql);
+            }
+            stmtForUpdate.close();
+        } while (loopSize == 2);
+        // LOGGER.info("Exit
+        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+    }
+	private void lowHighCloseChangingStrategy4(String instrumentToken) throws SQLException {
+        // LOGGER.info("Entry
+        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+        int id = 0, firstRowId = 0, lastRowId = 0;
+        int loopSize = 0;
+        do {
+            String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+                    + instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
+            Statement stmt1 = conn.createStatement();
+            ResultSet rs1 = stmt1.executeQuery(openSql);
+            while (rs1.next()) {
+                id = rs1.getInt("maxId");
+            }
+            stmt1.close();
+            openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
+                    + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
+                    + StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(openSql);
+            double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
+            boolean firstRecord = true;
+            double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
+            int psarConTrend = 0, macdConTrend = 0;
+            int psarConTrendPre = 0, macdConTrendPre = 0;
+            loopSize = 0;
+            String isUnUsedRecord = "";
+
+            while (rs.next()) {
+                loopSize++;
+                if (firstRecord) {
+                    firstClose = rs.getDouble("close");
+                    rsi = rs.getDouble("rsi");
+                    isUnUsedRecord = rs.getString("usedForZigZagSignal4");
+                    firstRowId = rs.getInt("id");
+                    trend = rs.getDouble("trend");
+                    macdSignal = rs.getDouble("macdSignal");
+                    psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
+                    macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
+                    firstRecord = false;
+                }
+                lastRowId = rs.getInt("id");
+                psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
+                macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
+            }
+            stmt.close();
+
+            if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
+                    && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
+                    && ((macdSignal == 2.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre >= 5) 
+                    || (macdSignal == 2.0 && macdConTrend >= -1 && macdConTrend <= 1 && macdConTrendPre >= 5)
+                    || (macdSignal == 0.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre <= -5) 
+                    || (macdSignal == 0.0 && macdConTrend >= -1 && macdConTrend <= 1 && macdConTrendPre <= -5))) 
+                {
+                String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
+                        + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+                        + "values(?,?,?,?,?,?,?)";
+                PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+                prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+                prepStmt.setString(2, instrumentToken);
+                if (macdSignal == 0.0) {
+                    prepStmt.setString(4, "BUY");
+                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+                } else {
+                    prepStmt.setString(4, "SELL");
+                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+                }
+                prepStmt.setString(5, "active");
+                prepStmt.setDouble(6, firstClose);
+                prepStmt.setDouble(7, firstRowId);
+                prepStmt.executeUpdate();
+                prepStmt.close();
+
+            }
+            Statement stmtForUpdate = conn.createStatement();
+            if (lastRowId > 0 && loopSize == 2) {
+                String sql = "update " + quoteTable
+                        + "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
+                        + ")";
+                stmtForUpdate.executeUpdate(sql);
+            }
+            stmtForUpdate.close();
+        } while (loopSize == 2);
+        // LOGGER.info("Exit
+        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+    }
 	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low,
 			Double high, Double close) throws SQLException {
 		// LOGGER.info("Entry
