@@ -484,36 +484,58 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit StreamingQuoteStorageImpl.saveGeneratedSignals()");
 	}
 
+	private boolean orderLimitCrossed(String instrumentToken, String buyOrSell) throws SQLException {
+        int totalQ = 0;
+        if (conn != null) {
+            try {
+                Statement stmt = conn.createStatement();
+                    
+                    String openSql = "SELECT ProcessSignal FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+                            + instrumentToken
+                            + "' order by id desc limit 3";
+                    ResultSet openRs1 = stmt.executeQuery(openSql);
+
+                    while (openRs1.next()) {
+                        if(openRs1.getString(1).equalsIgnoreCase(buyOrSell)){
+                            totalQ=totalQ+1;
+                        }
+                    }
+                    }catch(Exception e){}}
+        if(totalQ==3)
+            return false;                    
+        else return true;
+        }
 	private String fetchLotSizeFromInstrumentDetails(String instrumentToken, String buyOrSell) throws SQLException {
-		String lotSize = "";
-		Statement stmt = conn.createStatement();
-		int totalQuantityProcessed = 0;
-		String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
-				+ instrumentToken + "'";
-		ResultSet openRs = stmt.executeQuery(openSql);
+        String lotSize = "";
+        Statement stmt = conn.createStatement();
+        int totalQuantityProcessed = 0;
+        String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
+                + instrumentToken + "'";
+        ResultSet openRs = stmt.executeQuery(openSql);
 
-		while (openRs.next()) {
-			lotSize = openRs.getString(1);
-		}
-		openSql = "SELECT time,quantity,processSignal FROM " + quoteTable + "_SignalNew where instrumentToken='"
-				+ instrumentToken + "'and status not in('REJECTED','CANCELLED') order by time desc,id desc";
-		openRs = stmt.executeQuery(openSql);
+        while (openRs.next()) {
+            lotSize = openRs.getString(1);
+        }
+//      openSql = "SELECT time,quantity,processSignal FROM " + quoteTable + "_SignalNew where instrumentToken='"
+//              + instrumentToken + "'and status not in('REJECTED','CANCELLED') order by time desc,id desc";
+//      openRs = stmt.executeQuery(openSql);
+//
+//      while (openRs.next()) {
+//          if ("BUY".equalsIgnoreCase(openRs.getString(3)))
+//              totalQuantityProcessed = totalQuantityProcessed + Integer.parseInt(openRs.getString(2));
+//          else if ("SELL".equalsIgnoreCase(openRs.getString(3)))
+//              totalQuantityProcessed = totalQuantityProcessed - Integer.parseInt(openRs.getString(2));
+//      }
+ totalQuantityProcessed=fetchOrderQuantity(instrumentToken);
+        
+        if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0)
+            lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
+        else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
+            lotSize = totalQuantityProcessed + "";
 
-		while (openRs.next()) {
-			if ("BUY".equalsIgnoreCase(openRs.getString(3)))
-				totalQuantityProcessed = totalQuantityProcessed + Integer.parseInt(openRs.getString(2));
-			else if ("SELL".equalsIgnoreCase(openRs.getString(3)))
-				totalQuantityProcessed = totalQuantityProcessed - Integer.parseInt(openRs.getString(2));
-		}
-
-		if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0)
-			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
-		else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
-			lotSize = totalQuantityProcessed + "";
-
-		stmt.close();
-		return lotSize;
-	}
+        stmt.close();
+        return lotSize;
+    }
 
 	private String fetchTradingSymbolFromInstrumentDetails(String instrumentToken) throws SQLException {
 		String lotSize = "";
@@ -708,13 +730,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					timeLoopRsStmt.close();
 				}
 
-				if (null != idsList && idsList.size() > 0) {
-					lowHighCloseRsiStrategy(instrumentToken);
-					lowHighCloseStrategy(instrumentToken);
-					lowHighCloseTrendStrategy(instrumentToken);
-					lowHighCloseChangingStrategy(instrumentToken);
-					lowHighCloseChangingStrategy2(instrumentToken);
-				}
+	//			if (null != idsList && idsList.size() > 0) {
+					//lowHighCloseRsiStrategy(instrumentToken);
+		//			lowHighCloseStrategy(instrumentToken);
+//					lowHighCloseStrategy2(instrumentToken);
+//					lowHighCloseTrendStrategy(instrumentToken);
+//					lowHighCloseChangingStrategy(instrumentToken);
+//					lowHighCloseChangingStrategy2(instrumentToken);
+//					lowHighCloseChangingStrategy3(instrumentToken);
+//					lowHighCloseChangingStrategy4(instrumentToken);					
+			//	}
 
 				if (null != idsList && idsList.size() > 0) {
 					Statement usedUpdateRsStmt = conn.createStatement();
@@ -850,7 +875,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 		int id = 0, firstRowId = 0, lastRowId = 0;
 		int loopSize = 0;
-		do {
+		do {		    
 			String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
 					+ instrumentToken + "' and usedForZigZagSignal1='usedForZigZagSignal1' ";
 			Statement stmt1 = conn.createStatement();
@@ -860,8 +885,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			stmt1.close();
 			openSql = "select * from (SELECT close,usedForZigZagSignal1,id FROM " + quoteTable
-					+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
-					+ StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 26)  a order by id desc";
+					+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and id>" + id 
+					+ " ORDER BY id ASC LIMIT 32)  a order by id desc";
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(openSql);
 			double lowClose = StreamingConfig.MAX_VALUE, highClose = 0.0, firstClose = StreamingConfig.MAX_VALUE;
@@ -894,9 +919,15 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				signalClose = 2;
 			}
 
-			if (loopSize >= 9 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && signalClose != 1
+			//manageStopLossOnPlacedOrder(instrumentToken,firstClose);
+			
+			if (loopSize >= 32 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && signalClose != 1
 					&& !firstRecord && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0) {
-				String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+			    String sign="BUY";
+			    if(signalClose!=2)
+			        sign="SELL";
+				if(orderLimitCrossed(instrumentToken,sign)){
+				    String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
 						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
 						+ "values(?,?,?,?,?,?,?)";
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
@@ -915,16 +946,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				prepStmt.setDouble(7, firstRowId);
 				prepStmt.executeUpdate();
 				prepStmt.close();
-
+			}
 				Statement stmtForUpdate = conn.createStatement();
-				if (firstRowId > 0) {
-					sql = "update " + quoteTable
-							+ "_SignalParams set usedForZigZagSignal1 ='usedForZigZagSignal1' where id in(" + firstRowId
+				if (lastRowId > 0) {
+					String sql = "update " + quoteTable
+							+ "_SignalParams set usedForZigZagSignal1 ='usedForZigZagSignal1' where id in(" + lastRowId
 							+ ")";
 					stmtForUpdate.executeUpdate(sql);
 				}
 				stmtForUpdate.close();
-			} else if (loopSize == 26) {
+			} else if (loopSize == 32) {
 				Statement stmtForUpdate = conn.createStatement();
 				if (lastRowId > 0) {
 					String sql = "update " + quoteTable
@@ -935,12 +966,82 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				stmtForUpdate.close();
 
 			}
-		} while (firstRowId > id && loopSize == 26);
+			
+		} while (loopSize == 32);
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 	}
 
-	private void lowHighCloseTrendStrategy(String instrumentToken) throws SQLException {
+	private void manageStopLossOnPlacedOrder(String instrumentToken, double latestClose) {
+        if (conn != null) {
+            try {
+                Statement stmt = conn.createStatement();
+                    
+                    String openSql = "SELECT ProcessSignal,TradePrice,Quantity FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+                            + instrumentToken
+                            + "' order by id desc limit 3";
+                    ResultSet openRs1 = stmt.executeQuery(openSql);
+                    String firstSignal="";
+                    boolean firstRecord=true;
+                    double avgTradePrice=0.0;
+                    int totalQ = 0;int count=0;
+                    while (openRs1.next()) {
+                        if(firstRecord){
+                            firstSignal=openRs1.getString(1);                            
+                            firstRecord=false;
+                        }
+                        if(openRs1.getString(1).equalsIgnoreCase(firstSignal))
+                        {  avgTradePrice=avgTradePrice+openRs1.getDouble(2);
+                            totalQ=totalQ+Integer.parseInt(openRs1.getString(3));
+                            count=count+1;
+                         }                      
+                        else
+                            break;                       
+                    }
+                    if(count > 0)
+                    avgTradePrice = avgTradePrice/count;
+                    
+                    if("BUY".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
+                            && latestClose <= avgTradePrice*0.994){
+                        String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+                                + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+                                + "values(?,?,?,?,?,?,?)";
+                        PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+                        prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+                        prepStmt.setString(2, instrumentToken);
+                        prepStmt.setString(4, "SELL");
+                        prepStmt.setString(3, totalQ+"");                       
+                        prepStmt.setString(5, "stopLossManaged");
+                        prepStmt.setDouble(6, latestClose);
+                        prepStmt.setDouble(7, 0);
+                        prepStmt.executeUpdate();
+                        prepStmt.close();
+                    }
+                    else if("SELL".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
+                            && latestClose >= avgTradePrice*1.006){
+
+                        String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+                            + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+                            + "values(?,?,?,?,?,?,?)";
+                    PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+                    prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+                    prepStmt.setString(2, instrumentToken);
+                    prepStmt.setString(4, "BUY");
+                    prepStmt.setString(3, totalQ+"");                   
+                    prepStmt.setString(5, "stopLossManaged");
+                    prepStmt.setDouble(6, latestClose);
+                    prepStmt.setDouble(7, 0);
+                    prepStmt.executeUpdate();
+                    prepStmt.close();                
+                    }
+                    }catch(Exception e){                        
+                    }
+            }
+    }
+
+    private void lowHighCloseTrendStrategy(String instrumentToken) throws SQLException {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 		int id = 0, firstRowId = 0;
@@ -1902,7 +2003,29 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket()");
 	}
+    public int fetchOrderQuantity(String quoteStreamingInstrumentsArr) {
+        int totalQ = 0;
+        if (conn != null) {
+            try {
+                Statement stmt = conn.createStatement();
+                    
+                    String openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+                            + quoteStreamingInstrumentsArr
+                            + "' and ProcessSignal='BUY' group by ProcessSignal";
+                    ResultSet openRs1 = stmt.executeQuery(openSql);
 
+                    while (openRs1.next()) {
+                        totalQ = openRs1.getInt(1);
+                    }
+                    openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+                            + quoteStreamingInstrumentsArr
+                            + "' and ProcessSignal='SELL' group by ProcessSignal";
+
+                    ResultSet openRs2 = stmt.executeQuery(openSql);
+                    while (openRs2.next()) {
+                        totalQ = totalQ - openRs2.getInt(1);
+                   }}catch(Exception e){}}
+        return totalQ;}
 	@Override
 	public void fetchAllOrdersForDayOffActivity(ArrayList<Long> quoteStreamingInstrumentsArr) {
 

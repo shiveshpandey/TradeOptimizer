@@ -677,6 +677,7 @@ public class TradeOptimizer {
 								 * .getInstrumentsForExchange(kiteconnect,
 								 * "BFO"));
 								 */
+								last10DaysOHLCData();
 								fetchNSEActiveSymbolList();
 								downloadNSEReportsCSVs();
 								markTradableInstruments();
@@ -712,7 +713,12 @@ public class TradeOptimizer {
 		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 	}
 
-	// private void roundOfNonPerformingBoughtStocks(ArrayList<Long>
+	protected void last10DaysOHLCData() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    // private void roundOfNonPerformingBoughtStocks(ArrayList<Long>
 	// quoteStreamingInstrumentsArr,
 	// ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws
 	// KiteException {

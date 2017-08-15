@@ -12,8 +12,8 @@ public class MACDSignalParam {
 	Double fastEma = StreamingConfig.MAX_VALUE;
 	Double slowEma = StreamingConfig.MAX_VALUE;
 	Double difference = StreamingConfig.MAX_VALUE;
-	static int fastEmaPeriods = 10;
-	static int slowEmaPeriods = 14;
+	static int fastEmaPeriods = 9;
+	static int slowEmaPeriods = 16;
 	static int signalEmaPeriods = 6;
 	static double fastEmaAccFactor = (double) 2 / (fastEmaPeriods + 1);
 	static double slowEmaAccFactor = (double) 2 / (slowEmaPeriods + 1);
