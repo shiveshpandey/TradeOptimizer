@@ -20,7 +20,9 @@ import java.util.TimeZone;
 import java.util.logging.Logger;
 
 import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.models.Camarilla;
 import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.InstrumentOHLCData;
 import com.trade.optimizer.models.InstrumentVolatilityScore;
 import com.trade.optimizer.models.Order;
 import com.trade.optimizer.models.Tick;
@@ -41,6 +43,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private Connection conn = null;
 
 	private static String quoteTable = null;
+	private static HashMap<String, Camarilla> camarillaList = new HashMap<String, Camarilla>();
 
 	@Override
 	public void initializeJDBCConn() {
@@ -124,7 +127,19 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						+ "annualVolatility DECIMAL(20,4),currentVolatility DECIMAL(20,4),PriorityPoint DECIMAL(20,4),tradable varchar(32),exchangeToken varchar(32),"
 						+ "tradingsymbol varchar(32) ,name varchar(32) , last_price varchar(32) ,tickSize varchar(32), expiry varchar(32),"
 						+ "instrumentType varchar(32), segment varchar(32) ,exchange varchar(32), strike varchar(32) ,lotSize varchar(32) ,"
-						+ " PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+						+ "daily2AvgVolatility DECIMAL(20,4), daily3AvgVolatility DECIMAL(20,4),daily5AvgVolatility DECIMAL(20,4), daily10AvgVolatility DECIMAL(20,4),"
+						+ "dailyWtdVolatility DECIMAL(20,4),lastTradedQt DECIMAL(20,4),lastDeliveryQt DECIMAL(20,4),deliveryToTradeRatio DECIMAL(20,4),"
+						+ "last2AvgTradedQt DECIMAL(20,4), last2AvgDeliveryQt DECIMAL(20,4), deliveryToTrade2AvgRatio DECIMAL(20,4),last3AvgTradedQt DECIMAL(20,4),"
+						+ "last3AvgDeliveryQt DECIMAL(20,4), deliveryToTrade3AvgRatio DECIMAL(20,4),last5AvgTradedQt DECIMAL(20,4), last5AvgDeliveryQt DECIMAL(20,4),"
+						+ "deliveryToTrade5AvgRatio DECIMAL(20,4),last10AvgTradedQt DECIMAL(20,4),last10AvgDeliveryQt DECIMAL(20,4),deliveryToTrade10AvgRatio DECIMAL(20,4),"
+						+ "lastWtdTradedQt DECIMAL(20,4),lastWtdDeliveryQt DECIMAL(20,4), deliveryToTradeWtdRatio DECIMAL(20,4),lastclose DECIMAL(20,4),lasthigh DECIMAL(20,4),"
+						+ "lastlow DECIMAL(20,4),lastopen DECIMAL(20,4),last2Avgclose DECIMAL(20,4),last2Avghigh DECIMAL(20,4),last2Avglow DECIMAL(20,4),last2Avgopen DECIMAL(20,4),"
+						+ "last3Avgclose DECIMAL(20,4), last3Avghigh DECIMAL(20,4), last3Avglow DECIMAL(20,4), last3Avgopen DECIMAL(20,4),last5Avgclose DECIMAL(20,4),"
+						+ "last5Avghigh DECIMAL(20,4), last5Avglow DECIMAL(20,4), last5Avgopen DECIMAL(20,4),last10Avgclose DECIMAL(20,4), last10Avghigh DECIMAL(20,4),"
+						+ "last10Avglow DECIMAL(20,4), last10Avgopen DECIMAL(20,4),lastwtdAvgclose DECIMAL(20,4), lastwtdAvghigh DECIMAL(20,4), lastwtdAvglow DECIMAL(20,4),"
+						+ "lastwtdAvgopen DECIMAL(20,4),weightHighMinusLow DECIMAL(20,4),HighMinusLow DECIMAL(20,4),cama_pp  DECIMAL(20,4),cama_h1 DECIMAL(20,4),"
+						+ "cama_h2 DECIMAL(20,4),cama_h3 DECIMAL(20,4),cama_h4 DECIMAL(20,4),cama_l1 DECIMAL(20,4),cama_l2 DECIMAL(20,4),cama_l3 DECIMAL(20,4),"
+						+ "cama_l4 DECIMAL(20,4), PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
 				stmt.executeUpdate(sql);
 
 			} catch (SQLException e) {
@@ -287,7 +302,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and (PriorityPoint > 0.0 or dailyVolatility >= 2.0) ORDER BY PriorityPoint DESC,dailyVolatility DESC,id desc LIMIT "
+						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and (PriorityPoint > 0.0"
+						+ " or dailyVolatility >= 2.0) and lastclose > 50.0 and lastclose < 2000.0 ORDER BY PriorityPoint DESC,dailyVolatility DESC,id desc LIMIT "
 						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
@@ -302,9 +318,48 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
 		}
+
+		calculateAndCacheCamarillaData(instrumentList);
+
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.getTopPrioritizedTokenList");
 		return instrumentList;
+	}
+
+	private void calculateAndCacheCamarillaData(ArrayList<Long> instrumentList) {
+
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
+				String openSql = "SELECT instrumentToken,cama_pp,cama_h1,cama_h2,cama_h3,cama_h4,cama_l1,cama_l2,cama_l3,cama_l4 FROM "
+						+ quoteTable + "_instrumentDetails where instrumentToken in ("
+						+ commaSeperatedLongIDs(instrumentList) + ")";
+				ResultSet openRs = stmt.executeQuery(openSql);
+
+				while (openRs.next()) {
+					Camarilla cama = new Camarilla();
+
+					cama.setCamaPP(openRs.getDouble("cama_pp"));
+					cama.setCamaH1(openRs.getDouble("cama_h1"));
+					cama.setCamaH2(openRs.getDouble("cama_h2"));
+					cama.setCamaH3(openRs.getDouble("cama_h3"));
+					cama.setCamaH4(openRs.getDouble("cama_h4"));
+					cama.setCamaL1(openRs.getDouble("cama_l1"));
+					cama.setCamaL2(openRs.getDouble("cama_l2"));
+					cama.setCamaL3(openRs.getDouble("cama_l3"));
+					cama.setCamaL4(openRs.getDouble("cama_l4"));
+
+					camarillaList.put(openRs.getString("instrumentToken"), cama);
+				}
+				stmt.close();
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.calculateAndCacheCamarillaData(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.calculateAndCacheCamarillaData(): ERROR: DB conn is null !!!");
+		}
 	}
 
 	@Override
@@ -485,57 +540,64 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	private boolean orderLimitCrossed(String instrumentToken, String buyOrSell) throws SQLException {
-        int totalQ = 0;
-        if (conn != null) {
-            try {
-                Statement stmt = conn.createStatement();
-                    
-                    String openSql = "SELECT ProcessSignal FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
-                            + instrumentToken
-                            + "' order by id desc limit 3";
-                    ResultSet openRs1 = stmt.executeQuery(openSql);
+		int totalQ = 0;
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
 
-                    while (openRs1.next()) {
-                        if(openRs1.getString(1).equalsIgnoreCase(buyOrSell)){
-                            totalQ=totalQ+1;
-                        }
-                    }
-                    }catch(Exception e){}}
-        if(totalQ==3)
-            return false;                    
-        else return true;
-        }
+				String openSql = "SELECT ProcessSignal FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+						+ instrumentToken + "' order by id desc limit 3";
+				ResultSet openRs1 = stmt.executeQuery(openSql);
+
+				while (openRs1.next()) {
+					if (openRs1.getString(1).equalsIgnoreCase(buyOrSell)) {
+						totalQ = totalQ + 1;
+					}
+				}
+			} catch (Exception e) {
+			}
+		}
+		if (totalQ == 3)
+			return false;
+		else
+			return true;
+	}
+
 	private String fetchLotSizeFromInstrumentDetails(String instrumentToken, String buyOrSell) throws SQLException {
-        String lotSize = "";
-        Statement stmt = conn.createStatement();
-        int totalQuantityProcessed = 0;
-        String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
-                + instrumentToken + "'";
-        ResultSet openRs = stmt.executeQuery(openSql);
+		String lotSize = "";
+		Statement stmt = conn.createStatement();
+		int totalQuantityProcessed = 0;
+		String openSql = "SELECT lotSize FROM " + quoteTable + "_instrumentDetails where instrumentToken='"
+				+ instrumentToken + "'";
+		ResultSet openRs = stmt.executeQuery(openSql);
 
-        while (openRs.next()) {
-            lotSize = openRs.getString(1);
-        }
-//      openSql = "SELECT time,quantity,processSignal FROM " + quoteTable + "_SignalNew where instrumentToken='"
-//              + instrumentToken + "'and status not in('REJECTED','CANCELLED') order by time desc,id desc";
-//      openRs = stmt.executeQuery(openSql);
-//
-//      while (openRs.next()) {
-//          if ("BUY".equalsIgnoreCase(openRs.getString(3)))
-//              totalQuantityProcessed = totalQuantityProcessed + Integer.parseInt(openRs.getString(2));
-//          else if ("SELL".equalsIgnoreCase(openRs.getString(3)))
-//              totalQuantityProcessed = totalQuantityProcessed - Integer.parseInt(openRs.getString(2));
-//      }
- totalQuantityProcessed=fetchOrderQuantity(instrumentToken);
-        
-        if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0)
-            lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
-        else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
-            lotSize = totalQuantityProcessed + "";
+		while (openRs.next()) {
+			lotSize = openRs.getString(1);
+		}
+		// openSql = "SELECT time,quantity,processSignal FROM " + quoteTable +
+		// "_SignalNew where instrumentToken='"
+		// + instrumentToken + "'and status not in('REJECTED','CANCELLED') order
+		// by time desc,id desc";
+		// openRs = stmt.executeQuery(openSql);
+		//
+		// while (openRs.next()) {
+		// if ("BUY".equalsIgnoreCase(openRs.getString(3)))
+		// totalQuantityProcessed = totalQuantityProcessed +
+		// Integer.parseInt(openRs.getString(2));
+		// else if ("SELL".equalsIgnoreCase(openRs.getString(3)))
+		// totalQuantityProcessed = totalQuantityProcessed -
+		// Integer.parseInt(openRs.getString(2));
+		// }
+		totalQuantityProcessed = fetchOrderQuantity(instrumentToken);
 
-        stmt.close();
-        return lotSize;
-    }
+		if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0)
+			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
+		else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
+			lotSize = totalQuantityProcessed + "";
+
+		stmt.close();
+		return lotSize;
+	}
 
 	private String fetchTradingSymbolFromInstrumentDetails(String instrumentToken) throws SQLException {
 		String lotSize = "";
@@ -729,17 +791,17 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmtInsertSignalParams.close();
 					timeLoopRsStmt.close();
 				}
-
-	//			if (null != idsList && idsList.size() > 0) {
-					//lowHighCloseRsiStrategy(instrumentToken);
-		//			lowHighCloseStrategy(instrumentToken);
-//					lowHighCloseStrategy2(instrumentToken);
-//					lowHighCloseTrendStrategy(instrumentToken);
-//					lowHighCloseChangingStrategy(instrumentToken);
-//					lowHighCloseChangingStrategy2(instrumentToken);
-//					lowHighCloseChangingStrategy3(instrumentToken);
-//					lowHighCloseChangingStrategy4(instrumentToken);					
-			//	}
+				camarillaStrategy(instrumentToken);
+				// if (null != idsList && idsList.size() > 0) {
+				// lowHighCloseRsiStrategy(instrumentToken);
+				// lowHighCloseStrategy(instrumentToken);
+				// lowHighCloseStrategy2(instrumentToken);
+				// lowHighCloseTrendStrategy(instrumentToken);
+				// lowHighCloseChangingStrategy(instrumentToken);
+				// lowHighCloseChangingStrategy2(instrumentToken);
+				// lowHighCloseChangingStrategy3(instrumentToken);
+				// lowHighCloseChangingStrategy4(instrumentToken);
+				// }
 
 				if (null != idsList && idsList.size() > 0) {
 					Statement usedUpdateRsStmt = conn.createStatement();
@@ -760,6 +822,122 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.calculateAndStoreStrategySignalParameters()");
+	}
+
+	private void camarillaStrategy(String instrumentToken) throws SQLException {
+
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.camarillaStrategy()");
+		int id = 0, firstRowId = 0, lastRowId = 0;
+		int loopSize = 0;
+		do {
+			String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+					+ instrumentToken + "' and usedForZigZagSignal1='usedForZigZagSignal1' ";
+			Statement stmt1 = conn.createStatement();
+			ResultSet rs1 = stmt1.executeQuery(openSql);
+			while (rs1.next()) {
+				id = rs1.getInt("maxId");
+			}
+			stmt1.close();
+			openSql = "select * from (SELECT close,usedForZigZagSignal1,id FROM " + quoteTable
+					+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and id>" + id
+					+ " ORDER BY id ASC LIMIT 2)  a order by id desc";
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(openSql);
+			double firstClose = StreamingConfig.MAX_VALUE, secondClose = StreamingConfig.MAX_VALUE;
+			boolean firstRecord = true;
+			int signalClose = 1;
+			loopSize = 0;
+			String isUnUsedRecord = "";
+
+			while (rs.next()) {
+				loopSize++;
+				if (firstRecord) {
+					firstClose = rs.getDouble("close");
+					isUnUsedRecord = rs.getString("usedForZigZagSignal1");
+					firstRowId = rs.getInt("id");
+					firstRecord = false;
+				}
+				lastRowId = rs.getInt("id");
+				secondClose = rs.getDouble("close");
+			}
+			stmt.close();
+
+			Camarilla camarilla = camarillaList.get(instrumentToken);
+
+			if (firstClose > camarilla.getCamaPP() && firstClose <= camarilla.getCamaH1()) {
+				signalClose = 1;
+			} else if (firstClose < camarilla.getCamaPP() && firstClose >= camarilla.getCamaL1()) {
+				signalClose = 1;
+			} else if (firstClose > camarilla.getCamaH1() && firstClose <= camarilla.getCamaH2()) {
+				signalClose = 0;
+			} else if (firstClose < camarilla.getCamaL1() && firstClose >= camarilla.getCamaL2()) {
+				signalClose = 2;
+			} else if (firstClose > camarilla.getCamaH2() && firstClose <= camarilla.getCamaH3()) {
+				signalClose = 2;
+			} else if (firstClose < camarilla.getCamaL2() && firstClose >= camarilla.getCamaL3()) {
+				signalClose = 0;
+			} else if (firstClose > camarilla.getCamaH3() && firstClose <= camarilla.getCamaH4()) {
+				signalClose = -1;
+			} else if (firstClose < camarilla.getCamaL3() && firstClose >= camarilla.getCamaL4()) {
+				signalClose = -1;
+			} else if (firstClose > camarilla.getCamaH4()) {
+				signalClose = -1;
+			} else if (firstClose < camarilla.getCamaL4()) {
+				signalClose = -1;
+			}
+
+			// manageStopLossOnPlacedOrder(instrumentToken,firstClose);
+
+			if (loopSize == 2 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && signalClose != 1
+					&& !firstRecord && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0) {
+				String sign = "BUY";
+				if (signalClose != 2)
+					sign = "SELL";
+				if (orderLimitCrossed(instrumentToken, sign)) {
+					String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+							+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+							+ "values(?,?,?,?,?,?,?)";
+					PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+					prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+					prepStmt.setString(2, instrumentToken);
+					if (signalClose == 2) {
+						prepStmt.setString(4, "BUY");
+						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+					} else {
+						prepStmt.setString(4, "SELL");
+						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+					}
+					prepStmt.setString(5, "active");
+					prepStmt.setDouble(6, firstClose);
+					prepStmt.setDouble(7, firstRowId);
+					prepStmt.executeUpdate();
+					prepStmt.close();
+				}
+				Statement stmtForUpdate = conn.createStatement();
+				if (lastRowId > 0) {
+					String sql = "update " + quoteTable
+							+ "_SignalParams set usedForZigZagSignal1 ='usedForZigZagSignal1' where id in(" + lastRowId
+							+ ")";
+					stmtForUpdate.executeUpdate(sql);
+				}
+				stmtForUpdate.close();
+			} else if (loopSize == 2) {
+				Statement stmtForUpdate = conn.createStatement();
+				if (lastRowId > 0) {
+					String sql = "update " + quoteTable
+							+ "_SignalParams set usedForZigZagSignal1 ='usedForZigZagSignal1' where id in(" + lastRowId
+							+ ")";
+					stmtForUpdate.executeUpdate(sql);
+				}
+				stmtForUpdate.close();
+
+			}
+
+		} while (loopSize == 2);
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.camarillaStrategy()");
 	}
 
 	private void lowHighCloseRsiStrategy(String instrumentToken) throws SQLException {
@@ -875,7 +1053,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 		int id = 0, firstRowId = 0, lastRowId = 0;
 		int loopSize = 0;
-		do {		    
+		do {
 			String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
 					+ instrumentToken + "' and usedForZigZagSignal1='usedForZigZagSignal1' ";
 			Statement stmt1 = conn.createStatement();
@@ -885,7 +1063,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 			stmt1.close();
 			openSql = "select * from (SELECT close,usedForZigZagSignal1,id FROM " + quoteTable
-					+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and id>" + id 
+					+ "_SignalParams where InstrumentToken ='" + instrumentToken + "' and id>" + id
 					+ " ORDER BY id ASC LIMIT 32)  a order by id desc";
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(openSql);
@@ -919,34 +1097,34 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				signalClose = 2;
 			}
 
-			//manageStopLossOnPlacedOrder(instrumentToken,firstClose);
-			
+			// manageStopLossOnPlacedOrder(instrumentToken,firstClose);
+
 			if (loopSize >= 32 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && signalClose != 1
 					&& !firstRecord && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0) {
-			    String sign="BUY";
-			    if(signalClose!=2)
-			        sign="SELL";
-				if(orderLimitCrossed(instrumentToken,sign)){
-				    String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
-						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
-						+ "values(?,?,?,?,?,?,?)";
-				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				String sign = "BUY";
+				if (signalClose != 2)
+					sign = "SELL";
+				if (orderLimitCrossed(instrumentToken, sign)) {
+					String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+							+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+							+ "values(?,?,?,?,?,?,?)";
+					PreparedStatement prepStmt = conn.prepareStatement(sql);
 
-				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-				prepStmt.setString(2, instrumentToken);
-				if (signalClose == 2) {
-					prepStmt.setString(4, "BUY");
-					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
-				} else {
-					prepStmt.setString(4, "SELL");
-					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+					prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+					prepStmt.setString(2, instrumentToken);
+					if (signalClose == 2) {
+						prepStmt.setString(4, "BUY");
+						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+					} else {
+						prepStmt.setString(4, "SELL");
+						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+					}
+					prepStmt.setString(5, "active");
+					prepStmt.setDouble(6, firstClose);
+					prepStmt.setDouble(7, firstRowId);
+					prepStmt.executeUpdate();
+					prepStmt.close();
 				}
-				prepStmt.setString(5, "active");
-				prepStmt.setDouble(6, firstClose);
-				prepStmt.setDouble(7, firstRowId);
-				prepStmt.executeUpdate();
-				prepStmt.close();
-			}
 				Statement stmtForUpdate = conn.createStatement();
 				if (lastRowId > 0) {
 					String sql = "update " + quoteTable
@@ -966,82 +1144,80 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 				stmtForUpdate.close();
 
 			}
-			
+
 		} while (loopSize == 32);
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 	}
 
 	private void manageStopLossOnPlacedOrder(String instrumentToken, double latestClose) {
-        if (conn != null) {
-            try {
-                Statement stmt = conn.createStatement();
-                    
-                    String openSql = "SELECT ProcessSignal,TradePrice,Quantity FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
-                            + instrumentToken
-                            + "' order by id desc limit 3";
-                    ResultSet openRs1 = stmt.executeQuery(openSql);
-                    String firstSignal="";
-                    boolean firstRecord=true;
-                    double avgTradePrice=0.0;
-                    int totalQ = 0;int count=0;
-                    while (openRs1.next()) {
-                        if(firstRecord){
-                            firstSignal=openRs1.getString(1);                            
-                            firstRecord=false;
-                        }
-                        if(openRs1.getString(1).equalsIgnoreCase(firstSignal))
-                        {  avgTradePrice=avgTradePrice+openRs1.getDouble(2);
-                            totalQ=totalQ+Integer.parseInt(openRs1.getString(3));
-                            count=count+1;
-                         }                      
-                        else
-                            break;                       
-                    }
-                    if(count > 0)
-                    avgTradePrice = avgTradePrice/count;
-                    
-                    if("BUY".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
-                            && latestClose <= avgTradePrice*0.994){
-                        String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
-                                + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
-                                + "values(?,?,?,?,?,?,?)";
-                        PreparedStatement prepStmt = conn.prepareStatement(sql);
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
 
-                        prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-                        prepStmt.setString(2, instrumentToken);
-                        prepStmt.setString(4, "SELL");
-                        prepStmt.setString(3, totalQ+"");                       
-                        prepStmt.setString(5, "stopLossManaged");
-                        prepStmt.setDouble(6, latestClose);
-                        prepStmt.setDouble(7, 0);
-                        prepStmt.executeUpdate();
-                        prepStmt.close();
-                    }
-                    else if("SELL".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
-                            && latestClose >= avgTradePrice*1.006){
+				String openSql = "SELECT ProcessSignal,TradePrice,Quantity FROM " + quoteTable
+						+ "_SignalNew1 where InstrumentToken ='" + instrumentToken + "' order by id desc limit 3";
+				ResultSet openRs1 = stmt.executeQuery(openSql);
+				String firstSignal = "";
+				boolean firstRecord = true;
+				double avgTradePrice = 0.0;
+				int totalQ = 0;
+				int count = 0;
+				while (openRs1.next()) {
+					if (firstRecord) {
+						firstSignal = openRs1.getString(1);
+						firstRecord = false;
+					}
+					if (openRs1.getString(1).equalsIgnoreCase(firstSignal)) {
+						avgTradePrice = avgTradePrice + openRs1.getDouble(2);
+						totalQ = totalQ + Integer.parseInt(openRs1.getString(3));
+						count = count + 1;
+					} else
+						break;
+				}
+				if (count > 0)
+					avgTradePrice = avgTradePrice / count;
 
-                        String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
-                            + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
-                            + "values(?,?,?,?,?,?,?)";
-                    PreparedStatement prepStmt = conn.prepareStatement(sql);
+				if ("BUY".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
+						&& latestClose <= avgTradePrice * 0.994) {
+					String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+							+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+							+ "values(?,?,?,?,?,?,?)";
+					PreparedStatement prepStmt = conn.prepareStatement(sql);
 
-                    prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-                    prepStmt.setString(2, instrumentToken);
-                    prepStmt.setString(4, "BUY");
-                    prepStmt.setString(3, totalQ+"");                   
-                    prepStmt.setString(5, "stopLossManaged");
-                    prepStmt.setDouble(6, latestClose);
-                    prepStmt.setDouble(7, 0);
-                    prepStmt.executeUpdate();
-                    prepStmt.close();                
-                    }
-                    }catch(Exception e){                        
-                    }
-            }
-    }
+					prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+					prepStmt.setString(2, instrumentToken);
+					prepStmt.setString(4, "SELL");
+					prepStmt.setString(3, totalQ + "");
+					prepStmt.setString(5, "stopLossManaged");
+					prepStmt.setDouble(6, latestClose);
+					prepStmt.setDouble(7, 0);
+					prepStmt.executeUpdate();
+					prepStmt.close();
+				} else if ("SELL".equalsIgnoreCase(firstSignal) && 0.0 != avgTradePrice
+						&& latestClose >= avgTradePrice * 1.006) {
 
-    private void lowHighCloseTrendStrategy(String instrumentToken) throws SQLException {
+					String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
+							+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+							+ "values(?,?,?,?,?,?,?)";
+					PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+					prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+					prepStmt.setString(2, instrumentToken);
+					prepStmt.setString(4, "BUY");
+					prepStmt.setString(3, totalQ + "");
+					prepStmt.setString(5, "stopLossManaged");
+					prepStmt.setDouble(6, latestClose);
+					prepStmt.setDouble(7, 0);
+					prepStmt.executeUpdate();
+					prepStmt.close();
+				}
+			} catch (Exception e) {
+			}
+		}
+	}
+
+	private void lowHighCloseTrendStrategy(String instrumentToken) throws SQLException {
 		// LOGGER.info("Entry
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 		int id = 0, firstRowId = 0;
@@ -1243,9 +1419,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
 					&& firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
 					&& (macdSignal == 2.0 || macdSignal == 0.0)
-					&& ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 10 || psarConTrendPre <= -10)) 
-					|| (macdConTrend >= -1 && macdConTrend <= 1 && (macdConTrendPre >= 10 || macdConTrendPre <= -10)))) 
-			{
+					&& ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 10 || psarConTrendPre <= -10))
+							|| (macdConTrend >= -1 && macdConTrend <= 1
+									&& (macdConTrendPre >= 10 || macdConTrendPre <= -10)))) {
 				String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
 						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
 						+ "values(?,?,?,?,?,?,?)";
@@ -1279,177 +1455,180 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
 	}
+
 	private void lowHighCloseChangingStrategy3(String instrumentToken) throws SQLException {
-        // LOGGER.info("Entry
-        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
-        int id = 0, firstRowId = 0, lastRowId = 0;
-        int loopSize = 0;
-        do {
-            String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
-                    + instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
-            Statement stmt1 = conn.createStatement();
-            ResultSet rs1 = stmt1.executeQuery(openSql);
-            while (rs1.next()) {
-                id = rs1.getInt("maxId");
-            }
-            stmt1.close();
-            openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
-                    + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
-                    + StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(openSql);
-            double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
-            boolean firstRecord = true;
-            double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
-            int psarConTrend = 0, macdConTrend = 0;
-            int psarConTrendPre = 0, macdConTrendPre = 0;
-            loopSize = 0;
-            String isUnUsedRecord = "";
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+		int id = 0, firstRowId = 0, lastRowId = 0;
+		int loopSize = 0;
+		do {
+			String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+					+ instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
+			Statement stmt1 = conn.createStatement();
+			ResultSet rs1 = stmt1.executeQuery(openSql);
+			while (rs1.next()) {
+				id = rs1.getInt("maxId");
+			}
+			stmt1.close();
+			openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
+					+ quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
+					+ StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(openSql);
+			double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
+			boolean firstRecord = true;
+			double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
+			int psarConTrend = 0, macdConTrend = 0;
+			int psarConTrendPre = 0, macdConTrendPre = 0;
+			loopSize = 0;
+			String isUnUsedRecord = "";
 
-            while (rs.next()) {
-                loopSize++;
-                if (firstRecord) {
-                    firstClose = rs.getDouble("close");
-                    rsi = rs.getDouble("rsi");
-                    isUnUsedRecord = rs.getString("usedForZigZagSignal4");
-                    firstRowId = rs.getInt("id");
-                    trend = rs.getDouble("trend");
-                    macdSignal = rs.getDouble("macdSignal");
-                    psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
-                    macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
-                    firstRecord = false;
-                }
-                lastRowId = rs.getInt("id");
-                psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
-                macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
-            }
-            stmt.close();
+			while (rs.next()) {
+				loopSize++;
+				if (firstRecord) {
+					firstClose = rs.getDouble("close");
+					rsi = rs.getDouble("rsi");
+					isUnUsedRecord = rs.getString("usedForZigZagSignal4");
+					firstRowId = rs.getInt("id");
+					trend = rs.getDouble("trend");
+					macdSignal = rs.getDouble("macdSignal");
+					psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
+					macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
+					firstRecord = false;
+				}
+				lastRowId = rs.getInt("id");
+				psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
+				macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
+			}
+			stmt.close();
 
-            if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
-                    && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
-                    && (macdSignal == 2.0 || macdSignal == 0.0)
-                    && ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 5 || psarConTrendPre <= -5)) 
-                    || (macdConTrend >= -1 && macdConTrend <= 1 && (macdConTrendPre >= 5 || macdConTrendPre <= -5)))) 
-            {
-                String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
-                        + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
-                        + "values(?,?,?,?,?,?,?)";
-                PreparedStatement prepStmt = conn.prepareStatement(sql);
+			if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
+					&& firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
+					&& (macdSignal == 2.0 || macdSignal == 0.0)
+					&& ((psarConTrend >= -1 && psarConTrend <= 1 && (psarConTrendPre >= 5 || psarConTrendPre <= -5))
+							|| (macdConTrend >= -1 && macdConTrend <= 1
+									&& (macdConTrendPre >= 5 || macdConTrendPre <= -5)))) {
+				String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
+						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+						+ "values(?,?,?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
-                prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-                prepStmt.setString(2, instrumentToken);
-                if (macdSignal == 0.0) {
-                    prepStmt.setString(4, "BUY");
-                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
-                } else {
-                    prepStmt.setString(4, "SELL");
-                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
-                }
-                prepStmt.setString(5, "active");
-                prepStmt.setDouble(6, firstClose);
-                prepStmt.setDouble(7, firstRowId);
-                prepStmt.executeUpdate();
-                prepStmt.close();
+				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+				prepStmt.setString(2, instrumentToken);
+				if (macdSignal == 0.0) {
+					prepStmt.setString(4, "BUY");
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+				} else {
+					prepStmt.setString(4, "SELL");
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+				}
+				prepStmt.setString(5, "active");
+				prepStmt.setDouble(6, firstClose);
+				prepStmt.setDouble(7, firstRowId);
+				prepStmt.executeUpdate();
+				prepStmt.close();
 
-            }
-            Statement stmtForUpdate = conn.createStatement();
-            if (lastRowId > 0 && loopSize == 2) {
-                String sql = "update " + quoteTable
-                        + "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
-                        + ")";
-                stmtForUpdate.executeUpdate(sql);
-            }
-            stmtForUpdate.close();
-        } while (loopSize == 2);
-        // LOGGER.info("Exit
-        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
-    }
+			}
+			Statement stmtForUpdate = conn.createStatement();
+			if (lastRowId > 0 && loopSize == 2) {
+				String sql = "update " + quoteTable
+						+ "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
+						+ ")";
+				stmtForUpdate.executeUpdate(sql);
+			}
+			stmtForUpdate.close();
+		} while (loopSize == 2);
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+	}
+
 	private void lowHighCloseChangingStrategy4(String instrumentToken) throws SQLException {
-        // LOGGER.info("Entry
-        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
-        int id = 0, firstRowId = 0, lastRowId = 0;
-        int loopSize = 0;
-        do {
-            String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
-                    + instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
-            Statement stmt1 = conn.createStatement();
-            ResultSet rs1 = stmt1.executeQuery(openSql);
-            while (rs1.next()) {
-                id = rs1.getInt("maxId");
-            }
-            stmt1.close();
-            openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
-                    + quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
-                    + StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(openSql);
-            double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
-            boolean firstRecord = true;
-            double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
-            int psarConTrend = 0, macdConTrend = 0;
-            int psarConTrendPre = 0, macdConTrendPre = 0;
-            loopSize = 0;
-            String isUnUsedRecord = "";
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+		int id = 0, firstRowId = 0, lastRowId = 0;
+		int loopSize = 0;
+		do {
+			String openSql = "SELECT max(id) as maxId FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+					+ instrumentToken + "' and usedForZigZagSignal4='usedForZigZagSignal4' ";
+			Statement stmt1 = conn.createStatement();
+			ResultSet rs1 = stmt1.executeQuery(openSql);
+			while (rs1.next()) {
+				id = rs1.getInt("maxId");
+			}
+			stmt1.close();
+			openSql = "select * from (SELECT close,rsi,trend,macdSignal,ContinueTrackOfPsarTrend,ContinueTrackOfMacdTrend,ContinueTrackOfRsiTrend,usedForZigZagSignal4,id FROM "
+					+ quoteTable + "_SignalParams where InstrumentToken ='" + instrumentToken + "' and rsi!="
+					+ StreamingConfig.MAX_VALUE + " and id>" + id + " ORDER BY id ASC LIMIT 2)  a order by id desc";
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery(openSql);
+			double rsi = StreamingConfig.MAX_VALUE, firstClose = StreamingConfig.MAX_VALUE;
+			boolean firstRecord = true;
+			double trend = StreamingConfig.MAX_VALUE, macdSignal = StreamingConfig.MAX_VALUE;
+			int psarConTrend = 0, macdConTrend = 0;
+			int psarConTrendPre = 0, macdConTrendPre = 0;
+			loopSize = 0;
+			String isUnUsedRecord = "";
 
-            while (rs.next()) {
-                loopSize++;
-                if (firstRecord) {
-                    firstClose = rs.getDouble("close");
-                    rsi = rs.getDouble("rsi");
-                    isUnUsedRecord = rs.getString("usedForZigZagSignal4");
-                    firstRowId = rs.getInt("id");
-                    trend = rs.getDouble("trend");
-                    macdSignal = rs.getDouble("macdSignal");
-                    psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
-                    macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
-                    firstRecord = false;
-                }
-                lastRowId = rs.getInt("id");
-                psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
-                macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
-            }
-            stmt.close();
+			while (rs.next()) {
+				loopSize++;
+				if (firstRecord) {
+					firstClose = rs.getDouble("close");
+					rsi = rs.getDouble("rsi");
+					isUnUsedRecord = rs.getString("usedForZigZagSignal4");
+					firstRowId = rs.getInt("id");
+					trend = rs.getDouble("trend");
+					macdSignal = rs.getDouble("macdSignal");
+					psarConTrend = rs.getInt("ContinueTrackOfPsarTrend");
+					macdConTrend = rs.getInt("ContinueTrackOfMacdTrend");
+					firstRecord = false;
+				}
+				lastRowId = rs.getInt("id");
+				psarConTrendPre = rs.getInt("ContinueTrackOfPsarTrend");
+				macdConTrendPre = rs.getInt("ContinueTrackOfMacdTrend");
+			}
+			stmt.close();
 
-            if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
-                    && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
-                    && ((macdSignal == 2.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre >= 5) 
-                    || (macdSignal == 2.0 && macdConTrend >= -1 && macdConTrend <= 1 && macdConTrendPre >= 5)
-                    || (macdSignal == 0.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre <= -5) 
-                    || (macdSignal == 0.0 && macdConTrend >= -1 && macdConTrend <= 1 && macdConTrendPre <= -5))) 
-                {
-                String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
-                        + "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
-                        + "values(?,?,?,?,?,?,?)";
-                PreparedStatement prepStmt = conn.prepareStatement(sql);
+			if (loopSize == 2 && !"usedForZigZagSignal4".equalsIgnoreCase(isUnUsedRecord)
+					&& firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0 && rsi != StreamingConfig.MAX_VALUE
+					&& ((macdSignal == 2.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre >= 5)
+							|| (macdSignal == 2.0 && macdConTrend >= -1 && macdConTrend <= 1 && macdConTrendPre >= 5)
+							|| (macdSignal == 0.0 && psarConTrend >= -1 && psarConTrend <= 1 && psarConTrendPre <= -5)
+							|| (macdSignal == 0.0 && macdConTrend >= -1 && macdConTrend <= 1
+									&& macdConTrendPre <= -5))) {
+				String sql = "INSERT INTO " + quoteTable + "_signalNew4 "
+						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
+						+ "values(?,?,?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
 
-                prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
-                prepStmt.setString(2, instrumentToken);
-                if (macdSignal == 0.0) {
-                    prepStmt.setString(4, "BUY");
-                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
-                } else {
-                    prepStmt.setString(4, "SELL");
-                    prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
-                }
-                prepStmt.setString(5, "active");
-                prepStmt.setDouble(6, firstClose);
-                prepStmt.setDouble(7, firstRowId);
-                prepStmt.executeUpdate();
-                prepStmt.close();
+				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+				prepStmt.setString(2, instrumentToken);
+				if (macdSignal == 0.0) {
+					prepStmt.setString(4, "BUY");
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
+				} else {
+					prepStmt.setString(4, "SELL");
+					prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+				}
+				prepStmt.setString(5, "active");
+				prepStmt.setDouble(6, firstClose);
+				prepStmt.setDouble(7, firstRowId);
+				prepStmt.executeUpdate();
+				prepStmt.close();
 
-            }
-            Statement stmtForUpdate = conn.createStatement();
-            if (lastRowId > 0 && loopSize == 2) {
-                String sql = "update " + quoteTable
-                        + "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
-                        + ")";
-                stmtForUpdate.executeUpdate(sql);
-            }
-            stmtForUpdate.close();
-        } while (loopSize == 2);
-        // LOGGER.info("Exit
-        // StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
-    }
+			}
+			Statement stmtForUpdate = conn.createStatement();
+			if (lastRowId > 0 && loopSize == 2) {
+				String sql = "update " + quoteTable
+						+ "_SignalParams set usedForZigZagSignal4 ='usedForZigZagSignal4' where id in(" + lastRowId
+						+ ")";
+				stmtForUpdate.executeUpdate(sql);
+			}
+			stmtForUpdate.close();
+		} while (loopSize == 2);
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.lowHighCloseRsiStrategy()");
+	}
+
 	private SignalContainer whenPsarRsiMacdAll3sPreviousSignalsNOTAvailable(String instrumentToken, Double low,
 			Double high, Double close) throws SQLException {
 		// LOGGER.info("Entry
@@ -1665,6 +1844,71 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.saveInstrumentTokenPriority()");
+	}
+
+	@Override
+	public void saveInstrumentVolumeData(HashMap<String, ArrayList<InstrumentOHLCData>> stocksSymbolArray) {
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.saveInstrumentVolumeData()");
+
+		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
+			try {
+				String sql = "UPDATE " + quoteTable
+						+ "_instrumentDetails SET lastTradedQt = ?, lastDeliveryQt = ?, deliveryToTradeRatio = ?,"
+						+ " last2AvgTradedQt = ?, last2AvgDeliveryQt = ?, deliveryToTrade2AvgRatio = ?,"
+						+ " last3AvgTradedQt = ?, last3AvgDeliveryQt = ?, deliveryToTrade3AvgRatio = ?,"
+						+ "last5AvgTradedQt = ?, last5AvgDeliveryQt = ?, deliveryToTrade5AvgRatio = ?,"
+						+ "last10AvgTradedQt = ?, last10AvgDeliveryQt = ?, deliveryToTrade10AvgRatio = ?,"
+						+ "lastWtdTradedQt = ?, lastWtdDeliveryQt = ?, deliveryToTradeWtdRatio = ? "
+						+ " where tradingSymbol = ? ";
+
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				Object[] keyList = stocksSymbolArray.keySet().toArray();
+				for (int index = 0; index < stocksSymbolArray.size(); index++) {
+					try {
+						InstrumentOHLCData instrument = new InstrumentOHLCData("",
+								stocksSymbolArray.get(keyList[index].toString()));
+
+						prepStmt.setDouble(1, instrument.getClose());
+						prepStmt.setDouble(2, instrument.getHigh());
+						prepStmt.setDouble(3, instrument.getLow());
+						prepStmt.setDouble(4, instrument.getAvg2Dayclose());
+						prepStmt.setDouble(5, instrument.getAvg2Dayhigh());
+						prepStmt.setDouble(6, instrument.getAvg2Daylow());
+						prepStmt.setDouble(7, instrument.getAvg3Dayclose());
+						prepStmt.setDouble(8, instrument.getAvg3Dayhigh());
+						prepStmt.setDouble(9, instrument.getAvg3Daylow());
+						prepStmt.setDouble(10, instrument.getAvg5Dayclose());
+						prepStmt.setDouble(11, instrument.getAvg5Dayhigh());
+						prepStmt.setDouble(12, instrument.getAvg5Daylow());
+						prepStmt.setDouble(13, instrument.getAvg10Dayclose());
+						prepStmt.setDouble(14, instrument.getAvg10Dayhigh());
+						prepStmt.setDouble(15, instrument.getAvg10Daylow());
+						prepStmt.setDouble(16, instrument.getAvgWaitedclose());
+						prepStmt.setDouble(17, instrument.getAvgWaitedhigh());
+						prepStmt.setDouble(18, instrument.getAvgWaitedlow());
+						prepStmt.setString(19, instrument.getInstrumentName());
+
+						prepStmt.executeUpdate();
+					} catch (SQLException e) {
+						LOGGER.info(
+								"StreamingQuoteStorageImpl.saveInstrumentVolumeData(): ERROR: SQLException on fetching data from Table, cause: "
+										+ e.getMessage() + ">>" + e.getCause());
+					}
+				}
+				prepStmt.close();
+
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.saveInstrumentVolumeData(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.saveInstrumentVolumeData(): ERROR: DB conn is null !!!");
+		}
+
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.saveInstrumentVolumeData()");
 
 	}
 
@@ -1796,40 +2040,62 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	}
 
 	@Override
-	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList) {
+	public void saveInstrumentVolatilityDetails(
+			HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolatilityScoreList) {
 
 		// LOGGER.info("Entry
-		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// StreamingQuoteStorageImpl.saveInstrumentVolatilityDetails()");
 
 		if (conn != null && instrumentVolatilityScoreList != null && instrumentVolatilityScoreList.size() > 0) {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "UPDATE " + quoteTable
-						+ "_instrumentDetails SET dailyVolatility = ?, annualVolatility = ?, last_price = ?, lotSize = ? where tradingSymbol = ? ";
+						+ "_instrumentDetails SET dailyVolatility = ?, annualVolatility = ?, last_price = ?, lotSize = ?,"
+						+ "daily2AvgVolatility = ?, daily3AvgVolatility = ?,daily5AvgVolatility = ?, daily10AvgVolatility = ?,"
+						+ "dailyWtdVolatility = ? where tradingSymbol = ? ";
 				PreparedStatement prepStmt = conn.prepareStatement(openSql);
+				Object[] keyList = instrumentVolatilityScoreList.keySet().toArray();
+				InstrumentVolatilityScore instrumentVolatilityScore;
+
 				for (int index = 0; index < instrumentVolatilityScoreList.size(); index++) {
+					try {
+						InstrumentOHLCData instrument = new InstrumentOHLCData(1,
+								instrumentVolatilityScoreList.get(keyList[index].toString()));
 
-					prepStmt.setDouble(1, instrumentVolatilityScoreList.get(index).getDailyVolatility());
-					prepStmt.setDouble(2, instrumentVolatilityScoreList.get(index).getAnnualVolatility());
-					prepStmt.setString(3, String.valueOf(instrumentVolatilityScoreList.get(index).getPrice()));
-					prepStmt.setString(4, String.valueOf(instrumentVolatilityScoreList.get(index).getLotSize()));
-					prepStmt.setString(5, instrumentVolatilityScoreList.get(index).getInstrumentName());
+						instrumentVolatilityScore = new InstrumentVolatilityScore();
+						instrumentVolatilityScore.setPrice(instrument.getClose());
 
-					prepStmt.executeUpdate();
+						prepStmt.setDouble(1, instrument.getHigh());
+						prepStmt.setDouble(2, instrument.getLow());
+						prepStmt.setString(3, String.valueOf(instrument.getClose()));
+						prepStmt.setString(4, String.valueOf(instrumentVolatilityScore.getLotSize()));
+						prepStmt.setDouble(5, instrument.getAvg2Dayhigh());
+						prepStmt.setDouble(6, instrument.getAvg3Dayhigh());
+						prepStmt.setDouble(7, instrument.getAvg5Dayhigh());
+						prepStmt.setDouble(8, instrument.getAvg10Dayhigh());
+						prepStmt.setDouble(9, instrument.getAvgWaitedhigh());
+						prepStmt.setString(10, instrument.getInstrumentName());
+
+						prepStmt.executeUpdate();
+					} catch (SQLException e) {
+						LOGGER.info(
+								"StreamingQuoteStorageImpl.saveInstrumentVolatilityDetails(): ERROR: SQLException on fetching data from Table, cause: "
+										+ e.getMessage() + ">>" + e.getCause());
+					}
 				}
 				prepStmt.close();
 				stmt.close();
 			} catch (SQLException e) {
 				LOGGER.info(
-						"StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: SQLException on fetching data from Table, cause: "
+						"StreamingQuoteStorageImpl.saveInstrumentVolatilityDetails(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage() + ">>" + e.getCause());
 			}
 		} else {
-			LOGGER.info("StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols(): ERROR: DB conn is null !!!");
+			LOGGER.info("StreamingQuoteStorageImpl.saveInstrumentVolatilityDetails(): ERROR: DB conn is null !!!");
 		}
 
 		// LOGGER.info("Exit
-		// StreamingQuoteStorageImpl.getInstrumentTokenIdsFromSymbols()");
+		// StreamingQuoteStorageImpl.saveInstrumentVolatilityDetails()");
 	}
 
 	@Override
@@ -2003,29 +2269,33 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.orderStatusSyncBetweenLocalAndMarket()");
 	}
-    public int fetchOrderQuantity(String quoteStreamingInstrumentsArr) {
-        int totalQ = 0;
-        if (conn != null) {
-            try {
-                Statement stmt = conn.createStatement();
-                    
-                    String openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
-                            + quoteStreamingInstrumentsArr
-                            + "' and ProcessSignal='BUY' group by ProcessSignal";
-                    ResultSet openRs1 = stmt.executeQuery(openSql);
 
-                    while (openRs1.next()) {
-                        totalQ = openRs1.getInt(1);
-                    }
-                    openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
-                            + quoteStreamingInstrumentsArr
-                            + "' and ProcessSignal='SELL' group by ProcessSignal";
+	public int fetchOrderQuantity(String quoteStreamingInstrumentsArr) {
+		int totalQ = 0;
+		if (conn != null) {
+			try {
+				Statement stmt = conn.createStatement();
 
-                    ResultSet openRs2 = stmt.executeQuery(openSql);
-                    while (openRs2.next()) {
-                        totalQ = totalQ - openRs2.getInt(1);
-                   }}catch(Exception e){}}
-        return totalQ;}
+				String openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+						+ quoteStreamingInstrumentsArr + "' and ProcessSignal='BUY' group by ProcessSignal";
+				ResultSet openRs1 = stmt.executeQuery(openSql);
+
+				while (openRs1.next()) {
+					totalQ = openRs1.getInt(1);
+				}
+				openSql = "SELECT sum(Quantity) FROM " + quoteTable + "_SignalNew1 where InstrumentToken ='"
+						+ quoteStreamingInstrumentsArr + "' and ProcessSignal='SELL' group by ProcessSignal";
+
+				ResultSet openRs2 = stmt.executeQuery(openSql);
+				while (openRs2.next()) {
+					totalQ = totalQ - openRs2.getInt(1);
+				}
+			} catch (Exception e) {
+			}
+		}
+		return totalQ;
+	}
+
 	@Override
 	public void fetchAllOrdersForDayOffActivity(ArrayList<Long> quoteStreamingInstrumentsArr) {
 
@@ -2332,5 +2602,101 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.getOrderListToPlace(): ERROR: DB conn is null !!!");
 		}
+	}
+
+	@Override
+	public void last10DaysOHLCData(HashMap<String, ArrayList<InstrumentOHLCData>> stocksSymbolArray) {
+
+		// LOGGER.info("Entry
+		// StreamingQuoteStorageImpl.last10DaysOHLCData()");
+
+		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
+			try {
+				String sql = "UPDATE " + quoteTable
+						+ "_instrumentDetails SET lastclose = ?, lasthigh = ?, lastlow = ?, lastopen = ?,"
+						+ "last2Avgclose = ?, last2Avghigh = ?, last2Avglow = ?, last2Avgopen = ?,"
+						+ "last3Avgclose = ?, last3Avghigh = ?, last3Avglow = ?, last3Avgopen = ?,"
+						+ "last5Avgclose = ?, last5Avghigh = ?, last5Avglow = ?, last5Avgopen = ?,"
+						+ "last10Avgclose = ?, last10Avghigh = ?, last10Avglow = ?, last10Avgopen = ?,"
+						+ "lastwtdAvgclose = ?, lastwtdAvghigh = ?, lastwtdAvglow = ?, lastwtdAvgopen = ?,"
+						+ "weightHighMinusLow = ?, HighMinusLow = ?, cama_pp = ?, cama_h1 = ?, cama_h2 = ?,"
+						+ "cama_h3 = ?, cama_h4 = ?, cama_l1 = ?, cama_l2 = ?, cama_l3 = ?, cama_l4 = ?"
+						+ " where tradingSymbol = ? ";
+
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+				Object[] keyList = stocksSymbolArray.keySet().toArray();
+				for (int index = 0; index < stocksSymbolArray.size(); index++) {
+					try {
+						InstrumentOHLCData instrument = new InstrumentOHLCData(
+								stocksSymbolArray.get(keyList[index].toString()));
+
+						prepStmt.setDouble(1, instrument.getClose());
+						prepStmt.setDouble(2, instrument.getHigh());
+						prepStmt.setDouble(3, instrument.getLow());
+						prepStmt.setDouble(4, instrument.getOpen());
+						prepStmt.setDouble(5, instrument.getAvg2Dayclose());
+						prepStmt.setDouble(6, instrument.getAvg2Dayhigh());
+						prepStmt.setDouble(7, instrument.getAvg2Daylow());
+						prepStmt.setDouble(8, instrument.getAvg2DayOpen());
+						prepStmt.setDouble(9, instrument.getAvg3Dayclose());
+						prepStmt.setDouble(10, instrument.getAvg3Dayhigh());
+						prepStmt.setDouble(11, instrument.getAvg3Daylow());
+						prepStmt.setDouble(12, instrument.getAvg3Dayopen());
+						prepStmt.setDouble(13, instrument.getAvg5Dayclose());
+						prepStmt.setDouble(14, instrument.getAvg5Dayhigh());
+						prepStmt.setDouble(15, instrument.getAvg5Daylow());
+						prepStmt.setDouble(16, instrument.getAvg5Dayopen());
+						prepStmt.setDouble(17, instrument.getAvg10Dayclose());
+						prepStmt.setDouble(18, instrument.getAvg10Dayhigh());
+						prepStmt.setDouble(19, instrument.getAvg10Daylow());
+						prepStmt.setDouble(20, instrument.getAvg10Dayopen());
+						prepStmt.setDouble(21, instrument.getAvgWaitedclose());
+						prepStmt.setDouble(22, instrument.getAvgWaitedhigh());
+						prepStmt.setDouble(23, instrument.getAvgWaitedlow());
+						prepStmt.setDouble(24, instrument.getAvgWaitedOpen());
+						prepStmt.setDouble(25, instrument.getWaitedHighMinusLow());
+						prepStmt.setDouble(26, instrument.getHighMinusLow());
+						prepStmt.setDouble(27,
+								(instrument.getClose() + instrument.getHigh() + instrument.getLow()) / 3.0);
+						prepStmt.setDouble(28,
+								instrument.getClose() + instrument.getHighMinusLow() * StreamingConfig.CAMA_H1);
+						prepStmt.setDouble(29,
+								instrument.getClose() + instrument.getHighMinusLow() * StreamingConfig.CAMA_H2);
+						prepStmt.setDouble(30,
+								instrument.getClose() + instrument.getHighMinusLow() * StreamingConfig.CAMA_H3);
+						prepStmt.setDouble(31,
+								instrument.getClose() + instrument.getHighMinusLow() * StreamingConfig.CAMA_H4);
+						prepStmt.setDouble(32,
+								instrument.getClose() - instrument.getHighMinusLow() * StreamingConfig.CAMA_L1);
+						prepStmt.setDouble(33,
+								instrument.getClose() - instrument.getHighMinusLow() * StreamingConfig.CAMA_L2);
+						prepStmt.setDouble(34,
+								instrument.getClose() - instrument.getHighMinusLow() * StreamingConfig.CAMA_L3);
+						prepStmt.setDouble(35,
+								instrument.getClose() - instrument.getHighMinusLow() * StreamingConfig.CAMA_L4);
+
+						prepStmt.setString(36, instrument.getInstrumentName());
+
+						prepStmt.executeUpdate();
+					} catch (SQLException e) {
+						LOGGER.info(
+								"StreamingQuoteStorageImpl.last10DaysOHLCData(): ERROR: SQLException on fetching data from Table, cause: "
+										+ e.getMessage() + ">>" + e.getCause());
+					}
+				}
+				prepStmt.close();
+
+			} catch (SQLException e) {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.last10DaysOHLCData(): ERROR: SQLException on fetching data from Table, cause: "
+								+ e.getMessage() + ">>" + e.getCause());
+			}
+		} else {
+			LOGGER.info("StreamingQuoteStorageImpl.last10DaysOHLCData(): ERROR: DB conn is null !!!");
+		}
+
+		// LOGGER.info("Exit
+		// StreamingQuoteStorageImpl.last10DaysOHLCData()");
+
 	}
 }

@@ -4,10 +4,12 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.trade.optimizer.models.Instrument;
+import com.trade.optimizer.models.InstrumentOHLCData;
 import com.trade.optimizer.models.InstrumentVolatilityScore;
 import com.trade.optimizer.models.Order;
 import com.trade.optimizer.models.Tick;
@@ -38,7 +40,8 @@ public interface StreamingQuoteStorage {
 
 	public Map<Long, String> calculateSignalsFromStrategyParams(ArrayList<Long> instrumentList);
 
-	public void saveInstrumentVolatilityDetails(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
+	public void saveInstrumentVolatilityDetails(
+			HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolatilityScoreList);
 
 	public void markTradableInstruments(List<InstrumentVolatilityScore> instrumentVolatilityScoreList);
 
@@ -52,4 +55,8 @@ public interface StreamingQuoteStorage {
 			String status, String tag);
 
 	public void fetchAllOrdersForDayOffActivity(ArrayList<Long> quoteStreamingInstrumentsArr);
+
+	public void last10DaysOHLCData(HashMap<String, ArrayList<InstrumentOHLCData>> instrumentOHLCLast10DaysDataList);
+
+	void saveInstrumentVolumeData(HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList);
 }
