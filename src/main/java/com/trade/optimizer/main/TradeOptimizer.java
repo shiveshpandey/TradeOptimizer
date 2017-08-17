@@ -17,8 +17,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -80,11 +82,13 @@ public class TradeOptimizer {
 	private KiteConnect kiteconnect = new KiteConnect(StreamingConfig.API_KEY);
 	private TradeOperations tradeOperations = new TradeOperations();
 	private List<Instrument> instrumentList = new ArrayList<Instrument>();
+	private List<Instrument> tempInstrumentList = new ArrayList<Instrument>();
 	private ArrayList<Long> quoteStreamingInstrumentsArr = new ArrayList<Long>();
 	private ArrayList<String> operatingTradingSymbolList = new ArrayList<String>();
 	private ArrayList<Long> tokenListForTick = null;
 	private KiteTicker tickerProvider;
 	private List<InstrumentVolatilityScore> instrumentVolatilityScoreList = new ArrayList<InstrumentVolatilityScore>();
+	private static Set<String> nseTradableInstrumentSymbol = new HashSet<String>();
 	private String url = kiteconnect.getLoginUrl();
 	private String todaysDate, quoteStartTime, quoteEndTime, quotePrioritySettingTime, dbConnectionClosingTime;
 
@@ -163,12 +167,14 @@ public class TradeOptimizer {
 							instrumentVolatilityScore.setHigh(Double.parseDouble(readData[6]) * 100.0);
 							instrumentVolatilityScore.setLow(Double.parseDouble(readData[7]) * 100.0);
 
-							if (instrumentVolatilityScoreList.containsKey(readData[2]))
-								instrumentVolatilityScoreList.get(readData[2]).add(instrumentVolatilityScore);
-							else {
-								ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
-								tempList.add(instrumentVolatilityScore);
-								instrumentVolatilityScoreList.put(readData[2], tempList);
+							if (nseTradableInstrumentSymbol.contains(readData[1])) {
+								if (instrumentVolatilityScoreList.containsKey(readData[1]))
+									instrumentVolatilityScoreList.get(readData[1]).add(instrumentVolatilityScore);
+								else {
+									ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
+									tempList.add(instrumentVolatilityScore);
+									instrumentVolatilityScoreList.put(readData[1], tempList);
+								}
 							}
 						} else
 							firstLine = false;
@@ -182,7 +188,7 @@ public class TradeOptimizer {
 		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
 
-	public void markTradableInstruments() {
+	public List<InstrumentVolatilityScore> markTradableInstruments() {
 
 		// LOGGER.info("Entry TradeOptimizer.markTradableInstruments()");
 		@SuppressWarnings({ "resource" })
@@ -209,6 +215,7 @@ public class TradeOptimizer {
 						instrumentVolatilityScore.setTradable("tradable");
 
 						instrumentVolatilityScoreList.add(instrumentVolatilityScore);
+						nseTradableInstrumentSymbol.add(readData[2]);
 					}
 					firstLine = false;
 				} catch (Exception e) {
@@ -218,7 +225,7 @@ public class TradeOptimizer {
 		} catch (IOException e) {
 			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 		}
-		streamingQuoteStorage.markTradableInstruments(instrumentVolatilityScoreList);
+		return instrumentVolatilityScoreList;
 		// LOGGER.info("Exit TradeOptimizer.markTradableInstruments()");
 	}
 
@@ -248,27 +255,29 @@ public class TradeOptimizer {
 					for (int i = 0; i < arr.length(); i++) {
 						try {
 							if (!stocksSymbolArray.containsKey(arr.getJSONObject(i).getString("symbol"))) {
-								InstrumentVolatilityScore instrumentVolatilityScore = new InstrumentVolatilityScore();
-								instrumentVolatilityScore.setInstrumentName(arr.getJSONObject(i).getString("symbol"));
-								instrumentVolatilityScore.setCurrentVolatility(j);
-								instrumentVolatilityScore.setDailyVolatility(j);
+								if (nseTradableInstrumentSymbol.contains(arr.getJSONObject(i).getString("symbol"))) {
+									InstrumentVolatilityScore instrumentVolatilityScore = new InstrumentVolatilityScore();
+									instrumentVolatilityScore
+											.setInstrumentName(arr.getJSONObject(i).getString("symbol"));
+									instrumentVolatilityScore.setCurrentVolatility(j);
+									instrumentVolatilityScore.setDailyVolatility(j);
 
-								double a = Double
-										.parseDouble(arr.getJSONObject(i).getString("ltp").replaceAll(",", ""));
-								double b = Double.parseDouble(
-										arr.getJSONObject(i).getString("previousPrice").replaceAll(",", ""));
-								double c = Double
-										.parseDouble(arr.getJSONObject(i).getString("netPrice").replaceAll(",", ""));
+									double a = Double
+											.parseDouble(arr.getJSONObject(i).getString("ltp").replaceAll(",", ""));
+									double b = Double.parseDouble(
+											arr.getJSONObject(i).getString("previousPrice").replaceAll(",", ""));
+									double c = Double.parseDouble(
+											arr.getJSONObject(i).getString("netPrice").replaceAll(",", ""));
 
-								if (a >= b && a >= c)
-									instrumentVolatilityScore.setPrice(a);
-								else if (b >= a && b >= c)
-									instrumentVolatilityScore.setPrice(b);
-								else if (c >= a && c >= b)
-									instrumentVolatilityScore.setPrice(c);
-
-								stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"),
-										instrumentVolatilityScore);
+									if (a >= b && a >= c)
+										instrumentVolatilityScore.setPrice(a);
+									else if (b >= a && b >= c)
+										instrumentVolatilityScore.setPrice(b);
+									else if (c >= a && c >= b)
+										instrumentVolatilityScore.setPrice(c);
+									stocksSymbolArray.put(arr.getJSONObject(i).getString("symbol"),
+											instrumentVolatilityScore);
+								}
 							}
 							j = j - 1.0;
 						} catch (Exception e) {
@@ -309,13 +318,14 @@ public class TradeOptimizer {
 							instrumentOHLCData.setClose(Double.parseDouble(readData[4]));
 							instrumentOHLCData.setHigh(Double.parseDouble(readData[5]));
 							instrumentOHLCData.setLow(Double.parseDouble(readData[6]));
-
-							if (instrumentVolumeLast10DaysDataList.containsKey(readData[2]))
-								instrumentVolumeLast10DaysDataList.get(readData[2]).add(instrumentOHLCData);
-							else {
-								ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
-								tempList.add(instrumentOHLCData);
-								instrumentVolumeLast10DaysDataList.put(readData[2], tempList);
+							if (nseTradableInstrumentSymbol.contains(readData[2])) {
+								if (instrumentVolumeLast10DaysDataList.containsKey(readData[2]))
+									instrumentVolumeLast10DaysDataList.get(readData[2]).add(instrumentOHLCData);
+								else {
+									ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
+									tempList.add(instrumentOHLCData);
+									instrumentVolumeLast10DaysDataList.put(readData[2], tempList);
+								}
 							}
 						} else
 							lineSkip = lineSkip - 1;
@@ -723,7 +733,16 @@ public class TradeOptimizer {
 						} else if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0
 								&& timeNow.compareTo(timeForPrioritySetting) >= 0) {
 							try {
-								instrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+								instrumentVolatilityScoreList = markTradableInstruments();
+
+								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+								for (int count = 0; count < tempInstrumentList.size(); count++) {
+
+									Instrument temp = tempInstrumentList.get(count);
+
+									if (nseTradableInstrumentSymbol.contains(temp.getTradingsymbol()))
+										instrumentList.add(temp);
+								}
 								streamingQuoteStorage.saveInstrumentDetails(instrumentList,
 										new Timestamp(Calendar.getInstance().getTime().getTime()));
 
@@ -742,7 +761,7 @@ public class TradeOptimizer {
 								fetchNSESymbolVolumeData();
 								fetchNSEActiveSymbolList();
 								downloadNSEReportsCSVs();
-								markTradableInstruments();
+								streamingQuoteStorage.markTradableInstruments(instrumentVolatilityScoreList);
 
 								quoteStreamingInstrumentsArr = streamingQuoteStorage
 										.getTopPrioritizedTokenList(tokenCountForTrade);
@@ -821,13 +840,14 @@ public class TradeOptimizer {
 								instrumentOHLCData.setHigh(Double.parseDouble(readData[3]));
 								instrumentOHLCData.setLow(Double.parseDouble(readData[4]));
 								instrumentOHLCData.setOpen(Double.parseDouble(readData[2]));
-
-								if (instrumentOHLCLast10DaysDataList.containsKey(readData[0]))
-									instrumentOHLCLast10DaysDataList.get(readData[0]).add(instrumentOHLCData);
-								else {
-									ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
-									tempList.add(instrumentOHLCData);
-									instrumentOHLCLast10DaysDataList.put(readData[0], tempList);
+								if (nseTradableInstrumentSymbol.contains(readData[0])) {
+									if (instrumentOHLCLast10DaysDataList.containsKey(readData[0]))
+										instrumentOHLCLast10DaysDataList.get(readData[0]).add(instrumentOHLCData);
+									else {
+										ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
+										tempList.add(instrumentOHLCData);
+										instrumentOHLCLast10DaysDataList.put(readData[0], tempList);
+									}
 								}
 							}
 							firstLine = false;
