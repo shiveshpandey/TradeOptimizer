@@ -594,7 +594,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
 		else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0)
 			lotSize = totalQuantityProcessed + "";
-
+		else if ("SQUAREOFF".equalsIgnoreCase(buyOrSell))
+			lotSize = totalQuantityProcessed + "";
 		stmt.close();
 		return lotSize;
 	}
@@ -865,36 +866,20 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 			Camarilla camarilla = camarillaList.get(instrumentToken);
 
-			if (firstClose > camarilla.getCamaPP() && firstClose <= camarilla.getCamaH1()) {
-				signalClose = 1;
-			} else if (firstClose < camarilla.getCamaPP() && firstClose >= camarilla.getCamaL1()) {
-				signalClose = 1;
-			} else if (firstClose > camarilla.getCamaH1() && firstClose <= camarilla.getCamaH2()) {
-				signalClose = 0;
-			} else if (firstClose < camarilla.getCamaL1() && firstClose >= camarilla.getCamaL2()) {
-				signalClose = 2;
-			} else if (firstClose > camarilla.getCamaH2() && firstClose <= camarilla.getCamaH3()) {
-				signalClose = 2;
-			} else if (firstClose < camarilla.getCamaL2() && firstClose >= camarilla.getCamaL3()) {
-				signalClose = 0;
-			} else if (firstClose > camarilla.getCamaH3() && firstClose <= camarilla.getCamaH4()) {
-				signalClose = -1;
-			} else if (firstClose < camarilla.getCamaL3() && firstClose >= camarilla.getCamaL4()) {
-				signalClose = -1;
-			} else if (firstClose > camarilla.getCamaH4()) {
-				signalClose = -1;
-			} else if (firstClose < camarilla.getCamaL4()) {
-				signalClose = -1;
-			}
+			signalClose = SignalOnCamarillaStrategy(camarilla, firstClose, secondClose);
 
 			// manageStopLossOnPlacedOrder(instrumentToken,firstClose);
 
 			if (loopSize == 2 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && signalClose != 1
 					&& !firstRecord && firstClose != StreamingConfig.MAX_VALUE && firstClose != 0.0) {
+
 				String sign = "BUY";
-				if (signalClose != 2)
+				if (signalClose == 0)
 					sign = "SELL";
-				if (orderLimitCrossed(instrumentToken, sign)) {
+				else if (signalClose == -1)
+					sign = "SQUAREOFF";
+
+				if (orderLimitCrossed(instrumentToken, sign) || 0 == 0) {
 					String sql = "INSERT INTO " + quoteTable + "_signalNew1 "
 							+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey) "
 							+ "values(?,?,?,?,?,?,?)";
@@ -905,9 +890,18 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					if (signalClose == 2) {
 						prepStmt.setString(4, "BUY");
 						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "BUY"));
-					} else {
+					} else if (signalClose == 0) {
 						prepStmt.setString(4, "SELL");
 						prepStmt.setString(3, fetchLotSizeFromInstrumentDetails(instrumentToken, "SELL"));
+					} else {
+						int q = Integer.parseInt(fetchLotSizeFromInstrumentDetails(instrumentToken, "SQUAREOFF"));
+						if (q > 0) {
+							prepStmt.setString(4, "SELL");
+							prepStmt.setString(3, q + "");
+						} else {
+							prepStmt.setString(4, "BUY");
+							prepStmt.setString(3, (q + "").replaceAll("-", ""));
+						}
 					}
 					prepStmt.setString(5, "active");
 					prepStmt.setDouble(6, firstClose);
@@ -938,6 +932,61 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		} while (loopSize == 2);
 		// LOGGER.info("Exit
 		// StreamingQuoteStorageImpl.camarillaStrategy()");
+	}
+
+	private int SignalOnCamarillaStrategy(Camarilla camarilla, double firstClose, double secondClose) {
+		if (firstClose > secondClose) {
+			if (firstClose > ((camarilla.getCamaH1() + camarilla.getCamaH2()) / 2.0)
+					&& firstClose <= camarilla.getCamaH2()) {
+				return 0;
+			} else if (firstClose > ((camarilla.getCamaH2() + camarilla.getCamaH3()) / 2.0)
+					&& firstClose <= camarilla.getCamaH3()) {
+				return 2;
+			} else if (firstClose > ((camarilla.getCamaH3() + camarilla.getCamaH4()) / 2.0)
+					&& firstClose <= camarilla.getCamaH4()) {
+				return 0;
+			} else if (firstClose > camarilla.getCamaH4()) {
+				return -1;
+			} else if (firstClose > ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
+					&& firstClose >= camarilla.getCamaL2()) {
+				return 2;
+			} else if (firstClose > ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
+					&& firstClose >= camarilla.getCamaL3()) {
+				return 0;
+			} else if (firstClose > ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
+					&& firstClose >= camarilla.getCamaL4()) {
+				return 2;
+			} else if (firstClose > camarilla.getCamaL4()) {
+				return -1;
+			} else
+				return 1;
+		} else if (secondClose > firstClose) {
+			if (firstClose > ((camarilla.getCamaH1() + camarilla.getCamaH2()) / 2.0)
+					&& firstClose <= camarilla.getCamaH2()) {
+				return 0;
+			} else if (firstClose > ((camarilla.getCamaH2() + camarilla.getCamaH3()) / 2.0)
+					&& firstClose <= camarilla.getCamaH3()) {
+				return 2;
+			} else if (firstClose > ((camarilla.getCamaH3() + camarilla.getCamaH4()) / 2.0)
+					&& firstClose <= camarilla.getCamaH4()) {
+				return 0;
+			} else if (firstClose > camarilla.getCamaH4()) {
+				return -1;
+			} else if (firstClose > ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
+					&& firstClose >= camarilla.getCamaL2()) {
+				return 2;
+			} else if (firstClose > ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
+					&& firstClose >= camarilla.getCamaL3()) {
+				return 0;
+			} else if (firstClose > ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
+					&& firstClose >= camarilla.getCamaL4()) {
+				return 2;
+			} else if (firstClose > camarilla.getCamaL4()) {
+				return -1;
+			} else
+				return 1;
+		} else
+			return 1;
 	}
 
 	private void lowHighCloseRsiStrategy(String instrumentToken) throws SQLException {

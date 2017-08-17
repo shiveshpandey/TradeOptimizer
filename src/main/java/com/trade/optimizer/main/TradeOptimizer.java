@@ -448,6 +448,7 @@ public class TradeOptimizer {
 			tickerProvider.setTimeIntervalForReconnection(5);
 		} catch (KiteException e) {
 			LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+			tickerStarted = false;
 		}
 		tickerProvider.setMaxRetries(-1);
 
@@ -463,8 +464,10 @@ public class TradeOptimizer {
 						tickerProvider.subscribe(tokenListForTick);
 					} catch (KiteException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+						tickerStarted = false;
 					} catch (IOException | WebSocketException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						tickerStarted = false;
 					}
 			}
 		});
