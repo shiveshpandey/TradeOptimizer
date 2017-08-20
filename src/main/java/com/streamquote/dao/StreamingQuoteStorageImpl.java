@@ -946,18 +946,18 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					&& firstClose <= camarilla.getCamaH4()) {
 				return 0;
 			} else if (firstClose > camarilla.getCamaH4()) {
-				return -1;
-			} else if (firstClose > ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
+				return 1;
+			} else if (firstClose < ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
 					&& firstClose >= camarilla.getCamaL2()) {
 				return 2;
-			} else if (firstClose > ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
+			} else if (firstClose < ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
 					&& firstClose >= camarilla.getCamaL3()) {
 				return 0;
-			} else if (firstClose > ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
+			} else if (firstClose < ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
 					&& firstClose >= camarilla.getCamaL4()) {
 				return 2;
-			} else if (firstClose > camarilla.getCamaL4()) {
-				return -1;
+			} else if (firstClose < camarilla.getCamaL4()) {
+				return 0;
 			} else
 				return 1;
 		} else if (secondClose > firstClose) {
@@ -971,18 +971,18 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					&& firstClose <= camarilla.getCamaH4()) {
 				return 0;
 			} else if (firstClose > camarilla.getCamaH4()) {
-				return -1;
-			} else if (firstClose > ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
+				return 2;
+			} else if (firstClose < ((camarilla.getCamaL1() + camarilla.getCamaL2()) / 2.0)
 					&& firstClose >= camarilla.getCamaL2()) {
 				return 2;
-			} else if (firstClose > ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
+			} else if (firstClose < ((camarilla.getCamaL2() + camarilla.getCamaL3()) / 2.0)
 					&& firstClose >= camarilla.getCamaL3()) {
 				return 0;
-			} else if (firstClose > ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
+			} else if (firstClose < ((camarilla.getCamaL3() + camarilla.getCamaL4()) / 2.0)
 					&& firstClose >= camarilla.getCamaL4()) {
 				return 2;
-			} else if (firstClose > camarilla.getCamaL4()) {
-				return -1;
+			} else if (firstClose < camarilla.getCamaL4()) {
+				return 1;
 			} else
 				return 1;
 		} else
