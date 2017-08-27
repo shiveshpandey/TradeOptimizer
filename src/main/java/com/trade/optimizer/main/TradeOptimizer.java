@@ -122,7 +122,7 @@ public class TradeOptimizer {
 		return "index";
 	}
 
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
 		// LOGGER.info("Entry TradeOptimizer.localRedirect()");
 		kiteconnect.registerHook(new SessionExpiryHook() {
@@ -340,7 +340,7 @@ public class TradeOptimizer {
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
-
+	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })	
 	public void startProcess() {
 		try {
 			// LOGGER.info("Entry TradeOptimizer.startProcess()");
@@ -367,7 +367,7 @@ public class TradeOptimizer {
 				fetchAndProcessInstrumentsPriorityRelatedData();
 			}
 			// startLiveStreamOfSelectedInstruments();
-
+			saveGoogleHistoricData(operatingTradingSymbolList);
 			// applyStrategiesAndGenerateSignals();
 
 			// placeOrdersBasedOnSignals();
@@ -380,6 +380,54 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
 		// LOGGER.info("Exit TradeOptimizer.startProcess()");
+	}
+
+	private void saveGoogleHistoricData(ArrayList<String> operatingTradingSymbolList) {
+
+		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
+		@SuppressWarnings({ "resource" })
+		HttpClient client = new DefaultHttpClient();
+		ArrayList<ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList = new ArrayList<ArrayList<InstrumentOHLCData>>();
+		for (int count = 0; count < operatingTradingSymbolList.size(); count++) {
+			ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
+			HttpGet get = new HttpGet(
+					StreamingConfig.googleFetchDataString(operatingTradingSymbolList.get(count), 1, 60));
+			get.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+			get.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
+
+			try {
+				HttpResponse response = client.execute(get);
+				BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+				String line = "";
+				String[] readData;
+				int lineSkip = 8;
+				InstrumentOHLCData instrumentOHLCData;
+				while ((line = rd.readLine()) != null) {
+					try {
+						readData = line.split(",");
+						if (lineSkip == 0) {
+							instrumentOHLCData = new InstrumentOHLCData();
+							instrumentOHLCData.setInstrumentName(operatingTradingSymbolList.get(count));
+							instrumentOHLCData.setClose(Double.parseDouble(readData[1]));
+							instrumentOHLCData.setHigh(Double.parseDouble(readData[2]));
+							instrumentOHLCData.setLow(Double.parseDouble(readData[3]));
+							instrumentOHLCData.setOpen(Double.parseDouble(readData[4]));
+							tempList.add(instrumentOHLCData);
+						} else
+							lineSkip = lineSkip - 1;
+
+					} catch (Exception e) {
+						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+					}
+				}
+				instrumentVolumeLast10DaysDataList.add(tempList);
+			} catch (IOException e) {
+				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+			}
+		}
+		streamingQuoteStorage.saveGoogleHistoricalData(instrumentVolumeLast10DaysDataList);
+		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
+
 	}
 
 	private void orderStatusSyncBetweenLocalAndMarket() {

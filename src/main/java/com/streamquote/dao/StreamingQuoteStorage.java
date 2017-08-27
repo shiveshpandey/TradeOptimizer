@@ -59,4 +59,6 @@ public interface StreamingQuoteStorage {
 	public void last10DaysOHLCData(HashMap<String, ArrayList<InstrumentOHLCData>> instrumentOHLCLast10DaysDataList);
 
 	void saveInstrumentVolumeData(HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList);
+
+	public void saveGoogleHistoricalData(ArrayList<ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList);
 }

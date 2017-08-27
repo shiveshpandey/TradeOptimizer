@@ -2748,4 +2748,59 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		// StreamingQuoteStorageImpl.last10DaysOHLCData()");
 
 	}
+
+	@Override
+	public void saveGoogleHistoricalData(ArrayList<ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList) {
+
+		// LOGGER.info("Entry StreamingQuoteStorageImpl.storeData");
+		if (conn != null) {
+
+			try {
+
+				String sql = "INSERT INTO " + quoteTable + "_signalParams "
+						+ "(Time, InstrumentToken, OpenPrice, HighPrice, LowPrice, ClosePrice,timestampGrp,usedForSignal) "
+						+ "values(?,?,?,?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+				for (int index = 0; index < instrumentVolumeLast10DaysDataList.size(); index++) {
+					ArrayList<InstrumentOHLCData> ticks = instrumentVolumeLast10DaysDataList.get(index);
+					for (int count = 0; count < ticks.size(); count++) {
+						InstrumentOHLCData tick = ticks.get(count);
+						try {
+							Date date = dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime()));
+							prepStmt.setTimestamp(1, new Timestamp(date.getTime()));
+							prepStmt.setString(2, String.valueOf(tick.getInstrumentName()));
+							prepStmt.setDouble(3, tick.getClose());
+							prepStmt.setDouble(4, tick.getHigh());
+							prepStmt.setDouble(5, tick.getLow());
+							prepStmt.setDouble(6, tick.getOpen());
+							date.setSeconds(0);
+							prepStmt.setTimestamp(7, new Timestamp(date.getTime()));
+							prepStmt.setString(8, "");
+							prepStmt.executeUpdate();
+						} catch (SQLException | ParseException e) {
+							LOGGER.info(
+									"StreamingQuoteStorageImpl.storeData(): ERROR: SQLException on Storing data to Table: "
+											+ tick);
+							LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage()
+									+ ">>" + e.getCause());
+						}
+					}
+				}
+				prepStmt.close();
+			} catch (SQLException e) {
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): [SQLException Cause]: " + e.getMessage() + ">>"
+						+ e.getCause());
+			}
+		} else {
+			if (conn != null) {
+				LOGGER.info("StreamingQuoteStorageImpl.storeData(): ERROR: DB conn is null !!!");
+			} else {
+				LOGGER.info(
+						"StreamingQuoteStorageImpl.storeData(): ERROR: quote is not of type StreamingQuoteModeQuote !!!");
+			}
+		}
+		// LOGGER.info("Exit StreamingQuoteStorageImpl.storeData");
+
+	}
 }

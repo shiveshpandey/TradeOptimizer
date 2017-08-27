@@ -106,7 +106,7 @@ public class StreamingConfig {
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;
 	public static final String nifty200InstrumentCsvUrl = "https://www.nseindia.com/content/indices/ind_nifty200list.csv";
-
+	public static final String googleFinanceUrl = "https://www.google.com/finance/getprices?f=d%2Cc%2Ch%2Cl%2Co&i=60&p=10d&q=ZZZZZ&x=NSE";
 	public static final String QUOTE_STREAMING_MODE_QUOTE = "quote";
 	public static final String QUOTE_STREAMING_DEFAULT_MODE = QUOTE_STREAMING_MODE_QUOTE;
 
@@ -118,6 +118,11 @@ public class StreamingConfig {
 	public static final double CAMA_L2 = 0.183;
 	public static final double CAMA_L3 = 0.275;
 	public static final double CAMA_L4 = 0.55;
+
+	public static String googleFetchDataString(String instrumentName, int days, int period) {
+		return "https://www.google.com/finance/getprices?f=d%2Cc%2Ch%2Cl%2Co&i=" + period + "&p=" + days + "d&q="
+				+ instrumentName + "&x=NSE";
+	}
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
 		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;
