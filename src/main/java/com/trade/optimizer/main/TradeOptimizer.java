@@ -69,7 +69,7 @@ public class TradeOptimizer {
 
 	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
 
-	private boolean liveStreamFirstRun = false;
+	private boolean liveStreamFirstRun = true;
 	private boolean tickerStarted = false;
 	private boolean backendReadyForProcessing = false;
 	private boolean dayOffActivityPerformed = false;
@@ -122,7 +122,7 @@ public class TradeOptimizer {
 		return "index";
 	}
 
-	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
 		// LOGGER.info("Entry TradeOptimizer.localRedirect()");
 		kiteconnect.registerHook(new SessionExpiryHook() {
@@ -340,7 +340,7 @@ public class TradeOptimizer {
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })	
+	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })	
 	public void startProcess() {
 		try {
 			// LOGGER.info("Entry TradeOptimizer.startProcess()");
@@ -366,8 +366,8 @@ public class TradeOptimizer {
 			} else {
 				fetchAndProcessInstrumentsPriorityRelatedData();
 			}
-			// startLiveStreamOfSelectedInstruments();
-			saveGoogleHistoricData(operatingTradingSymbolList);
+			 startLiveStreamOfSelectedInstruments();
+			//saveGoogleHistoricData(operatingTradingSymbolList);
 			// applyStrategiesAndGenerateSignals();
 
 			// placeOrdersBasedOnSignals();
