@@ -5,5 +5,6 @@ package com.trade.optimizer.kiteconnect;
  */
 public interface SessionExpiryHook {
 
-	public void sessionExpired();
+
+    public void sessionExpired();
 }

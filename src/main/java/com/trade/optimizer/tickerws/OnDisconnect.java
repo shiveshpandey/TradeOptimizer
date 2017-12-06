@@ -1,8 +1,8 @@
 package com.trade.optimizer.tickerws;
 
 /**
- * Callback to listen to ticker web-socket disconnected event.
+ * Callback to listen to com.rainmatter.ticker websocket disconnected event.
  */
 public interface OnDisconnect {
-	void onDisconnected();
+    void onDisconnected();
 }

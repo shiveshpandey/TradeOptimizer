@@ -1,8 +1,5 @@
 package com.trade.optimizer.models;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 /**
  * A wrapper for margins.
  */
@@ -10,81 +7,69 @@ import org.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 public class Margins {
 
-	public Margins() {
-	};
 
-	public Available available;
-	public Utilised utilised;
+    public Margins(){};
+    public Available available;
+    public Utilised utilised;
 
-	// Serialized names are the actual keys in json response
-	@SerializedName("net")
-	public String net;
 
-	/**
-	 * Class available is a wrapper around available cash margins used by GSON.
-	 *
-	 */
-	public static class Available {
+    // Serialized names are the actual keys in json response
+    @SerializedName("net")
+    public String net;
 
-		@SerializedName("cash")
-		public String cash;
+    /**
+     * Class available is a wrapper around available cash margins used by GSON.
+     *
+     */
+    public static class Available{
 
-		@SerializedName("intraday_payin")
-		public String intradayPayin;
+        @SerializedName("cash")
+        public String cash;
 
-		@SerializedName("adhoc_margin")
-		public String adhocMargin;
+        @SerializedName("intraday_payin")
+        public String intradayPayin;
 
-		@SerializedName("collateral")
-		public String collateral;
+        @SerializedName("adhoc_margin")
+        public String adhocMargin;
 
-	}
+        @SerializedName("collateral")
+        public String collateral;
 
-	/**
-	 * Utilised is a wrapper around utilised margins, used by GSON.
-	 */
+    }
 
-	public static class Utilised {
-		@SerializedName("m2m_unrealised")
-		public String m2mUnrealised;
+    /**
+     * Utilised is a wrapper around utilised margins, used by GSON.
+     */
 
-		@SerializedName("m2m_realised")
-		public String m2mRealised;
+    public static class Utilised{
+        @SerializedName("m2m_unrealised")
+        public String m2mUnrealised;
 
-		@SerializedName("debits")
-		public String debits;
+        @SerializedName("m2m_realised")
+        public String m2mRealised;
 
-		@SerializedName("span")
-		public String span;
+        @SerializedName("debits")
+        public String debits;
 
-		@SerializedName("option_premium")
-		public String optionPremium;
+        @SerializedName("span")
+        public String span;
 
-		@SerializedName("holding_sales")
-		public String holdingSales;
+        @SerializedName("option_premium")
+        public String optionPremium;
 
-		@SerializedName("exposure")
-		public String exposure;
+        @SerializedName("holding_sales")
+        public String holdingSales;
 
-		@SerializedName("turnover")
-		public String turnover;
-	}
+        @SerializedName("exposure")
+        public String exposure;
 
-	/**
-	 *
-	 * Parses response to map with GSON class.
-	 * 
-	 * @param response
-	 *            JSONObject response
-	 * @return GSON mapped Margins model.
-	 * @throws JSONException
-	 */
-	public Margins parseMarginsResponse(JSONObject response) throws JSONException {
-		GsonBuilder gsonBuilder = new GsonBuilder();
-		Gson gson = gsonBuilder.create();
-		return gson.fromJson(String.valueOf(response.get("data")), Margins.class);
-	}
+        @SerializedName("turnover")
+        public String turnover;
+    }
 }

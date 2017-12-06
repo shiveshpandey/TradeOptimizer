@@ -500,8 +500,7 @@ public class TradeOptimizer {
 		}
 		tickerProvider.setMaxRetries(-1);
 
-		if (null != tokenListForTick && !tokenListForTick.isEmpty())
-			tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
+		
 
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
@@ -510,6 +509,8 @@ public class TradeOptimizer {
 						&& tickerProvider.getSubscribedTokenList().size() != tokenListForTick.size())
 					try {
 						tickerProvider.subscribe(tokenListForTick);
+						if (null != tokenListForTick && !tokenListForTick.isEmpty())
+							tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
 					} catch (KiteException e) {
 						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
 						tickerStarted = false;
@@ -696,10 +697,7 @@ public class TradeOptimizer {
 							if (backendReadyForProcessing) {
 								List<Order> signalList = getOrderListToPlaceAsPerStrategySignals();
 								for (int index = 0; index < signalList.size(); index++)
-									tradeOperations.placeOrder(kiteconnect, signalList.get(index).tradingSymbol,
-											signalList.get(index).transactionType, signalList.get(index).quantity,
-											signalList.get(index).price, signalList.get(index).tag,
-											streamingQuoteStorage);
+									tradeOperations.placeOrder(kiteconnect);
 							}
 							Thread.sleep(10 * seconds);
 						} else {
@@ -786,7 +784,7 @@ public class TradeOptimizer {
 							try {
 								instrumentVolatilityScoreList = markTradableInstruments();
 
-								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect);
 								for (int count = 0; count < tempInstrumentList.size(); count++) {
 
 									Instrument temp = tempInstrumentList.get(count);

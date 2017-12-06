@@ -1,14 +1,14 @@
 package com.trade.optimizer.models;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.json.JSONObject;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * A wrapper for trade.
@@ -39,14 +39,4 @@ public class Trade {
 	@SerializedName("transaction_type")
 	public String transactionType;
 
-	public Trade() {
-	}
-
-	public List<Trade> trades = new ArrayList<>();
-
-	public void parseListTradesResponse(JSONObject response) {
-		GsonBuilder gsonBuilder = new GsonBuilder();
-		Gson gson = gsonBuilder.create();
-		trades = Arrays.asList(gson.fromJson(String.valueOf(response.get("data")), Trade[].class));
-	}
 }

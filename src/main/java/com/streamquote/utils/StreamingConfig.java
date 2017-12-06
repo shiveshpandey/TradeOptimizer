@@ -18,17 +18,17 @@ public class StreamingConfig {
 	public static final String last10DaysOHLCZipFilePath = "C:/Users/shiva/Downloads/";
 	public static final String last10DaysOHLCFilePrefix = "2017/NOV/";
 
-	public static String[] last10DaysOHLCFileNames = {"cm10NOV2017bhav.csv.zip", "cm09NOV2017bhav.csv.zip",
-			"cm08NOV2017bhav.csv.zip", "cm07NOV2017bhav.csv.zip", "cm06NOV2017bhav.csv.zip", "cm03NOV2017bhav.csv.zip",
-			"cm02NOV2017bhav.csv.zip", "cm01NOV2017bhav.csv.zip", "cm31OCT2017bhav.csv.zip", "cm30OCT2017bhav.csv.zip"};
+	public static String[] last10DaysOHLCFileNames = {"cm05DEC2017bhav.csv.zip", "cm04DEC2017bhav.csv.zip",
+			"cm01DEC2017bhav.csv.zip", "cm30NOV2017bhav.csv.zip", "cm29NOV2017bhav.csv.zip", "cm28NOV2017bhav.csv.zip",
+			"cm27NOV2017bhav.csv.zip", "cm24NOV2017bhav.csv.zip", "cm23NOV2017bhav.csv.zip", "cm22NOV2017bhav.csv.zip"};
 
-	public static String[] last10DaysVolumeDataFileNames = { "MTO_10112017.DAT", "MTO_09112017.DAT", "MTO_08112017.DAT",
-			"MTO_07112017.DAT", "MTO_06112017.DAT", "MTO_03112017.DAT", "MTO_02112017.DAT", "MTO_01112017.DAT",
-			"MTO_31102017.DAT","MTO_30102017.DAT"};
+	public static String[] last10DaysVolumeDataFileNames = { "MTO_05122017.DAT", "MTO_04122017.DAT", "MTO_01122017.DAT",
+			"MTO_30112017.DAT", "MTO_29112017.DAT", "MTO_28112017.DAT", "MTO_27112017.DAT", "MTO_24112017.DAT",
+			"MTO_23112017.DAT","MTO_22112017.DAT"};
 
-	public static String[] nseVolatilityDataFileNames = {"CMVOLT_10112017.CSV", "CMVOLT_09112017.CSV",
-			"CMVOLT_08112017.CSV", "CMVOLT_07112017.CSV", "CMVOLT_06112017.CSV", "CMVOLT_03112017.CSV",
-			"CMVOLT_02112017.CSV", "CMVOLT_01112017.CSV", "CMVOLT_31102017.CSV","CMVOLT_30102017.CSV"};
+	public static String[] nseVolatilityDataFileNames = {"CMVOLT_05122017.CSV", "CMVOLT_04122017.CSV",
+			"CMVOLT_01122017.CSV", "CMVOLT_30112017.CSV", "CMVOLT_29112017.CSV","CMVOLT_28112017.CSV",
+			"CMVOLT_27112017.CSV", "CMVOLT_24102017.CSV","CMVOLT_23102017.CSV","CMVOLT_22112017.CSV" };
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
@@ -57,11 +57,11 @@ public class StreamingConfig {
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json" };
 
 	public static String[] last10DaysOHLCFileUrls = {
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
+			"https://www.nseindia.com/content/historical/EQUITIES/" + "2017/DEC/"//last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[0],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
+			"https://www.nseindia.com/content/historical/EQUITIES/" + "2017/DEC/"//last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[1],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
+			"https://www.nseindia.com/content/historical/EQUITIES/" + "2017/DEC/"//last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[2],
 			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[3],
@@ -73,9 +73,9 @@ public class StreamingConfig {
 					+ last10DaysOHLCFileNames[6],
 			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[7],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + "2017/OCT/"//last10DaysOHLCFilePrefix
+			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[8],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + "2017/OCT/"//last10DaysOHLCFilePrefix
+			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFilePrefix
 					+ last10DaysOHLCFileNames[9] };
 
 	public static String[] last10DaysVolumeDataFileUrls = {

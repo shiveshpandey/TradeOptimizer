@@ -5,10 +5,7 @@ package com.trade.optimizer.exceptions;
  */
 
 public class KiteParseException extends KiteException {
-
-	private static final long serialVersionUID = 1L;
-
-	public KiteParseException(String message, int code) {
-		super(message, code);
-	}
+    public KiteParseException(String message, int code){
+        super(message, code);
+    }
 }

@@ -6,9 +6,9 @@ package com.trade.optimizer.exceptions;
 
 public class KiteDataException extends KiteException {
 
-	private static final long serialVersionUID = 1L;
-
-	public KiteDataException(String message, int code) {
-		super(message, code);
-	}
+    // initialize 2fa exception and call constructor of Base Exception
+    public KiteDataException(String message, int code){
+        super(message, code);
+    }
 }
+

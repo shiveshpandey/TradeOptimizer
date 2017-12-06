@@ -6,10 +6,8 @@ package com.trade.optimizer.exceptions;
  */
 
 public class KiteClientNetworkException extends KiteException {
-
-	private static final long serialVersionUID = 1L;
-
-	public KiteClientNetworkException(String message, int code) {
-		super(message, code);
-	}
+    public KiteClientNetworkException(String message, int code){
+        super(message, code);
+    }
 }
+
