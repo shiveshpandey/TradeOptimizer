@@ -9,17 +9,35 @@ public class Camarilla {
 	private double camaH2;
 	private double camaH3;
 	private double camaH4;
+	private double camaH5;
 	private double camaL1;
 	private double camaL2;
 	private double camaL3;
 	private double camaL4;
-
+	private double camaL5;
+	
 	public String getInstrumentToken() {
 		return instrumentToken;
 	}
 
 	public void setInstrumentToken(String instrumentToken) {
 		this.instrumentToken = instrumentToken;
+	}
+
+	public double getCamaH5() {
+		return camaH5;
+	}
+
+	public void setCamaH5(double camaH5) {
+		this.camaH5 = camaH5;
+	}
+
+	public double getCamaL5() {
+		return camaL5;
+	}
+
+	public void setCamaL5(double camaL5) {
+		this.camaL5 = camaL5;
 	}
 
 	public double getCamaPP() {
