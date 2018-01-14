@@ -19,11 +19,11 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 
+import com.gold.buzzer.models.GoldBuzz;
+import com.gold.buzzer.models.GoldBuzzSignal;
 import com.gold.buzzer.models.Instrument;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
-import com.gold.buzzer.models.GoldBuzz;
-import com.gold.buzzer.models.GoldBuzzSignal;
 import com.gold.buzzer.models.Order;
 import com.gold.buzzer.models.Tick;
 import com.gold.buzzer.utils.StreamingConfig;
@@ -626,13 +626,13 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 			GoldBuzz goldBuzz = goldBuzzList.get(instrumentToken);
 
-			GoldBuzzSignal signalClose = calculateCararillaSignal(goldBuzz, firstClose, secondClose, instrumentToken);
+			GoldBuzzSignal signalClose = calculateGoldBuzzSignal(goldBuzz, firstClose, secondClose, instrumentToken);
 
 			if (loopSize == 2 && !"usedForZigZagSignal1".equalsIgnoreCase(isUnUsedRecord) && null != signalClose
 					&& signalClose.getSignal() != 1 && !firstRecord && firstClose != StreamingConfig.MAX_VALUE
 					&& firstClose != 0.0) {
 
-				saveCararillaSignal(instrumentToken, signalClose, firstClose, firstRowId);
+				saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
 
 				Statement stmtForUpdate = conn.createStatement();
 				if (lastRowId > 0) {
@@ -657,7 +657,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		LOGGER.info("Exit		 StreamingQuoteStorageImpl.goldBuzzStrategy()");
 	}
 
-	private void saveCararillaSignal(String instrumentToken, GoldBuzzSignal signalClose, double firstClose,
+	private void saveGoldBuzzSignal(String instrumentToken, GoldBuzzSignal signalClose, double firstClose,
 			double firstRowId) throws SQLException {
 
 		String sql = "INSERT INTO " + quoteTable + "_Signal "
@@ -702,7 +702,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 	}
 
-	private GoldBuzzSignal calculateCararillaSignal(GoldBuzz goldBuzz, double firstClose, double secondClose,
+	private GoldBuzzSignal calculateGoldBuzzSignal(GoldBuzz goldBuzz, double firstClose, double secondClose,
 			String instrumentToken) throws SQLException {
 		GoldBuzzSignal signalClose;
 
