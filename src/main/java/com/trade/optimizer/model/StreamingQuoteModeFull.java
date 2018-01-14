@@ -1,4 +1,4 @@
-package com.streamquote.model;
+package com.trade.optimizer.model;
 
 public class StreamingQuoteModeFull extends StreamingQuoteModeQuote {
 	public MarketDepth bidEntry1;

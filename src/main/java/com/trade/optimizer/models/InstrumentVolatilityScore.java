@@ -1,6 +1,6 @@
 package com.trade.optimizer.models;
 
-import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.utils.StreamingConfig;
 
 public class InstrumentVolatilityScore {
 	private Double dailyVolatility;

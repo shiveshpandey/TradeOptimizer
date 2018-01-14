@@ -2,7 +2,7 @@ package com.trade.optimizer.signal.parameter;
 
 import java.util.List;
 
-import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.utils.StreamingConfig;
 
 public class RSISignalParam {
 

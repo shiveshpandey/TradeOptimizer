@@ -1,4 +1,4 @@
-package com.streamquote.model;
+package com.trade.optimizer.model;
 
 public class MarketDepth {
 	public Long qty;

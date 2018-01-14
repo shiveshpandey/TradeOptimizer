@@ -1,10 +1,10 @@
 package com.trade.optimizer.models;
 
-public class CamarillaSignal {
+public class MagicBeeSignal {
 	private int signal;
 	private String signalLevel;
 
-	public CamarillaSignal(int signal, String signalLevel) {
+	public MagicBeeSignal(int signal, String signalLevel) {
 		this.signal = signal;
 		this.signalLevel = signalLevel;
 	}

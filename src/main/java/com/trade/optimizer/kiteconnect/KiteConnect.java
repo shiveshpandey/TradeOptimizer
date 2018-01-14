@@ -29,7 +29,6 @@ import org.supercsv.prefs.CsvPreference;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.streamquote.utils.StreamingConfig;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.models.HistoricalData;
 import com.trade.optimizer.models.Holding;
@@ -48,6 +47,7 @@ import com.trade.optimizer.models.Quote;
 import com.trade.optimizer.models.Trade;
 import com.trade.optimizer.models.TriggerRange;
 import com.trade.optimizer.models.UserModel;
+import com.trade.optimizer.utils.StreamingConfig;
 
 /**
  * Provides all the capabilities of com.rainmatter.kiteconnect like place order, fetch orderbook, positions, holdings and more.

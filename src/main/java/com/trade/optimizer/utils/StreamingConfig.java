@@ -1,4 +1,4 @@
-package com.streamquote.utils;
+package com.trade.optimizer.utils;
 
 public class StreamingConfig {
 

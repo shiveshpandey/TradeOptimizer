@@ -1,6 +1,6 @@
 package com.trade.optimizer.models;
 
-public class Camarilla {
+public class MagicBee {
 
 	private String instrumentToken;
 
@@ -15,7 +15,7 @@ public class Camarilla {
 	private double camaL3;
 	private double camaL4;
 	private double camaL5;
-	
+
 	public String getInstrumentToken() {
 		return instrumentToken;
 	}

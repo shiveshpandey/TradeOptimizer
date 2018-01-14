@@ -46,9 +46,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.view.RedirectView;
 
 import com.neovisionaries.ws.client.WebSocketException;
-import com.streamquote.dao.StreamingQuoteStorage;
-import com.streamquote.dao.StreamingQuoteStorageImpl;
-import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.dao.StreamingQuoteStorage;
+import com.trade.optimizer.dao.StreamingQuoteStorageImpl;
 import com.trade.optimizer.exceptions.KiteException;
 import com.trade.optimizer.kiteconnect.KiteConnect;
 import com.trade.optimizer.kiteconnect.SessionExpiryHook;
@@ -62,6 +61,7 @@ import com.trade.optimizer.tickerws.KiteTicker;
 import com.trade.optimizer.tickerws.OnConnect;
 import com.trade.optimizer.tickerws.OnDisconnect;
 import com.trade.optimizer.tickerws.OnTick;
+import com.trade.optimizer.utils.StreamingConfig;
 
 @SuppressWarnings("deprecation")
 @Controller
@@ -105,7 +105,6 @@ public class TradeOptimizer {
 
 	@RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
 	public String authRedirectWithTokenPost(@RequestParam String status, @RequestParam String request_token) {
-		// LOGGER.info("Entry TradeOptimizer.authRedirectWithTokenPost()");
 		try {
 			UserModel userModel = kiteconnect.requestAccessToken(request_token, StreamingConfig.API_SECRET_KEY);
 			kiteconnect.setAccessToken(userModel.accessToken);
@@ -118,13 +117,11 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage() + " >> " + e.getCause());
 			return "error";
 		}
-		// LOGGER.info("Exit TradeOptimizer.authRedirectWithTokenPost()");
 		return "index";
 	}
 
 	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
-		// LOGGER.info("Entry TradeOptimizer.localRedirect()");
 		kiteconnect.registerHook(new SessionExpiryHook() {
 			@Override
 			public void sessionExpired() {
@@ -134,13 +131,11 @@ public class TradeOptimizer {
 		});
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
-		// LOGGER.info("Exit TradeOptimizer.localRedirect()");
 		return redirectView;
 	}
 
-	public void downloadNSEReportsCSVs() {
+	public void saveInstrumentVolatilityData() {
 
-		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolatilityScoreList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
@@ -184,13 +179,11 @@ public class TradeOptimizer {
 			} catch (IOException e) {
 			}
 		}
-		streamingQuoteStorage.saveInstrumentVolatilityDetails(instrumentVolatilityScoreList);
-		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
+		streamingQuoteStorage.saveInstrumentVolatilityData(instrumentVolatilityScoreList);
 	}
 
-	public List<InstrumentVolatilityScore> markTradableInstruments() {
+	public List<InstrumentVolatilityScore> markInstrumentsTradable() {
 
-		// LOGGER.info("Entry TradeOptimizer.markTradableInstruments()");
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 
@@ -226,11 +219,9 @@ public class TradeOptimizer {
 			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 		}
 		return instrumentVolatilityScoreList;
-		// LOGGER.info("Exit TradeOptimizer.markTradableInstruments()");
 	}
 
-	public void fetchNSEActiveSymbolList() {
-		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
+	public void saveInstrumentTokenPriorityData() {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		Map<String, InstrumentVolatilityScore> stocksSymbolArray = new HashMap<String, InstrumentVolatilityScore>();
@@ -288,12 +279,10 @@ public class TradeOptimizer {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
-		streamingQuoteStorage.saveInstrumentTokenPriority(stocksSymbolArray);
-		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
+		streamingQuoteStorage.saveInstrumentTokenPriorityData(stocksSymbolArray);
 	}
 
-	public void fetchNSESymbolVolumeData() {
-		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
+	public void saveInstrumentVolumeData() {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
@@ -338,12 +327,12 @@ public class TradeOptimizer {
 			}
 		}
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
-		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
 	}
-	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })	
+
+	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
+	// RequestMethod.GET })
 	public void startProcess() {
 		try {
-			// LOGGER.info("Entry TradeOptimizer.startProcess()");
 			TimeZone.setDefault(TimeZone.getTimeZone("IST"));
 			todaysDate = dtFmt.format(Calendar.getInstance().getTime());
 			quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
@@ -364,76 +353,25 @@ public class TradeOptimizer {
 				liveStreamFirstRun = true;
 				backendReadyForProcessing = true;
 			} else {
-				fetchAndProcessInstrumentsPriorityRelatedData();
+				fetchAndSaveInstrumentsInitialParamAndData();
 			}
-			 startLiveStreamOfSelectedInstruments();
-			//saveGoogleHistoricData(operatingTradingSymbolList);
-			// applyStrategiesAndGenerateSignals();
+			startLiveStreamOfSelectedInstruments();
 
-			// placeOrdersBasedOnSignals();
+			calculateStrategyAndSaveSignals();
 
-			// orderStatusSyncBetweenLocalAndMarket();
+			placeOrdersBasedOnSignals();
 
-			// dayClosingStocksRoundOffOperations();
+			orderStatusSyncBetweenLocalAndMarket();
+
+			dayClosingStocksRoundOffOperations();
 
 		} catch (JSONException | ParseException e) {
 			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
-		// LOGGER.info("Exit TradeOptimizer.startProcess()");
-	}
-
-	private void saveGoogleHistoricData(ArrayList<String> operatingTradingSymbolList) {
-
-		// LOGGER.info("Entry TradeOptimizer.fetchNSEActiveSymbolList()");
-		@SuppressWarnings({ "resource" })
-		HttpClient client = new DefaultHttpClient();
-		ArrayList<ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList = new ArrayList<ArrayList<InstrumentOHLCData>>();
-		for (int count = 0; count < operatingTradingSymbolList.size(); count++) {
-			ArrayList<InstrumentOHLCData> tempList = new ArrayList<InstrumentOHLCData>();
-			HttpGet get = new HttpGet(
-					StreamingConfig.googleFetchDataString(operatingTradingSymbolList.get(count), 1, 60));
-			get.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-			get.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
-
-			try {
-				HttpResponse response = client.execute(get);
-				BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-				String line = "";
-				String[] readData;
-				int lineSkip = 8;
-				InstrumentOHLCData instrumentOHLCData;
-				while ((line = rd.readLine()) != null) {
-					try {
-						readData = line.split(",");
-						if (lineSkip == 0) {
-							instrumentOHLCData = new InstrumentOHLCData();
-							instrumentOHLCData.setInstrumentName(operatingTradingSymbolList.get(count));
-							instrumentOHLCData.setClose(Double.parseDouble(readData[1]));
-							instrumentOHLCData.setHigh(Double.parseDouble(readData[2]));
-							instrumentOHLCData.setLow(Double.parseDouble(readData[3]));
-							instrumentOHLCData.setOpen(Double.parseDouble(readData[4]));
-							tempList.add(instrumentOHLCData);
-						} else
-							lineSkip = lineSkip - 1;
-
-					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
-					}
-				}
-				instrumentVolumeLast10DaysDataList.add(tempList);
-			} catch (IOException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
-			}
-		}
-		streamingQuoteStorage.saveGoogleHistoricalData(instrumentVolumeLast10DaysDataList);
-		// LOGGER.info("Exit TradeOptimizer.fetchNSEActiveSymbolList()");
-
 	}
 
 	private void orderStatusSyncBetweenLocalAndMarket() {
 
-		// LOGGER.info("Entry
-		// TradeOptimizer.orderStatusSyncBetweenLocalAndMarket()");
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -479,8 +417,6 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		// LOGGER.info("Exit
-		// TradeOptimizer.orderStatusSyncBetweenLocalAndMarket()");
 	}
 
 	private boolean checkAndLoadIfBackEndReady() {
@@ -488,8 +424,6 @@ public class TradeOptimizer {
 	}
 
 	private void tickerSettingInitialization() {
-		// LOGGER.info("Entry TradeOptimizer.tickerSettingInitialization()");
-
 		tickerProvider = new KiteTicker(kiteconnect);
 		tickerProvider.setTryReconnection(true);
 		try {
@@ -499,8 +433,6 @@ public class TradeOptimizer {
 			tickerStarted = false;
 		}
 		tickerProvider.setMaxRetries(-1);
-
-		
 
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
@@ -546,11 +478,9 @@ public class TradeOptimizer {
 					}
 			}
 		});
-		// LOGGER.info("Exit TradeOptimizer.tickerSettingInitialization()");
 	}
 
 	protected ArrayList<Tick> testingTickerData(ArrayList<Long> quoteStreamingInstrumentsArr) {
-		// LOGGER.info("Entry TradeOptimizer.testingTickerData()");
 
 		ArrayList<Tick> ticks = new ArrayList<Tick>();
 		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
@@ -575,12 +505,10 @@ public class TradeOptimizer {
 			tick.setLastTradedPrice(tick.getClosePrice());
 			ticks.add(tick);
 		}
-		// LOGGER.info("Exit TradeOptimizer.testingTickerData()");
 		return ticks;
 	}
 
 	private void createInitialDayTables() {
-		// LOGGER.info("Entry TradeOptimizer.createInitialDayTables()");
 		if (streamingQuoteStorage != null) {
 
 			streamingQuoteStorage.initializeJDBCConn();
@@ -590,12 +518,9 @@ public class TradeOptimizer {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
-		// LOGGER.info("Exit TradeOptimizer.createInitialDayTables()");
 	}
 
 	private void dayClosingStocksRoundOffOperations() {
-		// LOGGER.info("Entry
-		// TradeOptimizer.dayClosingStocksRoundOffOperations()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -608,7 +533,9 @@ public class TradeOptimizer {
 						Date timeNow = Calendar.getInstance().getTime();
 						if (timeNow.compareTo(timeEnd) >= 0 && backendReadyForProcessing) {
 							List<Order> orderList = new ArrayList<Order>();
-							streamingQuoteStorage.fetchAllOrdersForDayOffActivity(quoteStreamingInstrumentsArr);// tradeOperations.getOrders(kiteconnect);
+							for (int index = 0; index < quoteStreamingInstrumentsArr.size(); index++)
+								streamingQuoteStorage.executeMagicBeeStrategyCloseRoundOff(
+										Long.toString(quoteStreamingInstrumentsArr.get(index)));// tradeOperations.getOrders(kiteconnect);
 
 							if (null != orderList && orderList.size() > 0 && null != operatingTradingSymbolList
 									&& operatingTradingSymbolList.size() > 0)
@@ -678,12 +605,9 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		// LOGGER.info("Exit
-		// TradeOptimizer.dayClosingStocksRoundOffOperations()");
 	}
 
 	private void placeOrdersBasedOnSignals() {
-		// LOGGER.info("Entry TradeOptimizer.placeOrdersBasedOnSignals()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -715,16 +639,13 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		// LOGGER.info("Exit TradeOptimizer.placeOrdersBasedOnSignals()");
 	}
 
 	private List<Order> getOrderListToPlaceAsPerStrategySignals() {
-		return streamingQuoteStorage.getOrderListToPlace();
+		return streamingQuoteStorage.fetchOrderListToPlace();
 	}
 
 	private void startLiveStreamOfSelectedInstruments() {
-		// LOGGER.info("Entry
-		// TradeOptimizer.startLiveStreamOfSelectedInstruments()");
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -759,13 +680,9 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		// LOGGER.info("Exit
-		// TradeOptimizer.startLiveStreamOfSelectedInstruments()");
 	}
 
-	private void fetchAndProcessInstrumentsPriorityRelatedData() {
-		// LOGGER.info("Entry
-		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
+	private void fetchAndSaveInstrumentsInitialParamAndData() {
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
@@ -782,7 +699,7 @@ public class TradeOptimizer {
 						} else if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0
 								&& timeNow.compareTo(timeForPrioritySetting) >= 0) {
 							try {
-								instrumentVolatilityScoreList = markTradableInstruments();
+								instrumentVolatilityScoreList = markInstrumentsTradable();
 
 								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect);
 								for (int count = 0; count < tempInstrumentList.size(); count++) {
@@ -806,11 +723,11 @@ public class TradeOptimizer {
 								 * .getInstrumentsForExchange(kiteconnect,
 								 * "BFO"));
 								 */
-								last10DaysOHLCData();
-								fetchNSESymbolVolumeData();
-								fetchNSEActiveSymbolList();
-								downloadNSEReportsCSVs();
-								streamingQuoteStorage.markTradableInstruments(instrumentVolatilityScoreList);
+								saveLast10DaysOHLCData();
+								saveInstrumentVolumeData();
+								saveInstrumentTokenPriorityData();
+								saveInstrumentVolatilityData();
+								streamingQuoteStorage.markInstrumentsTradable(instrumentVolatilityScoreList);
 
 								quoteStreamingInstrumentsArr = streamingQuoteStorage
 										.getTopPrioritizedTokenList(tokenCountForTrade);
@@ -838,12 +755,9 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-
-		// LOGGER.info("Exit
-		// TradeOptimizer.fetchAndProcessInstrumentPriorityRelatedData()");
 	}
 
-	private void last10DaysOHLCData() {
+	private void saveLast10DaysOHLCData() {
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentOHLCLast10DaysDataList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
 		for (int index = 0; index < StreamingConfig.last10DaysOHLCFileUrls.length; index++) {
 			try {
@@ -910,7 +824,7 @@ public class TradeOptimizer {
 				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
-		streamingQuoteStorage.last10DaysOHLCData(instrumentOHLCLast10DaysDataList);
+		streamingQuoteStorage.saveLast10DaysOHLCData(instrumentOHLCLast10DaysDataList);
 	}
 
 	// private void roundOfNonPerformingBoughtStocks(ArrayList<Long>
@@ -1010,9 +924,7 @@ public class TradeOptimizer {
 	// // TradeOptimizer.roundOfNonPerformingBoughtStocks()");
 	// }
 
-	private void applyStrategiesAndGenerateSignals() {
-		// LOGGER.info("Entry
-		// TradeOptimizer.applyStrategiesAndGenerateSignals()");
+	private void calculateStrategyAndSaveSignals() {
 
 		Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
@@ -1026,15 +938,11 @@ public class TradeOptimizer {
 						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
 							if (backendReadyForProcessing) {
 								ArrayList<Long> instrumentList = getInstrumentTokensList();
-								Map<Long, String> signalList = new HashMap<Long, String>();
 
 								if (null != instrumentList && instrumentList.size() > 0) {
 									for (int i = 0; i < instrumentList.size(); i++)
-										streamingQuoteStorage.calculateAndStoreStrategySignalParameters(
-												instrumentList.get(i).toString(), timeNow);
-									signalList = streamingQuoteStorage
-											.calculateSignalsFromStrategyParams(instrumentList);
-									streamingQuoteStorage.saveGeneratedSignals(signalList, instrumentList);
+										streamingQuoteStorage.calculateAndSaveStrategy(instrumentList.get(i).toString(),
+												timeNow);
 								}
 							}
 							Thread.sleep(60 * seconds);
@@ -1051,12 +959,9 @@ public class TradeOptimizer {
 			}
 		});
 		t.start();
-		// LOGGER.info("Exit
-		// TradeOptimizer.applyStrategiesAndGenerateSignals()");
 	}
 
 	private void startStreamingQuote() {
-		// LOGGER.info("Entry TradeOptimizer.startStreamingQuote()");
 		tokenListForTick = getInstrumentTokensList();
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
@@ -1081,7 +986,6 @@ public class TradeOptimizer {
 				tickerStarted = false;
 			}
 		}
-		// LOGGER.info("Exit TradeOptimizer.startStreamingQuote()");
 	}
 
 	private ArrayList<Long> getInstrumentTokensList() {
@@ -1092,17 +996,13 @@ public class TradeOptimizer {
 	}
 
 	private void stopStreamingQuote() {
-		// LOGGER.info("Entry TradeOptimizer.stopStreamingQuote()");
 		tickerProvider.disconnect();
 		streamingQuoteStopped = true;
-		// LOGGER.info("Exit TradeOptimizer.stopStreamingQuote()");
 	}
 
 	private void closeDBConnection() {
-		// LOGGER.info("Entry TradeOptimizer.closeDBConnection()");
 		if (streamingQuoteStorage != null) {
 			streamingQuoteStorage.closeJDBCConn();
 		}
-		// LOGGER.info("Exit TradeOptimizer.closeDBConnection()");
 	}
 }

@@ -1,6 +1,6 @@
 package com.trade.optimizer.signal.parameter;
 
-import com.streamquote.utils.StreamingConfig;
+import com.trade.optimizer.utils.StreamingConfig;
 
 public class PSarSignalParam {
 
