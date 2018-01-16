@@ -229,8 +229,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and (PriorityPoint > 0.0"
-						+ " or dailyVolatility >= 2.0) and lastclose > 50.0 and lastclose < 2000.0 ORDER BY PriorityPoint DESC,dailyVolatility DESC,id desc LIMIT "
+						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and ((PriorityPoint > 0.0 and dailyWtdVolatility >= 1.91)"
+						+ " or dailyWtdVolatility >= 2.09) and lastclose > 50.0 and lastclose < 2000.0 ORDER BY dailyWtdVolatility DESC,PriorityPoint DESC,id desc LIMIT "
 						+ i + "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
@@ -256,7 +256,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT instrumentToken,lastwtdAvgclose, weightHighMinusLow, cama_pp,cama_h1,cama_h2,cama_h3,cama_h4,cama_l1,cama_l2,cama_l3,cama_l4 FROM "
+				String openSql = "SELECT instrumentToken,lastwtdAvgclose, weightHighMinusLow, cama_pp FROM "
 						+ quoteTable + "_instrumentDetails where instrumentToken in ("
 						+ commaSeperatedLongIDs(instrumentList) + ")";
 				ResultSet openRs = stmt.executeQuery(openSql);

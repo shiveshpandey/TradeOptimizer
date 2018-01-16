@@ -106,6 +106,11 @@ public class InstrumentOHLCData {
 		this.avgWaitedlow = this.avgWaitedlow / 5;
 		this.avgWaitedclose = this.avgWaitedclose / 5;
 
+		this.avgWaitedOpen = (this.avgWaitedOpen + this.avg10Dayopen) / 2;
+		this.avgWaitedhigh = (this.avgWaitedhigh + this.avg10Dayhigh) / 2;
+		this.avgWaitedlow = (this.avgWaitedlow + this.avg10Daylow) / 2;
+		this.avgWaitedclose = (this.avgWaitedclose + this.avg10Dayclose) / 2;
+
 		this.waitedHighMinusLow = this.avgWaitedhigh - this.avgWaitedlow;
 		this.highMinusLow = this.high - this.low;
 	}
@@ -174,6 +179,10 @@ public class InstrumentOHLCData {
 		this.avgWaitedhigh = this.avgWaitedhigh / 5;
 		this.avgWaitedlow = this.avgWaitedlow / 5;
 		this.avgWaitedclose = this.avgWaitedclose / 5;
+
+		this.avgWaitedhigh = (this.avgWaitedhigh + this.avg10Dayhigh) / 2;
+		this.avgWaitedlow = (this.avgWaitedlow + this.avg10Daylow) / 2;
+		this.avgWaitedclose = (this.avgWaitedclose + this.avg10Dayclose) / 2;
 	}
 
 	public InstrumentOHLCData(int i1, ArrayList<InstrumentOHLCData> arrayList) {
@@ -214,6 +223,7 @@ public class InstrumentOHLCData {
 				+ this.avg10Dayhigh;
 
 		this.avgWaitedhigh = this.avgWaitedhigh / 5;
+		this.avgWaitedhigh = (this.avgWaitedhigh + this.avg10Dayhigh) / 2;
 	}
 
 	public double getOpen() {
