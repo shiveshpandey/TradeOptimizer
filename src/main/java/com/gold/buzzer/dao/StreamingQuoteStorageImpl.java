@@ -228,7 +228,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT InstrumentToken FROM " + quoteTable
+				String openSql = "SELECT distinct InstrumentToken FROM " + quoteTable
 						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and ((PriorityPoint > 0.0 and dailyWtdVolatility >= 1.91)"
 						+ " or dailyWtdVolatility >= 2.09) and lastclose > 50.0 and lastclose < 2000.0 ORDER BY dailyWtdVolatility DESC,PriorityPoint DESC,id desc LIMIT "
 						+ i + "";
@@ -256,7 +256,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 				Statement stmt = conn.createStatement();
-				String openSql = "SELECT instrumentToken,lastwtdAvgclose, weightHighMinusLow, cama_pp FROM "
+				String openSql = "SELECT instrumentToken,lastwtdAvgclose,GREATEST(last10avghigh-last10avglow,last2avghigh-last2avglow,"
+				+"last3avghigh-last3avglow,last5avghigh-last5avglow,HighMinusLow,weightHighMinusLow) as highMinusLow, (lastclose+lasthigh+lastlow)/3.0 as cama_pp FROM "
 						+ quoteTable + "_instrumentDetails where instrumentToken in ("
 						+ commaSeperatedLongIDs(instrumentList) + ")";
 				ResultSet openRs = stmt.executeQuery(openSql);
@@ -265,16 +266,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					GoldBuzz cama = new GoldBuzz();
 
 					cama.setCamaPP(openRs.getDouble("cama_pp"));
-					cama.setCamaH1(openRs.getDouble("cama_pp") + (0.11 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaH2(openRs.getDouble("cama_pp") + (0.2 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaH3(openRs.getDouble("cama_pp") + (0.29 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaH4(openRs.getDouble("cama_pp") + (0.38 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaH5(openRs.getDouble("cama_pp") + (0.55 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaL1(openRs.getDouble("cama_pp") - (0.11 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaL2(openRs.getDouble("cama_pp") - (0.2 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaL3(openRs.getDouble("cama_pp") - (0.29 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaL4(openRs.getDouble("cama_pp") - (0.38 * openRs.getDouble("weightHighMinusLow")));
-					cama.setCamaL5(openRs.getDouble("cama_pp") - (0.55 * openRs.getDouble("weightHighMinusLow")));
+					cama.setCamaH1(openRs.getDouble("cama_pp") + (0.11 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH2(openRs.getDouble("cama_pp") + (0.2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH3(openRs.getDouble("cama_pp") + (0.29 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH4(openRs.getDouble("cama_pp") + (0.38 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH5(openRs.getDouble("cama_pp") + (0.55 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL1(openRs.getDouble("cama_pp") - (0.11 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL2(openRs.getDouble("cama_pp") - (0.2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL3(openRs.getDouble("cama_pp") - (0.29 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL4(openRs.getDouble("cama_pp") - (0.38 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL5(openRs.getDouble("cama_pp") - (0.55 * openRs.getDouble("highMinusLow")));
 
 					goldBuzzList.put(openRs.getString("instrumentToken"), cama);
 				}
@@ -482,17 +483,19 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					Statement timeLoopRsStmt = conn.createStatement();
 
-					openSql = "SELECT * FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
+					openSql = "SELECT LastTradedPrice FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
 							+ "' and timestampGrp ='" + timeStampPeriodList.get(timeLoop) + "' ORDER BY id DESC ";
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
+					Double lastTradedPrice=null;
 					while (openRsHighLowClose.next()) {
-						if (null == low || openRsHighLowClose.getDouble("LastTradedPrice") < low)
-							low = openRsHighLowClose.getDouble("LastTradedPrice");
-						if (null == high || openRsHighLowClose.getDouble("LastTradedPrice") > high)
-							high = openRsHighLowClose.getDouble("LastTradedPrice");
+						lastTradedPrice=openRsHighLowClose.getDouble("LastTradedPrice");
+						if (null == low || lastTradedPrice < low)
+							low = lastTradedPrice;
+						if (null == high || lastTradedPrice > high)
+							high = lastTradedPrice;
 						if (firstRecord) {
-							close = openRsHighLowClose.getDouble("LastTradedPrice");
+							close = lastTradedPrice;
 							firstRecord = false;
 						}
 					}

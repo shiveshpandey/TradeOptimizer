@@ -14,7 +14,7 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_END_TIME = "15:15:00";
 	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";
 	public static final String DB_CONNECTION_CLOSING_TIME = "15:30:00";
-	public static final int tokenCountForTrade = 30;
+	public static final int tokenCountForTrade = 100;
 	public static final int secondsValue = 1000;
 	public static final int averagePerScriptInvestment = 50000;
 
@@ -118,7 +118,7 @@ public class StreamingConfig {
 	}
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
-		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + "12122017";
+		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;
 	}
 
 	@SuppressWarnings("deprecation")
