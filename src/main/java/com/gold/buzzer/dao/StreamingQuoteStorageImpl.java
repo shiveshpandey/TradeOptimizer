@@ -257,7 +257,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT instrumentToken,lastwtdAvgclose,GREATEST(last10avghigh-last10avglow,last2avghigh-last2avglow,"
-				+"last3avghigh-last3avglow,last5avghigh-last5avglow,HighMinusLow,weightHighMinusLow) as highMinusLow, (lastclose+lasthigh+lastlow)/3.0 as cama_pp FROM "
+						+ "last3avghigh-last3avglow,last5avghigh-last5avglow,HighMinusLow,weightHighMinusLow) as highMinusLow, (lastclose+lasthigh+lastlow)/3.0 as cama_pp FROM "
 						+ quoteTable + "_instrumentDetails where instrumentToken in ("
 						+ commaSeperatedLongIDs(instrumentList) + ")";
 				ResultSet openRs = stmt.executeQuery(openSql);
@@ -483,13 +483,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 					Statement timeLoopRsStmt = conn.createStatement();
 
-					openSql = "SELECT LastTradedPrice FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-							+ "' and timestampGrp ='" + timeStampPeriodList.get(timeLoop) + "' ORDER BY id DESC ";
+					openSql = "SELECT LastTradedPrice FROM " + quoteTable + " where InstrumentToken ='"
+							+ instrumentToken + "' and timestampGrp ='" + timeStampPeriodList.get(timeLoop)
+							+ "' ORDER BY id DESC ";
 					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
 					boolean firstRecord = true;
-					Double lastTradedPrice=null;
+					Double lastTradedPrice = null;
 					while (openRsHighLowClose.next()) {
-						lastTradedPrice=openRsHighLowClose.getDouble("LastTradedPrice");
+						lastTradedPrice = openRsHighLowClose.getDouble("LastTradedPrice");
 						if (null == low || lastTradedPrice < low)
 							low = lastTradedPrice;
 						if (null == high || lastTradedPrice > high)

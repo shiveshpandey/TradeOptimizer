@@ -66,7 +66,7 @@ public class InstrumentVolatilityScore {
 		else if (breakage >= 2000)
 			this.lotSize = 2000;
 		else if (breakage < 2000 && breakage >= 1000)
-			this.lotSize = 1000;		
+			this.lotSize = 1000;
 		else if (breakage < 1000 && breakage >= 800)
 			this.lotSize = 900;
 		else if (breakage < 800 && breakage >= 600)
@@ -90,7 +90,7 @@ public class InstrumentVolatilityScore {
 		else if (breakage < 60 && breakage >= 40)
 			this.lotSize = 50;
 		else if (breakage < 40 && breakage >= 25)
-			this.lotSize = 30;		
+			this.lotSize = 30;
 		else if (breakage < 25 && breakage >= 10)
 			this.lotSize = 15;
 		else if (breakage < 10 && breakage >= 5)

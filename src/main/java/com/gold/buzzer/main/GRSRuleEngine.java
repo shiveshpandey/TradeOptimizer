@@ -50,16 +50,16 @@ import com.gold.buzzer.dao.StreamingQuoteStorageImpl;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
 import com.gold.buzzer.utils.StreamingConfig;
-import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
-import com.zerodhatech.kiteconnect.kitehttp.SessionExpiryHook;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Order;
 import com.zerodhatech.models.Tick;
+import com.zerodhatech.models.User;
 import com.zerodhatech.ticker.KiteTicker;
 import com.zerodhatech.ticker.OnConnect;
 import com.zerodhatech.ticker.OnDisconnect;
+import com.zerodhatech.ticker.OnTicks;
 
 @SuppressWarnings("deprecation")
 @Controller
@@ -104,7 +104,7 @@ public class GRSRuleEngine {
 	@RequestMapping(value = "/AuthRedirectWithToken", method = RequestMethod.GET)
 	public String authRedirectWithTokenPost(@RequestParam String status, @RequestParam String request_token) {
 		try {
-			UserModel userModel = kiteconnect.requestAccessToken(request_token, StreamingConfig.API_SECRET_KEY);
+			User userModel = kiteconnect.generateSession(request_token, StreamingConfig.API_SECRET_KEY);
 			kiteconnect.setAccessToken(userModel.accessToken);
 			kiteconnect.setPublicToken(userModel.publicToken);
 			startProcess();
@@ -114,20 +114,15 @@ public class GRSRuleEngine {
 		} catch (JSONException e) {
 			LOGGER.info("Error GRSRuleEngine.authRedirectWithTokenPost(): " + e.getMessage() + " >> " + e.getCause());
 			return "error";
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return "index";
 	}
 
-	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
-	// RequestMethod.GET })
+	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
-		kiteconnect.registerHook(new SessionExpiryHook() {
-			@Override
-			public void sessionExpired() {
-				LOGGER.info("Error GRSRuleEngine.localRedirect(): Session Expired");
-				localRedirect();
-			}
-		});
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
 		return redirectView;
@@ -328,7 +323,8 @@ public class GRSRuleEngine {
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 	}
 
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
+	// RequestMethod.GET })
 	public void startProcess() {
 		try {
 			TimeZone.setDefault(TimeZone.getTimeZone("IST"));
@@ -353,15 +349,15 @@ public class GRSRuleEngine {
 			} else {
 				fetchAndSaveInstrumentsInitialParamAndData();
 			}
-			// startLiveStreamOfSelectedInstruments();
+			startLiveStreamOfSelectedInstruments();
 
 			calculateStrategyAndSaveSignals();
 
-			// placeOrdersBasedOnSignals();
+			placeOrdersBasedOnSignals();
 
-			// orderStatusSyncBetweenLocalAndMarket();
+			orderStatusSyncBetweenLocalAndMarket();
 
-			// dayClosingStocksRoundOffOperations();
+			dayClosingStocksRoundOffOperations();
 
 		} catch (JSONException | ParseException e) {
 			LOGGER.info("Error GRSRuleEngine.startProcess(): " + e.getMessage() + " >> " + e.getCause());
@@ -421,33 +417,26 @@ public class GRSRuleEngine {
 		return streamingQuoteStorage.getBackendReadyFlag();
 	}
 
-	private void tickerSettingInitialization() {
-		tickerProvider = new KiteTicker(kiteconnect);
+	private void tickerSettingInitialization() throws KiteException {
+		tickerProvider = new KiteTicker(kiteconnect.getAccessToken(), kiteconnect.getApiKey());
 		tickerProvider.setTryReconnection(true);
 		try {
-			tickerProvider.setTimeIntervalForReconnection(5);
+			tickerProvider.setMaximumRetryInterval(5);
 		} catch (KiteException e) {
 			LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 			tickerStarted = false;
 		}
-		tickerProvider.setMaxRetries(-1);
+		tickerProvider.setMaximumRetries(-1);
 
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
 			public void onConnected() {
 				if (null != tokenListForTick
-						&& tickerProvider.getSubscribedTokenList().size() != tokenListForTick.size())
-					try {
-						tickerProvider.subscribe(tokenListForTick);
-						if (null != tokenListForTick && !tokenListForTick.isEmpty())
-							tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
-					} catch (KiteException e) {
-						LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
-						tickerStarted = false;
-					} catch (IOException | WebSocketException e) {
-						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
-						tickerStarted = false;
-					}
+						&& tickerProvider.getSubscribedTokens().size() != tokenListForTick.size()) {
+					tickerProvider.subscribe(tokenListForTick);
+					if (null != tokenListForTick && !tokenListForTick.isEmpty())
+						tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
+				}
 			}
 		});
 
@@ -458,16 +447,16 @@ public class GRSRuleEngine {
 			}
 		});
 
-		tickerProvider.setOnTickerArrivalListener(new OnTick() {
+		tickerProvider.setOnTickerArrivalListener(new OnTicks() {
 			@Override
-			public void onTick(ArrayList<Tick> ticks) {
+			public void onTicks(ArrayList<Tick> ticks) {
 				// if (null != quoteStreamingInstrumentsArr &&
 				// quoteStreamingInstrumentsArr.size() > 0)
 				// ticks = testingTickerData(quoteStreamingInstrumentsArr);
 				if (ticks.size() > 0)
 					streamingQuoteStorage.storeTickData(ticks);
 				else if (tickerStarted && (null != tickerProvider && null != tokenListForTick
-						&& tickerProvider.getSubscribedTokenList().size() != tokenListForTick.size()))
+						&& tickerProvider.getSubscribedTokens().size() != tokenListForTick.size()))
 					try {
 						tickerProvider.reconnect(tokenListForTick);
 					} catch (Exception e) {
@@ -483,7 +472,7 @@ public class GRSRuleEngine {
 		ArrayList<Tick> ticks = new ArrayList<Tick>();
 		for (int i = 0; i < quoteStreamingInstrumentsArr.size(); i++) {
 			Tick tick = new Tick();
-			tick.setToken(Integer.parseInt(quoteStreamingInstrumentsArr.get(i).toString()));
+			tick.setInstrumentToken(Integer.parseInt(quoteStreamingInstrumentsArr.get(i).toString()));
 			tick.setClosePrice(2000.0 + Math.random() * (5.0));
 			tick.setLowPrice(tick.getClosePrice() - (Math.random() * (3.0 * Math.random())));
 			tick.setHighPrice(tick.getClosePrice() + (Math.random() * (3.0 * Math.random())));
@@ -699,7 +688,7 @@ public class GRSRuleEngine {
 							try {
 								instrumentVolatilityScoreList = markInstrumentsTradable();
 
-								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect);
+								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
 								for (int count = 0; count < tempInstrumentList.size(); count++) {
 
 									Instrument temp = tempInstrumentList.get(count);
@@ -958,22 +947,16 @@ public class GRSRuleEngine {
 		if (null != tokenListForTick && tokenListForTick.size() > 0) {
 			try {
 				if (liveStreamFirstRun) {
-					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokenList().size() == 0
+					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokens().size() == 0
 							&& tokenListForTick.size() > 0))
 						tickerSettingInitialization();
 					tickerProvider.connect();
-					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokenList().size() == 0
+					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokens().size() == 0
 							&& tokenListForTick.size() > 0))
 						tickerProvider.subscribe(tokenListForTick);
 					tickerStarted = true;
 				}
-			} catch (IOException | WebSocketException e) {
-				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
-				tickerStarted = false;
-			} catch (KiteException e) {
-				LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
-				tickerStarted = false;
-			} catch (Exception e) {
+			} catch (Exception | KiteException e) {
 				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 				tickerStarted = false;
 			}
