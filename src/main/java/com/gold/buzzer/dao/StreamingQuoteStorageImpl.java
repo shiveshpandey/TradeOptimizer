@@ -266,16 +266,16 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					GoldBuzz cama = new GoldBuzz();
 
 					cama.setCamaPP(openRs.getDouble("cama_pp"));
-					cama.setCamaH1(openRs.getDouble("cama_pp") + (0.11 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH2(openRs.getDouble("cama_pp") + (0.2 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH3(openRs.getDouble("cama_pp") + (0.29 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH4(openRs.getDouble("cama_pp") + (0.38 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH5(openRs.getDouble("cama_pp") + (0.55 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL1(openRs.getDouble("cama_pp") - (0.11 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL2(openRs.getDouble("cama_pp") - (0.2 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL3(openRs.getDouble("cama_pp") - (0.29 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL4(openRs.getDouble("cama_pp") - (0.38 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL5(openRs.getDouble("cama_pp") - (0.55 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH1(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H1 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH2(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH3(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H3 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH4(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H4 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH5(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H5 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL1(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L1 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL2(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL3(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L3 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL4(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L4 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL5(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L5 * openRs.getDouble("highMinusLow")));
 
 					goldBuzzList.put(openRs.getString("instrumentToken"), cama);
 				}

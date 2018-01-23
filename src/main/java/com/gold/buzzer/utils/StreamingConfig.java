@@ -103,14 +103,17 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_MODE_QUOTE = "quote";
 	public static final String QUOTE_STREAMING_DEFAULT_MODE = QUOTE_STREAMING_MODE_QUOTE;
 
-	public static final double CAMA_H1 = 0.091;
-	public static final double CAMA_H2 = 0.183;
-	public static final double CAMA_H3 = 0.275;
-	public static final double CAMA_H4 = 0.55;
-	public static final double CAMA_L1 = 0.091;
-	public static final double CAMA_L2 = 0.183;
-	public static final double CAMA_L3 = 0.275;
-	public static final double CAMA_L4 = 0.55;
+	public static final double CAMA_H1 = 0.11;
+	public static final double CAMA_H2 = 0.2;
+	public static final double CAMA_H3 = 0.29;
+	public static final double CAMA_H4 = 0.38;
+	public static final double CAMA_H5 = 0.55;
+	
+	public static final double CAMA_L1 = 0.11;
+	public static final double CAMA_L2 = 0.2;
+	public static final double CAMA_L3 = 0.29;
+	public static final double CAMA_L4 = 0.38;
+	public static final double CAMA_L5 = 0.55;
 
 	public static String googleFetchDataString(String instrumentName, int days, int period) {
 		return "https://www.google.com/finance/getprices?f=d%2Cc%2Ch%2Cl%2Co&i=" + period + "&p=" + days + "d&q="
