@@ -65,9 +65,9 @@ import com.neovisionaries.ws.client.WebSocketException;
 
 @SuppressWarnings("deprecation")
 @Controller
-public class TradeOptimizer {
+public class GRSRuleEngine {
 
-	private final static Logger LOGGER = Logger.getLogger(TradeOptimizer.class.getName());
+	private final static Logger LOGGER = Logger.getLogger(GRSRuleEngine.class.getName());
 
 	private boolean liveStreamFirstRun = true;
 	private boolean tickerStarted = false;
@@ -111,21 +111,21 @@ public class TradeOptimizer {
 			kiteconnect.setPublicToken(userModel.publicToken);
 			startProcess();
 		} catch (KiteException e) {
-			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.message + " >> " + e.code);
+			LOGGER.info("Error GRSRuleEngine.authRedirectWithTokenPost(): " + e.message + " >> " + e.code);
 			return "error";
 		} catch (JSONException e) {
-			LOGGER.info("Error TradeOptimizer.authRedirectWithTokenPost(): " + e.getMessage() + " >> " + e.getCause());
+			LOGGER.info("Error GRSRuleEngine.authRedirectWithTokenPost(): " + e.getMessage() + " >> " + e.getCause());
 			return "error";
 		}
 		return "index";
 	}
 
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public RedirectView localRedirect() {
 		kiteconnect.registerHook(new SessionExpiryHook() {
 			@Override
 			public void sessionExpired() {
-				LOGGER.info("Error TradeOptimizer.localRedirect(): Session Expired");
+				LOGGER.info("Error GRSRuleEngine.localRedirect(): Session Expired");
 				localRedirect();
 			}
 		});
@@ -212,11 +212,11 @@ public class TradeOptimizer {
 					}
 					firstLine = false;
 				} catch (Exception e) {
-					LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+					LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 				}
 			}
 		} catch (IOException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+			LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 		}
 		return instrumentVolatilityScoreList;
 	}
@@ -272,11 +272,11 @@ public class TradeOptimizer {
 							}
 							j = j - 1.0;
 						} catch (Exception e) {
-							LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+							LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 						}
 					}
 			} catch (IOException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		streamingQuoteStorage.saveInstrumentTokenPriorityData(stocksSymbolArray);
@@ -319,18 +319,18 @@ public class TradeOptimizer {
 						} else
 							lineSkip = lineSkip - 1;
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			} catch (IOException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 	}
 
-	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
-	// RequestMethod.GET })
+	 @RequestMapping(value = "/start", method = { RequestMethod.POST,
+	 RequestMethod.GET })
 	public void startProcess() {
 		try {
 			TimeZone.setDefault(TimeZone.getTimeZone("IST"));
@@ -355,18 +355,18 @@ public class TradeOptimizer {
 			} else {
 				fetchAndSaveInstrumentsInitialParamAndData();
 			}
-			startLiveStreamOfSelectedInstruments();
+			//startLiveStreamOfSelectedInstruments();
 
 			calculateStrategyAndSaveSignals();
 
-			placeOrdersBasedOnSignals();
+			//placeOrdersBasedOnSignals();
 
-			orderStatusSyncBetweenLocalAndMarket();
+			//orderStatusSyncBetweenLocalAndMarket();
 
-			dayClosingStocksRoundOffOperations();
+			//dayClosingStocksRoundOffOperations();
 
 		} catch (JSONException | ParseException e) {
-			LOGGER.info("Error TradeOptimizer.startProcess(): " + e.getMessage() + " >> " + e.getCause());
+			LOGGER.info("Error GRSRuleEngine.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
 	}
 
@@ -407,11 +407,11 @@ public class TradeOptimizer {
 							runnable = false;
 						}
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+						LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -429,7 +429,7 @@ public class TradeOptimizer {
 		try {
 			tickerProvider.setTimeIntervalForReconnection(5);
 		} catch (KiteException e) {
-			LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+			LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 			tickerStarted = false;
 		}
 		tickerProvider.setMaxRetries(-1);
@@ -444,10 +444,10 @@ public class TradeOptimizer {
 						if (null != tokenListForTick && !tokenListForTick.isEmpty())
 							tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+						LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 						tickerStarted = false;
 					} catch (IOException | WebSocketException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 						tickerStarted = false;
 					}
 			}
@@ -473,7 +473,7 @@ public class TradeOptimizer {
 					try {
 						tickerProvider.reconnect(tokenListForTick);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 						tickerStarted = false;
 					}
 			}
@@ -515,7 +515,7 @@ public class TradeOptimizer {
 			try {
 				streamingQuoteStorage.createDaysStreamingQuoteTable();
 			} catch (SQLException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 	}
@@ -594,12 +594,12 @@ public class TradeOptimizer {
 							runnable = true;
 						}
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 						// } catch (KiteException e) {
-						// LOGGER.info("Error TradeOptimizer :- " + e.message +
+						// LOGGER.info("Error GRSRuleEngine :- " + e.message +
 						// " >> " + e.code);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -629,11 +629,11 @@ public class TradeOptimizer {
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (KiteException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+						LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -672,9 +672,9 @@ public class TradeOptimizer {
 							}
 						}
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -738,18 +738,18 @@ public class TradeOptimizer {
 								streamingQuoteStorage.saveBackendReadyFlag(backendReadyForProcessing);
 								runnable = false;
 							} catch (KiteException e) {
-								LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+								LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 							} catch (Exception e) {
-								LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+								LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 							}
 						} else {
 							runnable = false;
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
@@ -815,13 +815,13 @@ public class TradeOptimizer {
 							}
 							firstLine = false;
 						} catch (Exception e) {
-							LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+							LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 						}
 					}
 				}
 				zipFile.close();
 			} catch (Exception e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		streamingQuoteStorage.saveLast10DaysOHLCData(instrumentOHLCLast10DaysDataList);
@@ -832,7 +832,7 @@ public class TradeOptimizer {
 	// ArrayList<Long> previousQuoteStreamingInstrumentsArr) throws
 	// KiteException {
 	// // LOGGER.info("Entry
-	// // TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+	// // GRSRuleEngine.roundOfNonPerformingBoughtStocks()");
 	//
 	// ArrayList<Long> unSubList = new ArrayList<Long>();
 	// ArrayList<Long> subList = new ArrayList<Long>();
@@ -915,28 +915,28 @@ public class TradeOptimizer {
 	// tickerStarted = true;
 	// }
 	// } catch (WebSocketException | IOException e) {
-	// LOGGER.info("Error TradeOptimizer :- " + e.getMessage() +" >> " +
+	// LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() +" >> " +
 	// e.getCause());
 	// }
 	// }
 	//
 	// // LOGGER.info("Exit
-	// // TradeOptimizer.roundOfNonPerformingBoughtStocks()");
+	// // GRSRuleEngine.roundOfNonPerformingBoughtStocks()");
 	// }
 
 	private void calculateStrategyAndSaveSignals() {
 
-		Thread t = new Thread(new Runnable() {
+		/*Thread t = new Thread(new Runnable() {
 			private boolean runnable = true;
 
 			@Override
 			public void run() {
 
 				while (runnable) {
-					try {
+					try {*/
 						Date timeNow = Calendar.getInstance().getTime();
-						if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-							if (backendReadyForProcessing) {
+						//if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
+						//	if (backendReadyForProcessing) {
 								ArrayList<Long> instrumentList = getInstrumentTokensList();
 
 								if (null != instrumentList && instrumentList.size() > 0) {
@@ -944,21 +944,21 @@ public class TradeOptimizer {
 										streamingQuoteStorage.calculateAndSaveStrategy(instrumentList.get(i).toString(),
 												timeNow);
 								}
-							}
+							/*}
 							Thread.sleep(60 * seconds);
 						} else {
 							runnable = false;
 						}
 
 					} catch (InterruptedException e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					} catch (Exception e) {
-						LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			}
 		});
-		t.start();
+		t.start();*/
 	}
 
 	private void startStreamingQuote() {
@@ -976,13 +976,13 @@ public class TradeOptimizer {
 					tickerStarted = true;
 				}
 			} catch (IOException | WebSocketException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 				tickerStarted = false;
 			} catch (KiteException e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.message + " >> " + e.code);
+				LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 				tickerStarted = false;
 			} catch (Exception e) {
-				LOGGER.info("Error TradeOptimizer :- " + e.getMessage() + " >> " + e.getCause());
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 				tickerStarted = false;
 			}
 		}
