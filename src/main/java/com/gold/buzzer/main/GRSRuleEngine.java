@@ -47,21 +47,19 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import com.gold.buzzer.dao.StreamingQuoteStorage;
 import com.gold.buzzer.dao.StreamingQuoteStorageImpl;
-import com.gold.buzzer.exceptions.KiteException;
-import com.gold.buzzer.kiteconnect.KiteConnect;
-import com.gold.buzzer.kiteconnect.SessionExpiryHook;
-import com.gold.buzzer.models.Instrument;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
-import com.gold.buzzer.models.Order;
-import com.gold.buzzer.models.Tick;
-import com.gold.buzzer.models.UserModel;
-import com.gold.buzzer.tickerws.KiteTicker;
-import com.gold.buzzer.tickerws.OnConnect;
-import com.gold.buzzer.tickerws.OnDisconnect;
-import com.gold.buzzer.tickerws.OnTick;
 import com.gold.buzzer.utils.StreamingConfig;
 import com.neovisionaries.ws.client.WebSocketException;
+import com.zerodhatech.kiteconnect.KiteConnect;
+import com.zerodhatech.kiteconnect.kitehttp.SessionExpiryHook;
+import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
+import com.zerodhatech.models.Instrument;
+import com.zerodhatech.models.Order;
+import com.zerodhatech.models.Tick;
+import com.zerodhatech.ticker.KiteTicker;
+import com.zerodhatech.ticker.OnConnect;
+import com.zerodhatech.ticker.OnDisconnect;
 
 @SuppressWarnings("deprecation")
 @Controller
@@ -89,7 +87,7 @@ public class GRSRuleEngine {
 	private KiteTicker tickerProvider;
 	private List<InstrumentVolatilityScore> instrumentVolatilityScoreList = new ArrayList<InstrumentVolatilityScore>();
 	private static Set<String> nseTradableInstrumentSymbol = new HashSet<String>();
-	private String url = kiteconnect.getLoginUrl();
+	private String url = kiteconnect.getLoginURL();
 	private String todaysDate, quoteStartTime, quoteEndTime, quotePrioritySettingTime, dbConnectionClosingTime;
 
 	private DateFormat dtFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -120,7 +118,8 @@ public class GRSRuleEngine {
 		return "index";
 	}
 
-	//@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
+	// RequestMethod.GET })
 	public RedirectView localRedirect() {
 		kiteconnect.registerHook(new SessionExpiryHook() {
 			@Override
@@ -329,8 +328,7 @@ public class GRSRuleEngine {
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 	}
 
-	 @RequestMapping(value = "/start", method = { RequestMethod.POST,
-	 RequestMethod.GET })
+	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
 	public void startProcess() {
 		try {
 			TimeZone.setDefault(TimeZone.getTimeZone("IST"));
@@ -355,15 +353,15 @@ public class GRSRuleEngine {
 			} else {
 				fetchAndSaveInstrumentsInitialParamAndData();
 			}
-			//startLiveStreamOfSelectedInstruments();
+			// startLiveStreamOfSelectedInstruments();
 
 			calculateStrategyAndSaveSignals();
 
-			//placeOrdersBasedOnSignals();
+			// placeOrdersBasedOnSignals();
 
-			//orderStatusSyncBetweenLocalAndMarket();
+			// orderStatusSyncBetweenLocalAndMarket();
 
-			//dayClosingStocksRoundOffOperations();
+			// dayClosingStocksRoundOffOperations();
 
 		} catch (JSONException | ParseException e) {
 			LOGGER.info("Error GRSRuleEngine.startProcess(): " + e.getMessage() + " >> " + e.getCause());
@@ -926,39 +924,33 @@ public class GRSRuleEngine {
 
 	private void calculateStrategyAndSaveSignals() {
 
-		/*Thread t = new Thread(new Runnable() {
-			private boolean runnable = true;
+		/*
+		 * Thread t = new Thread(new Runnable() { private boolean runnable =
+		 * true;
+		 * 
+		 * @Override public void run() {
+		 * 
+		 * while (runnable) { try {
+		 */
+		Date timeNow = Calendar.getInstance().getTime();
+		// if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd)
+		// <= 0) {
+		// if (backendReadyForProcessing) {
+		ArrayList<Long> instrumentList = getInstrumentTokensList();
 
-			@Override
-			public void run() {
-
-				while (runnable) {
-					try {*/
-						Date timeNow = Calendar.getInstance().getTime();
-						//if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0) {
-						//	if (backendReadyForProcessing) {
-								ArrayList<Long> instrumentList = getInstrumentTokensList();
-
-								if (null != instrumentList && instrumentList.size() > 0) {
-									for (int i = 0; i < instrumentList.size(); i++)
-										streamingQuoteStorage.calculateAndSaveStrategy(instrumentList.get(i).toString(),
-												timeNow);
-								}
-							/*}
-							Thread.sleep(60 * seconds);
-						} else {
-							runnable = false;
-						}
-
-					} catch (InterruptedException e) {
-						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
-					} catch (Exception e) {
-						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
-					}
-				}
-			}
-		});
-		t.start();*/
+		if (null != instrumentList && instrumentList.size() > 0) {
+			for (int i = 0; i < instrumentList.size(); i++)
+				streamingQuoteStorage.calculateAndSaveStrategy(instrumentList.get(i).toString(), timeNow);
+		}
+		/*
+		 * } Thread.sleep(60 * seconds); } else { runnable = false; }
+		 * 
+		 * } catch (InterruptedException e) {
+		 * LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " +
+		 * e.getCause()); } catch (Exception e) {
+		 * LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " +
+		 * e.getCause()); } } } }); t.start();
+		 */
 	}
 
 	private void startStreamingQuote() {

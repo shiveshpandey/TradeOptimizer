@@ -8,11 +8,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.gold.buzzer.models.Instrument;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
-import com.gold.buzzer.models.Order;
-import com.gold.buzzer.models.Tick;
+import com.zerodhatech.models.Instrument;
+import com.zerodhatech.models.Order;
+import com.zerodhatech.models.Tick;
 
 public interface StreamingQuoteStorage {
 

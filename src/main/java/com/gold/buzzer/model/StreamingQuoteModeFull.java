@@ -1,5 +1,7 @@
 package com.gold.buzzer.model;
 
+import com.zerodhatech.models.MarketDepth;
+
 public class StreamingQuoteModeFull extends StreamingQuoteModeQuote {
 	public MarketDepth bidEntry1;
 	public MarketDepth bidEntry2;

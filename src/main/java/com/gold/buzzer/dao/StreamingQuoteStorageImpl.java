@@ -21,12 +21,12 @@ import java.util.logging.Logger;
 
 import com.gold.buzzer.models.GoldBuzz;
 import com.gold.buzzer.models.GoldBuzzSignal;
-import com.gold.buzzer.models.Instrument;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
-import com.gold.buzzer.models.Order;
-import com.gold.buzzer.models.Tick;
 import com.gold.buzzer.utils.StreamingConfig;
+import com.zerodhatech.models.Instrument;
+import com.zerodhatech.models.Order;
+import com.zerodhatech.models.Tick;
 
 public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private final static Logger LOGGER = Logger.getLogger(StreamingQuoteStorageImpl.class.getName());
@@ -181,7 +181,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					try {
 						Date date = dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime()));
 						prepStmt.setTimestamp(1, new Timestamp(date.getTime()));
-						prepStmt.setString(2, String.valueOf(tick.getToken()));
+						prepStmt.setString(2, String.valueOf(tick.getInstrumentToken()));
 						prepStmt.setDouble(3, tick.getLastTradedPrice());
 						prepStmt.setLong(4, (long) tick.getLastTradedQuantity());
 						prepStmt.setDouble(5, tick.getAverageTradePrice());
@@ -368,7 +368,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					prepStmt.setString(5, instrument.getName());
 					prepStmt.setString(6, String.valueOf(instrument.getLast_price()));
 					prepStmt.setString(7, String.valueOf(instrument.getTick_size()));
-					prepStmt.setString(8, instrument.getExpiry());
+					prepStmt.setString(8, String.valueOf(instrument.getExpiry()));
 					prepStmt.setString(9, instrument.getInstrument_type());
 					prepStmt.setString(10, instrument.getSegment());
 					prepStmt.setString(11, instrument.getExchange());
