@@ -180,7 +180,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					Tick tick = ticks.get(index);
 					try {
 						Date date = dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime()));
-						prepStmt.setTimestamp(1, new Timestamp(date.getTime()));
+						prepStmt.setTimestamp(1, new Timestamp(tick.getTickTimestamp().getTime()));
 						prepStmt.setString(2, String.valueOf(tick.getInstrumentToken()));
 						prepStmt.setDouble(3, tick.getLastTradedPrice());
 						prepStmt.setLong(4, (long) tick.getLastTradedQuantity());

@@ -44,9 +44,9 @@ public class KiteRequestHandler {
 			builder.proxy(proxy);
 		}
 
-		HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-		logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 		if (KiteConnect.ENABLE_LOGGING) {
+			HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+			logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 			client = builder.addInterceptor(logging).build();
 		} else {
 			client = builder.build();
