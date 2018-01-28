@@ -14,8 +14,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 
@@ -41,6 +43,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 	private static String quoteTable = null;
 	private static HashMap<String, GoldBuzz> goldBuzzList = new HashMap<String, GoldBuzz>();
+	private static Set<String> forbiddenGoldBuzzList = new HashSet<String>();
 
 	@Override
 	public void initializeJDBCConn() {
@@ -266,16 +269,26 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					GoldBuzz cama = new GoldBuzz();
 
 					cama.setCamaPP(openRs.getDouble("cama_pp"));
-					cama.setCamaH1(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H1 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH2(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H2 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH3(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H3 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH4(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H4 * openRs.getDouble("highMinusLow")));
-					cama.setCamaH5(openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H5 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL1(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L1 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL2(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L2 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL3(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L3 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL4(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L4 * openRs.getDouble("highMinusLow")));
-					cama.setCamaL5(openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L5 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH1(
+							openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H1 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH2(
+							openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH3(
+							openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H3 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH4(
+							openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H4 * openRs.getDouble("highMinusLow")));
+					cama.setCamaH5(
+							openRs.getDouble("cama_pp") + (StreamingConfig.CAMA_H5 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL1(
+							openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L1 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL2(
+							openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L2 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL3(
+							openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L3 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL4(
+							openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L4 * openRs.getDouble("highMinusLow")));
+					cama.setCamaL5(
+							openRs.getDouble("cama_pp") - (StreamingConfig.CAMA_L5 * openRs.getDouble("highMinusLow")));
 
 					goldBuzzList.put(openRs.getString("instrumentToken"), cama);
 				}
@@ -393,7 +406,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 	}
 
-	private String lotSizeOnInstrumentToken(String instrumentToken, String buyOrSell) throws SQLException {
+	private String lotSizeOnInstrumentToken(String instrumentToken, String buyOrSell, boolean directionalMove)
+			throws SQLException {
 		String lotSize = "";
 		Statement stmt = conn.createStatement();
 		int totalQuantityProcessed = 0, unitQuantity = 0;
@@ -407,7 +421,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 		totalQuantityProcessed = fetchOrderedHistQuantity(instrumentToken);
 
-		if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0) {
+		if (directionalMove) {
+
+		} else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0) {
 			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
 			if (unitQuantity * 3 < totalQuantityProcessed * (-1))
 				lotSize = "";
@@ -567,7 +583,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
 		prepStmt.setString(2, instrumentToken);
-		String temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF");
+		String temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", false);
 		if (!"".equalsIgnoreCase(temp1)) {
 			int q = Integer.parseInt(temp1);
 			if (q > 0) {
@@ -636,7 +652,37 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					&& signalClose.getSignal() != 1 && !firstRecord && firstClose != StreamingConfig.MAX_VALUE
 					&& firstClose != 0.0) {
 
-				saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
+				if (signalClose.getSignal() != -10) {
+					saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
+					if (forbiddenGoldBuzzList.contains(instrumentToken))
+						forbiddenGoldBuzzList.remove(instrumentToken);
+				} else if (forbiddenGoldBuzzList.contains(instrumentToken)) {
+
+					stmt = conn.createStatement();
+					openSql = "SELECT ProcessSignal,TradePrice FROM " + quoteTable + "_Signal where InstrumentToken='"
+							+ instrumentToken + "' ORDER BY id DESC LIMIT 2";
+					ResultSet openRs = stmt.executeQuery(openSql);
+					String[] processSignal = new String[2];
+					double[] tradePrice = new double[2];
+					int i = 0;
+
+					while (openRs.next()) {
+						processSignal[i] = openRs.getString(1);
+						tradePrice[i] = openRs.getDouble(2);
+						i++;
+					}
+					if (processSignal[0].contains("BUY") && processSignal[1].contains("BUY")
+							&& firstClose >= tradePrice[1] * 1.005) {
+						signalClose.setSignal(0);
+						saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
+					} else if (processSignal[0].contains("SELL") && processSignal[1].contains("SELL")
+							&& firstClose <= tradePrice[1] * 0.995) {
+						signalClose.setSignal(2);
+						saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
+					}
+					stmt.close();
+				} else if (signalClose.getSignal() == -10)
+					saveGoldBuzzSignalOnDirectinalMove(instrumentToken, signalClose, firstClose, firstRowId);
 
 				Statement stmtForUpdate = conn.createStatement();
 				if (lastRowId > 0) {
@@ -661,6 +707,67 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		LOGGER.info("Exit		 StreamingQuoteStorageImpl.goldBuzzStrategy()");
 	}
 
+	private void saveGoldBuzzSignalOnDirectinalMove(String instrumentToken, GoldBuzzSignal signalClose,
+			double firstClose, int firstRowId) throws SQLException {
+
+		String sql = "INSERT INTO " + quoteTable + "_Signal "
+				+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey,SignalLevel) "
+				+ "values(?,?,?,?,?,?,?,?)";
+		PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+		prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+		prepStmt.setString(2, instrumentToken);
+		String temp1 = "";
+
+		temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", false);
+		if (!"".equalsIgnoreCase(temp1)) {
+			int q = Integer.parseInt(temp1);
+			if (q > 0) {
+				prepStmt.setString(4, "SELLOFF");
+				prepStmt.setString(3, q + "");
+			} else if (q == 0) {
+				temp1 = "";
+			} else {
+				prepStmt.setString(4, "BUYOFF");
+				prepStmt.setString(3, (q + "").replaceAll("-", ""));
+			}
+		}
+		prepStmt.setString(5, "active");
+		prepStmt.setDouble(6, firstClose);
+		prepStmt.setDouble(7, firstRowId);
+		prepStmt.setString(8, signalClose.getSignalLevel());
+		if (!"".equalsIgnoreCase(temp1) && !forbiddenGoldBuzzList.contains(instrumentToken)) {
+			prepStmt.executeUpdate();
+		}
+		prepStmt.close();
+
+		prepStmt = conn.prepareStatement(sql);
+
+		prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+		prepStmt.setString(2, instrumentToken);
+
+		temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", true);
+
+		if (!"".equalsIgnoreCase(temp1)) {
+			if (signalClose.getSignalLevel().equalsIgnoreCase("L5")) {
+				prepStmt.setString(4, "SELL");
+				prepStmt.setString(3, temp1);
+			} else if (signalClose.getSignalLevel().equalsIgnoreCase("H5")) {
+				prepStmt.setString(4, "BUY");
+				prepStmt.setString(3, temp1);
+			}
+		}
+		prepStmt.setString(5, "active");
+		prepStmt.setDouble(6, firstClose);
+		prepStmt.setDouble(7, firstRowId);
+		prepStmt.setString(8, signalClose.getSignalLevel());
+		if (!"".equalsIgnoreCase(temp1) && !forbiddenGoldBuzzList.contains(instrumentToken)) {
+			prepStmt.executeUpdate();
+		}
+		prepStmt.close();
+		forbiddenGoldBuzzList.add(instrumentToken);
+	}
+
 	private void saveGoldBuzzSignal(String instrumentToken, GoldBuzzSignal signalClose, double firstClose,
 			double firstRowId) throws SQLException {
 
@@ -674,14 +781,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		String temp1 = "";
 		if (signalClose.getSignal() == 2) {
 			prepStmt.setString(4, "BUY");
-			temp1 = lotSizeOnInstrumentToken(instrumentToken, "BUY");
+			temp1 = lotSizeOnInstrumentToken(instrumentToken, "BUY", false);
 			prepStmt.setString(3, temp1);
 		} else if (signalClose.getSignal() == 0) {
 			prepStmt.setString(4, "SELL");
-			temp1 = lotSizeOnInstrumentToken(instrumentToken, "SELL");
+			temp1 = lotSizeOnInstrumentToken(instrumentToken, "SELL", false);
 			prepStmt.setString(3, temp1);
 		} else {
-			temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF");
+			temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", false);
 			if (!"".equalsIgnoreCase(temp1)) {
 				int q = Integer.parseInt(temp1);
 				if (q > 0) {
@@ -722,7 +829,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} else if (firstClose > goldBuzz.getCamaH4() && firstClose <= goldBuzz.getCamaH5()) {
 				signalClose = new GoldBuzzSignal(0, "H4");
 			} else if (firstClose > goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(-1, "H5");
+				signalClose = new GoldBuzzSignal(-10, "H5");
 
 			} else if (firstClose < goldBuzz.getCamaPP() && firstClose >= goldBuzz.getCamaL1()) {
 				signalClose = new GoldBuzzSignal(1, "L0");
@@ -735,7 +842,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} else if (firstClose < goldBuzz.getCamaL4() && firstClose >= goldBuzz.getCamaL5()) {
 				signalClose = new GoldBuzzSignal(1, "L4");
 			} else if (firstClose < goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(-1, "L5");
+				signalClose = new GoldBuzzSignal(-10, "L5");
 
 			} else
 				signalClose = new GoldBuzzSignal(1, "");
@@ -752,7 +859,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} else if (firstClose > goldBuzz.getCamaH4() && firstClose <= goldBuzz.getCamaH5()) {
 				signalClose = new GoldBuzzSignal(1, "H4");
 			} else if (firstClose > goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(-1, "H5");
+				signalClose = new GoldBuzzSignal(-10, "H5");
 
 			} else if (firstClose < goldBuzz.getCamaPP() && firstClose >= goldBuzz.getCamaL1()) {
 				signalClose = new GoldBuzzSignal(2, "L0");
@@ -765,7 +872,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			} else if (firstClose < goldBuzz.getCamaL4() && firstClose >= goldBuzz.getCamaL5()) {
 				signalClose = new GoldBuzzSignal(2, "L4");
 			} else if (firstClose < goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(-1, "L5");
+				signalClose = new GoldBuzzSignal(-10, "L5");
 
 			} else
 				signalClose = new GoldBuzzSignal(1, "");
