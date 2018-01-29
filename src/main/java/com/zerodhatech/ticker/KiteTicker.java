@@ -36,6 +36,7 @@ import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFactory;
 import com.neovisionaries.ws.client.WebSocketFrame;
+import com.neovisionaries.ws.client.WebSocketState;
 import com.zerodhatech.kiteconnect.Routes;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Depth;
@@ -407,6 +408,15 @@ public class KiteTicker {
 	public boolean isConnectionOpen() {
 		if (ws != null) {
 			if (ws.isOpen()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean isConnectionCreated() {
+		if (ws != null) {
+			if (ws.getState().equals(WebSocketState.CREATED)) {
 				return true;
 			}
 		}
@@ -816,6 +826,10 @@ public class KiteTicker {
 		});
 		Gson gson = gsonBuilder.setDateFormat("yyyy-MM-dd HH:mm:ss").create();
 		return gson.fromJson(String.valueOf(data.get("data")), Order.class);
+	}
+
+	public void addAllTokens(ArrayList<Long> tokenListForTick) {
+		subscribedTokens.addAll(tokenListForTick);
 	}
 
 }

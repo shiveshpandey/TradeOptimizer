@@ -426,7 +426,7 @@ public class GRSRuleEngine {
 			LOGGER.info("Error GRSRuleEngine :- " + e.message + " >> " + e.code);
 			tickerStarted = false;
 		}
-		tickerProvider.setMaximumRetries(-1);
+		tickerProvider.setMaximumRetries(10);
 
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			@Override
@@ -458,6 +458,8 @@ public class GRSRuleEngine {
 				else if (tickerStarted && (null != tickerProvider && null != tokenListForTick
 						&& tickerProvider.getSubscribedTokens().size() != tokenListForTick.size()))
 					try {
+						// if (!tickerProvider.isConnectionOpen())
+						tickerProvider.addAllTokens(tokenListForTick);
 						tickerProvider.reconnect(tokenListForTick);
 					} catch (Exception e) {
 						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
@@ -948,13 +950,17 @@ public class GRSRuleEngine {
 			try {
 				if (liveStreamFirstRun) {
 					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokens().size() == 0
-							&& tokenListForTick.size() > 0))
+							&& tokenListForTick.size() > 0)) {
 						tickerSettingInitialization();
-					tickerProvider.connect();
-					if (!tickerStarted || (null != tickerProvider && tickerProvider.getSubscribedTokens().size() == 0
-							&& tokenListForTick.size() > 0))
+
+						if (tickerProvider.isConnectionCreated())
+							tickerProvider.connect();
+						else if (!tickerProvider.isConnectionOpen())
+							tickerProvider.reconnect(tokenListForTick);
+
 						tickerProvider.subscribe(tokenListForTick);
-					tickerStarted = true;
+						tickerStarted = true;
+					}
 				}
 			} catch (Exception | KiteException e) {
 				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
