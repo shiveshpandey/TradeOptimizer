@@ -435,7 +435,7 @@ public class GRSRuleEngine {
 						&& tickerProvider.getSubscribedTokens().size() != tokenListForTick.size()) {
 					tickerProvider.subscribe(tokenListForTick);
 					if (null != tokenListForTick && !tokenListForTick.isEmpty())
-						tickerProvider.setMode(tokenListForTick, KiteTicker.modeQuote);
+						tickerProvider.setMode(tokenListForTick, KiteTicker.modeFull);
 				}
 			}
 		});

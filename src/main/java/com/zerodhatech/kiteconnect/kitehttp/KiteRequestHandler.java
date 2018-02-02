@@ -17,7 +17,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okhttp3.logging.HttpLoggingInterceptor;
 
 /**
  * Request handler for all Http requests
@@ -45,9 +44,9 @@ public class KiteRequestHandler {
 		}
 
 		if (KiteConnect.ENABLE_LOGGING) {
-			HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-			logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-			client = builder.addInterceptor(logging).build();
+			//HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+			//logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+			//client = builder.addInterceptor(logging).build();
 		} else {
 			client = builder.build();
 		}
