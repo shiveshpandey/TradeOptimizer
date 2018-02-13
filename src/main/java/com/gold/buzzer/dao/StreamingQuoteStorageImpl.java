@@ -895,7 +895,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		}
 		stmt.close();
 
-		if ((("".equalsIgnoreCase(preSignalLevel) && "".equalsIgnoreCase(preSignal))) || signalClose.getSignal() == 1) {
+		if ((("".equalsIgnoreCase(preSignalLevel) && "".equalsIgnoreCase(preSignal))) 
+				|| signalClose.getSignal() == 1 || signalClose.getSignal() == -10) {
 			return signalClose;
 		} else {
 			int tempsignal1 = Integer.parseInt(preSignalLevel.substring(1));
