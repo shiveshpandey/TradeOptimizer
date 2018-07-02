@@ -26,6 +26,7 @@ import com.gold.buzzer.models.GoldBuzzSignal;
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
 import com.gold.buzzer.utils.StreamingConfig;
+import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Order;
 import com.zerodhatech.models.Tick;
@@ -39,10 +40,14 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 	private static final String USER = StreamingConfig.QUOTE_STREAMING_DB_USER;
 	private static final String PASS = StreamingConfig.QUOTE_STREAMING_DB_PWD;
 	private DateFormat dtTmFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	SimpleDateFormat histDataFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+
 	private Connection conn = null;
 
 	private static String quoteTable = null;
+	private static String preQuoteTable = null;
 	private static HashMap<String, GoldBuzz> goldBuzzList = new HashMap<String, GoldBuzz>();
+	private static HashMap<String, Integer> trendPositiveList = new HashMap<String, Integer>();
 	private static Set<String> forbiddenGoldBuzzList = new HashSet<String>();
 
 	@Override
@@ -55,6 +60,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			timeLoopRsStmt.executeQuery("SET GLOBAL time_zone = '+5:30'");
 			timeLoopRsStmt.close();
 			quoteTable = StreamingConfig.getStreamingQuoteTbNameAppendFormat(
+					new SimpleDateFormat("ddMMyyyy").format(Calendar.getInstance().getTime()));
+			preQuoteTable = StreamingConfig.getPreStreamingQuoteTbNameAppendFormat(
 					new SimpleDateFormat("ddMMyyyy").format(Calendar.getInstance().getTime()));
 
 		} catch (ClassNotFoundException e) {
@@ -234,9 +241,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				Statement stmt = conn.createStatement();
 				String openSql = "SELECT distinct InstrumentToken FROM " + quoteTable
-						+ "_instrumentDetails where tradable='tradable' and lotsize != '0' and lotsize != 'null' and ((PriorityPoint > 0.0 and dailyWtdVolatility >= 1.91)"
-						+ " or dailyWtdVolatility >= 2.09) and lastclose > 50.0 and lastclose < 2000.0 ORDER BY dailyWtdVolatility DESC,PriorityPoint DESC,id desc LIMIT "
-						+ i + "";
+						+ "_instrumentDetails ORDER BY dailyWtdVolatility DESC,PriorityPoint DESC,id desc LIMIT " + i
+						+ "";
 				ResultSet openRs = stmt.executeQuery(openSql);
 				while (openRs.next()) {
 					instrumentList.add(Long.valueOf(openRs.getString(1)));
@@ -251,7 +257,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			LOGGER.info("StreamingQuoteStorageImpl.getTopPrioritizedTokenList(): ERROR: DB conn is null !!!");
 		}
 
-		calculateAndCacheGoldBuzzLevelData(instrumentList);
+		// calculateAndCacheGoldBuzzLevelData(instrumentList);
 
 		return instrumentList;
 	}
@@ -426,23 +432,19 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (directionalMove) {
 
 		} else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0) {
-			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
-			if (unitQuantity * 3 < totalQuantityProcessed * (-1))
+			lotSize = (unitQuantity + "").replaceAll("-", "");
+			if (unitQuantity * 2 <= totalQuantityProcessed * (-1))
 				lotSize = "";
 		} else if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0) {
-			lotSize = totalQuantityProcessed + "";
-			if (unitQuantity * 3 < totalQuantityProcessed)
+			lotSize = unitQuantity + "";
+			if (unitQuantity * 2 <= totalQuantityProcessed)
 				lotSize = "";
 		} else if ("SQUAREOFF".equalsIgnoreCase(buyOrSell))
 			lotSize = totalQuantityProcessed + "";
 		else if ("SELL".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed > 0) {
 			lotSize = totalQuantityProcessed + "";
-			if (unitQuantity * 3 < totalQuantityProcessed)
-				lotSize = "";
 		} else if ("BUY".equalsIgnoreCase(buyOrSell) && totalQuantityProcessed < 0) {
 			lotSize = (totalQuantityProcessed + "").replaceAll("-", "");
-			if (unitQuantity * 3 < totalQuantityProcessed * (-1))
-				lotSize = "";
 		}
 
 		stmt.close();
@@ -469,91 +471,79 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null) {
 			try {
 
-				Date endDateTime = dtTmFmt.parse(dtTmFmt.format(endingTimeToMatch));
-				endDateTime.setSeconds(0);
-				Timestamp endTime = new Timestamp(endDateTime.getTime());
+				/*
+				 * Date endDateTime = dtTmFmt.parse(dtTmFmt.format(endingTimeToMatch));
+				 * endDateTime.setSeconds(0); Timestamp endTime = new
+				 * Timestamp(endDateTime.getTime());
+				 * 
+				 * ArrayList<Timestamp> timeStampPeriodList = new ArrayList<Timestamp>();
+				 * ArrayList<Integer> idsList = new ArrayList<Integer>();
+				 * 
+				 * Statement timeStampRsStmt = conn.createStatement();
+				 * 
+				 * String openSql = "SELECT id FROM " + quoteTable + " where InstrumentToken ='"
+				 * + instrumentToken + "' and usedForSignal != 'used' and timestampGrp <'" +
+				 * endTime + "' ORDER BY Time ASC,id asc "; ResultSet timeStampRs =
+				 * timeStampRsStmt.executeQuery(openSql); while (timeStampRs.next()) {
+				 * idsList.add(timeStampRs.getInt(1)); } if (null != idsList && idsList.size() >
+				 * 0) { openSql = "SELECT distinct timestampGrp FROM " + quoteTable +
+				 * " where id in(" + commaSeperatedIDs(idsList) + ") ORDER BY Time ASC,id asc ";
+				 * timeStampRs = timeStampRsStmt.executeQuery(openSql); while
+				 * (timeStampRs.next()) {
+				 * timeStampPeriodList.add(timeStampRs.getTimestamp("timestampGrp")); } }
+				 * timeStampRsStmt.close();
+				 * 
+				 * for (int timeLoop = 0; timeLoop < timeStampPeriodList.size(); timeLoop++) {
+				 * Double low = null; Double high = null; Double close = null;
+				 * 
+				 * Statement timeLoopRsStmt = conn.createStatement();
+				 * 
+				 * openSql = "SELECT LastTradedPrice FROM " + quoteTable +
+				 * " where InstrumentToken ='" + instrumentToken + "' and timestampGrp ='" +
+				 * timeStampPeriodList.get(timeLoop) + "' ORDER BY id DESC "; ResultSet
+				 * openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql); boolean
+				 * firstRecord = true; Double lastTradedPrice = null; while
+				 * (openRsHighLowClose.next()) { lastTradedPrice =
+				 * openRsHighLowClose.getDouble("LastTradedPrice"); if (null == low ||
+				 * lastTradedPrice < low) low = lastTradedPrice; if (null == high ||
+				 * lastTradedPrice > high) high = lastTradedPrice; if (firstRecord) { close =
+				 * lastTradedPrice; firstRecord = false; } } if (null == low || null == high ||
+				 * null == close) continue;
+				 * 
+				 * String sql = "INSERT INTO " + quoteTable + "_signalParams " +
+				 * "(Time,InstrumentToken,high,low,close,timestampGrp) values(?,?,?,?,?,?)";
+				 * PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
+				 * 
+				 * prepStmtInsertSignalParams.setTimestamp(1, new
+				 * Timestamp(dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime())).
+				 * getTime())); prepStmtInsertSignalParams.setTimestamp(6,
+				 * timeStampPeriodList.get(timeLoop)); prepStmtInsertSignalParams.setString(2,
+				 * instrumentToken); prepStmtInsertSignalParams.setDouble(3, high);
+				 * prepStmtInsertSignalParams.setDouble(4, low);
+				 * prepStmtInsertSignalParams.setDouble(5, close);
+				 * 
+				 * prepStmtInsertSignalParams.executeUpdate();
+				 * 
+				 * prepStmtInsertSignalParams.close(); timeLoopRsStmt.close(); }
+				 */
 
-				ArrayList<Timestamp> timeStampPeriodList = new ArrayList<Timestamp>();
-				ArrayList<Integer> idsList = new ArrayList<Integer>();
+				// if (null != idsList && idsList.size() > 0) {
+				// executeBatchGoldBuzzStrategy(instrumentToken);
+				executeBatchAOStrategy(instrumentToken);
+				// executeGoldBuzzStrategy(instrumentToken);
 
-				Statement timeStampRsStmt = conn.createStatement();
+				// put it on day end
+				executeGoldBuzzStrategyCloseRoundOff(instrumentToken);
+				// forbiddenGoldBuzzList.clear();
+				// }
 
-				String openSql = "SELECT id FROM " + quoteTable + " where InstrumentToken ='" + instrumentToken
-						+ "' and usedForSignal != 'used' and timestampGrp <'" + endTime + "' ORDER BY Time ASC,id asc ";
-				ResultSet timeStampRs = timeStampRsStmt.executeQuery(openSql);
-				while (timeStampRs.next()) {
-					idsList.add(timeStampRs.getInt(1));
-				}
-				if (null != idsList && idsList.size() > 0) {
-					openSql = "SELECT distinct timestampGrp FROM " + quoteTable + " where id in("
-							+ commaSeperatedIDs(idsList) + ") ORDER BY Time ASC,id asc ";
-					timeStampRs = timeStampRsStmt.executeQuery(openSql);
-					while (timeStampRs.next()) {
-						timeStampPeriodList.add(timeStampRs.getTimestamp("timestampGrp"));
-					}
-				}
-				timeStampRsStmt.close();
-
-				for (int timeLoop = 0; timeLoop < timeStampPeriodList.size(); timeLoop++) {
-					Double low = null;
-					Double high = null;
-					Double close = null;
-
-					Statement timeLoopRsStmt = conn.createStatement();
-
-					openSql = "SELECT LastTradedPrice FROM " + quoteTable + " where InstrumentToken ='"
-							+ instrumentToken + "' and timestampGrp ='" + timeStampPeriodList.get(timeLoop)
-							+ "' ORDER BY id DESC ";
-					ResultSet openRsHighLowClose = timeLoopRsStmt.executeQuery(openSql);
-					boolean firstRecord = true;
-					Double lastTradedPrice = null;
-					while (openRsHighLowClose.next()) {
-						lastTradedPrice = openRsHighLowClose.getDouble("LastTradedPrice");
-						if (null == low || lastTradedPrice < low)
-							low = lastTradedPrice;
-						if (null == high || lastTradedPrice > high)
-							high = lastTradedPrice;
-						if (firstRecord) {
-							close = lastTradedPrice;
-							firstRecord = false;
-						}
-					}
-					if (null == low || null == high || null == close)
-						continue;
-
-					String sql = "INSERT INTO " + quoteTable + "_signalParams "
-							+ "(Time,InstrumentToken,high,low,close,timestampGrp) values(?,?,?,?,?,?)";
-					PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
-
-					prepStmtInsertSignalParams.setTimestamp(1,
-							new Timestamp(dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime())).getTime()));
-					prepStmtInsertSignalParams.setTimestamp(6, timeStampPeriodList.get(timeLoop));
-					prepStmtInsertSignalParams.setString(2, instrumentToken);
-					prepStmtInsertSignalParams.setDouble(3, high);
-					prepStmtInsertSignalParams.setDouble(4, low);
-					prepStmtInsertSignalParams.setDouble(5, close);
-
-					prepStmtInsertSignalParams.executeUpdate();
-
-					prepStmtInsertSignalParams.close();
-					timeLoopRsStmt.close();
-				}
-
-				if (null != idsList && idsList.size() > 0) {
-					executeGoldBuzzStrategy(instrumentToken);
-
-					// put it on day end
-					executeGoldBuzzStrategyCloseRoundOff(instrumentToken);
-				}
-
-				if (null != idsList && idsList.size() > 0) {
-					Statement usedUpdateRsStmt = conn.createStatement();
-					openSql = "update " + quoteTable + " set usedForSignal ='used' where id in("
-							+ commaSeperatedIDs(idsList) + ")";
-					usedUpdateRsStmt.executeUpdate(openSql);
-					usedUpdateRsStmt.close();
-				}
-			} catch (SQLException | ParseException e) {
+				/*
+				 * if (null != idsList && idsList.size() > 0) { Statement usedUpdateRsStmt =
+				 * conn.createStatement(); openSql = "update " + quoteTable +
+				 * " set usedForSignal ='used' where id in(" + commaSeperatedIDs(idsList) + ")";
+				 * usedUpdateRsStmt.executeUpdate(openSql); usedUpdateRsStmt.close(); }
+				 */
+			} catch (SQLException e) {
 				LOGGER.info(
 						"StreamingQuoteStorageImpl.calculateAndSaveStrategy(): ERROR: SQLException on fetching data from Table, cause: "
 								+ e.getMessage() + ">>" + e.getCause());
@@ -561,6 +551,360 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.calculateAndSaveStrategy(): ERROR: DB conn is null !!!");
+		}
+	}
+
+	private void executeBatchAOStrategy(String instrumentToken) throws SQLException {
+		class PriceArray {
+			Integer id;
+			double price;
+			double high;
+			double low;
+			double sma29;
+			double sma11;
+			GoldBuzzSignal goldBuzzSignal;
+			double aoVal;
+			double k11;
+			double k20;
+			double k29;
+
+			void calculateSma11(List<PriceArray> priceArrayList) {
+				for (int i = 0; i < priceArrayList.size(); i++) {
+					this.sma11 += ((priceArrayList.get(i).low + priceArrayList.get(i).high) / 2);
+				}
+			}
+
+			void calculateSma29(List<PriceArray> priceArrayList) {
+				for (int i = 0; i < priceArrayList.size(); i++) {
+					this.sma11 += ((priceArrayList.get(i).low + priceArrayList.get(i).high) / 2);
+				}
+			}
+
+			void finalizeSma11() {
+				this.sma11 = this.sma11 / 11;
+			}
+
+			void finalizeSma29() {
+				this.sma29 = this.sma29 / 29;
+			}
+
+			void calculateK11(List<PriceArray> priceArrayList) {
+				double high = 0.0;
+				double low = 999999999.0;
+				for (int j = 0; j < priceArrayList.size(); j++) {
+					if (low > priceArrayList.get(j).low) {
+						low = priceArrayList.get(j).low;
+					}
+					if (high < priceArrayList.get(j).high) {
+						high = priceArrayList.get(j).high;
+					}
+				}
+				this.k11 = ((this.price - low) * 100) / (high - low);
+			}
+
+			void calculateK20(List<PriceArray> priceArrayList) {
+				double high = 0.0;
+				double low = 999999999.0;
+				for (int j = 0; j < priceArrayList.size(); j++) {
+					if (low > priceArrayList.get(j).low) {
+						low = priceArrayList.get(j).low;
+					}
+					if (high < priceArrayList.get(j).high) {
+						high = priceArrayList.get(j).high;
+					}
+				}
+				this.k20 = ((this.price - low) * 100) / (high - low);
+			}
+
+			void calculateK29(List<PriceArray> priceArrayList) {
+				double high = 0.0;
+				double low = 999999999.0;
+				for (int j = 0; j < priceArrayList.size(); j++) {
+					if (low > priceArrayList.get(j).low) {
+						low = priceArrayList.get(j).low;
+					}
+					if (high < priceArrayList.get(j).high) {
+						high = priceArrayList.get(j).high;
+					}
+				}
+				this.k29 = ((this.price - low) * 100) / (high - low);
+			}
+
+			public void finalizeAO() {
+				this.aoVal = this.sma11 - this.sma29;
+			}
+		}
+		ArrayList<PriceArray> priceList = new ArrayList<PriceArray>();
+		String openSql = "select * from (select -(100000-x.id) as id,x.close,x.high,x.low FROM " + preQuoteTable
+				+ "_signalparams x where x.instrumenttoken='" + instrumentToken
+				+ "' order by x.timestampgrp desc limit 28) y order by y.id asc";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(openSql);
+		PriceArray priceArray;
+		while (rs.next()) {
+			priceArray = new PriceArray();
+			priceArray.price = rs.getDouble("close");
+			priceArray.high = rs.getDouble("high");
+			priceArray.low = rs.getDouble("low");
+			priceArray.id = rs.getInt("id");
+			priceArray.goldBuzzSignal = new GoldBuzzSignal(1, "");
+			priceList.add(priceArray);
+		}
+		stmt.close();
+
+		openSql = "select x.id,x.close,x.sma29,y.sma11,((x.close-zz.min11)*100)/(zz.max11-zz.min11) as k11,"
+				+ "((x.close-yy.min20)*100)/(yy.max20-yy.min20) as k20,((x.close-xx.min29)*100)/(xx.max29-xx.min29) as k29 "
+				+ "from (SELECT a.id,a.close,a.instrumenttoken,a.timestampGrp,sum((b.high+b.low)/2) as sma29"
+				+ "  FROM " + quoteTable + "_signalparams a," + quoteTable + "_signalparams b where a.instrumenttoken='"
+				+ instrumentToken
+				+ "' and b.instrumenttoken=a.instrumenttoken and TIMEDIFF(a.timestampGrp,b.timestampGrp) < '00:29:00' and "
+				+ "TIMEDIFF(a.timestampGrp,b.timestampGrp) >= '00:00:00' group by a.timestampGrp order by a.timestampgrp,b.timestampgrp asc) x,"
+				+ "(SELECT a.id,a.instrumenttoken,a.timestampGrp,sum((b.high+b.low)/2) as sma11 FROM " + quoteTable
+				+ "_signalparams a," + quoteTable + "_signalparams b where a.instrumenttoken='" + instrumentToken
+				+ "' and b.instrumenttoken=a.instrumenttoken and TIMEDIFF(a.timestampGrp,b.timestampGrp) < '00:11:00' and "
+				+ "TIMEDIFF(a.timestampGrp,b.timestampGrp) >= '00:00:00' group by a.timestampGrp order by a.timestampgrp,b.timestampgrp asc) y"
+				+ ",(SELECT a.id,a.close,a.instrumenttoken,a.timestampGrp,max(b.high) as max29,min(b.low) as min29 FROM "
+				+ quoteTable + "_signalparams a," + quoteTable + "_signalparams b where a.instrumenttoken='"
+				+ instrumentToken
+				+ "' and b.instrumenttoken=a.instrumenttoken and TIMEDIFF(a.timestampGrp,b.timestampGrp) < '00:29:00' and "
+				+ "TIMEDIFF(a.timestampGrp,b.timestampGrp) >= '00:00:00' group by a.timestampGrp order by a.timestampgrp,b.timestampgrp asc) "
+				+ "xx,(SELECT a.id,a.instrumenttoken,a.timestampGrp,max(b.high) as max20,min(b.low) as min20 FROM "
+				+ quoteTable + "_signalparams a," + quoteTable + "_signalparams b where a.instrumenttoken='"
+				+ instrumentToken
+				+ "' and b.instrumenttoken=a.instrumenttoken and TIMEDIFF(a.timestampGrp,b.timestampGrp) < '00:20:00' and "
+				+ "TIMEDIFF(a.timestampGrp,b.timestampGrp) >= '00:00:00' group by a.timestampGrp order by a.timestampgrp,b.timestampgrp asc) "
+				+ "yy,(SELECT a.id,a.instrumenttoken,a.timestampGrp,max(b.high) as max11,min(b.low) as min11 FROM "
+				+ quoteTable + "_signalparams a," + quoteTable + "_signalparams b where a.instrumenttoken='"
+				+ instrumentToken
+				+ "' and b.instrumenttoken=a.instrumenttoken and TIMEDIFF(a.timestampGrp,b.timestampGrp) < '00:11:00' and TIMEDIFF"
+				+ "(a.timestampGrp,b.timestampGrp) >= '00:00:00' group by a.timestampGrp order by a.timestampgrp,b.timestampgrp asc) "
+				+ "zz  where x.id=y.id and x.id=xx.id and xx.id=yy.id and xx.id=zz.id and x.instrumenttoken=y.instrumenttoken and "
+				+ "x.instrumenttoken=xx.instrumenttoken and xx.instrumenttoken=yy.instrumenttoken and xx.instrumenttoken="
+				+ "zz.instrumenttoken and xx.timestampgrp=yy.timestampgrp and xx.timestampgrp=zz.timestampgrp and x.timestampgrp=y.timestampgrp "
+				+ "and x.timestampgrp=xx.timestampgrp order by x.id asc ";
+		stmt = conn.createStatement();
+		rs = stmt.executeQuery(openSql);
+		while (rs.next()) {
+			priceArray = new PriceArray();
+			priceArray.price = rs.getDouble("close");
+			priceArray.sma11 = rs.getDouble("sma11");
+			priceArray.sma29 = rs.getDouble("sma29");
+			priceArray.k11 = rs.getDouble("k11");
+			priceArray.k20 = rs.getDouble("k20");
+			priceArray.k29 = rs.getDouble("k29");
+			priceArray.id = rs.getInt("id");
+			priceArray.goldBuzzSignal = new GoldBuzzSignal(1, "");
+			priceList.add(priceArray);
+		}
+		stmt.close();
+		PriceArray price0, price1, price2, price3, price4;
+
+		for (int i = 28; i < 56; i++) {
+			try {
+				if (i < 38) {
+					priceList.get(i).calculateSma11(priceList.subList(i - 10, 28));
+					priceList.get(i).calculateK11(priceList.subList(i - 10, 28));
+				}
+				if (i < 47)
+					priceList.get(i).calculateK20(priceList.subList(i - 19, 28));
+
+				priceList.get(i).calculateSma29(priceList.subList(i - 28, 28));
+				priceList.get(i).calculateK29(priceList.subList(i - 28, 28));
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+		for (int i = 0; i < priceList.size(); i++) {
+			priceList.get(i).finalizeSma11();
+			priceList.get(i).finalizeSma29();
+			priceList.get(i).finalizeAO();
+		}
+		for (int i = 28; i < priceList.size(); i++) {
+			price0 = priceList.get(i);
+			price1 = priceList.get(i - 1);
+			price2 = priceList.get(i - 2);
+			price3 = priceList.get(i - 3);
+			price4 = priceList.get(i - 4);
+
+			/*
+			 * if (price0.k11 > 90.0 && price0.k20 > 90.0 && price0.k29 > 90.0 &&
+			 * price0.aoVal > price1.aoVal && price1.aoVal > price2.aoVal && price2.aoVal >
+			 * price3.aoVal && price3.aoVal > price4.aoVal) {
+			 * 
+			 * priceList.get(i).goldBuzzSignal.setSignal(2);
+			 * priceList.get(i).goldBuzzSignal.setSignalLevel("directional");
+			 * 
+			 * } else if (price0.k11 < 10.0 && price0.k20 < 10.0 && price0.k29 < 10.0 &&
+			 * price0.aoVal < price1.aoVal && price1.aoVal < price2.aoVal && price2.aoVal <
+			 * price3.aoVal && price3.aoVal < price4.aoVal) {
+			 * 
+			 * priceList.get(i).goldBuzzSignal.setSignal(0);
+			 * priceList.get(i).goldBuzzSignal.setSignalLevel("directional");
+			 * 
+			 * } else
+			 */ if (price0.k11 >= 80.0 && price0.k20 >= 80.0 && price0.k29 >= 80.0
+					//&& ((price0.k11 < 90.0 && price0.k20 < 90.0) || (price0.k29 < 90.0 && price0.k20 < 90.0)
+					//		|| (price0.k11 < 90.0 && price0.k29 < 90.0))
+					&& ((price1.k11 >= price0.k11 && price2.k11 <= price1.k11)
+							|| (price1.k20 >= price0.k20 && price2.k20 <= price1.k20)
+							|| (price1.k29 >= price0.k29 && price2.k29 <= price1.k29))
+					&& price0.aoVal > price1.aoVal && price1.aoVal > price2.aoVal && price2.aoVal > price3.aoVal
+					&& price3.aoVal > price4.aoVal) {
+
+				priceList.get(i).goldBuzzSignal.setSignal(0);
+				priceList.get(i).goldBuzzSignal.setSignalLevel("above");
+
+			} else if (price0.k11 <= 20.0 && price0.k20 <= 20.0 && price0.k29 <= 20.0
+					//&& ((price0.k29 > 10.0 && price0.k20 > 10.0) || (price0.k11 > 10.0 && price0.k20 > 10.0)
+					//		|| (price0.k11 > 10.0 && price0.k29 > 10.0))
+					&& ((price1.k11 <= price0.k11 && price2.k11 >= price1.k11)
+							|| (price1.k20 <= price0.k20 && price2.k20 >= price1.k20)
+							|| (price1.k29 <= price0.k29 && price2.k29 >= price1.k29))
+					&& price0.aoVal < price1.aoVal && price1.aoVal < price2.aoVal && price2.aoVal < price3.aoVal
+					&& price3.aoVal < price4.aoVal) {
+
+				priceList.get(i).goldBuzzSignal.setSignal(2);
+				priceList.get(i).goldBuzzSignal.setSignalLevel("below");
+			}
+
+			boolean breakerLoop = true;
+			PriceArray priceT;
+			for (int j = i; j > 0 && breakerLoop; j--) {
+				priceT = priceList.get(j - 1);
+				if ((priceT.goldBuzzSignal.getSignal() == 2
+						&& (price0.price / priceT.price <= 0.99 || price0.price / priceT.price >= 1.01))
+						|| (priceT.goldBuzzSignal.getSignal() == 0
+								&& (price0.price / priceT.price >= 1.01 || price0.price / priceT.price <= 0.99))) {
+
+					priceList.get(i).goldBuzzSignal.setSignal(-1);
+					priceList.get(i).goldBuzzSignal.setSignalLevel("off");
+				}
+
+				if (priceT.goldBuzzSignal.getSignal() == 2 || priceT.goldBuzzSignal.getSignal() == 0
+						|| priceT.goldBuzzSignal.getSignal() == -1)
+					breakerLoop = false;
+			}
+
+			/*
+			 * int breakerLoopk = 0; int trendPositiveSqrOff = 0; PriceArray pricepre =
+			 * null, pricepre1 = null, pricepre2 = null, pricepre3 = null; for (int k = i; k
+			 * > 0 && breakerLoopk < 3; k--) { pricepre = priceList.get(k - 1); if
+			 * (pricepre.goldBuzzSignal.getSignal() == 2 ||
+			 * pricepre.goldBuzzSignal.getSignal() == 0 ||
+			 * pricepre.goldBuzzSignal.getSignal() == -1) { if (breakerLoopk == 0) pricepre1
+			 * = pricepre; else if (breakerLoopk == 1) pricepre2 = pricepre; else if
+			 * (breakerLoopk == 2) pricepre3 = pricepre; breakerLoopk++; } }
+			 * 
+			 * if (priceList.get(i).goldBuzzSignal.getSignal() == 2 && null != pricepre1 &&
+			 * null != pricepre2 && null != pricepre3 &&
+			 * !trendPositiveList.containsKey(instrumentToken) &&
+			 * !forbiddenGoldBuzzList.contains(instrumentToken) && null !=
+			 * pricepre1.goldBuzzSignal && null != pricepre2.goldBuzzSignal && null !=
+			 * pricepre3.goldBuzzSignal && priceList.get(i).goldBuzzSignal.getSignal() ==
+			 * pricepre1.goldBuzzSignal.getSignal() && pricepre1.goldBuzzSignal.getSignal()
+			 * == pricepre2.goldBuzzSignal.getSignal() &&
+			 * pricepre3.goldBuzzSignal.getSignal() == pricepre2.goldBuzzSignal.getSignal()
+			 * && priceList.get(i).price < pricepre1.price && pricepre1.price <
+			 * pricepre2.price && pricepre2.price < pricepre3.price && priceList.get(i).k11
+			 * < 10.0 && priceList.get(i).k20 < 10.0 && priceList.get(i).k29 < 10.0) {
+			 * trendPositiveList.put(instrumentToken, 0); trendPositiveSqrOff = 1;
+			 * priceList.get(i).goldBuzzSignal.setSignal(0); } else if
+			 * (priceList.get(i).goldBuzzSignal.getSignal() == 0 && priceList.get(i).k11 >
+			 * 90.0 && priceList.get(i).k20 > 90.0 && priceList.get(i).k29 > 90.0 && null !=
+			 * pricepre1 && null != pricepre2 && null != pricepre3 &&
+			 * !trendPositiveList.containsKey(instrumentToken) &&
+			 * !forbiddenGoldBuzzList.contains(instrumentToken) && null !=
+			 * pricepre1.goldBuzzSignal && null != pricepre2.goldBuzzSignal && null !=
+			 * pricepre3.goldBuzzSignal && priceList.get(i).goldBuzzSignal.getSignal() ==
+			 * pricepre1.goldBuzzSignal.getSignal() && pricepre1.goldBuzzSignal.getSignal()
+			 * == pricepre2.goldBuzzSignal.getSignal() &&
+			 * pricepre1.goldBuzzSignal.getSignal() == pricepre3.goldBuzzSignal.getSignal()
+			 * && priceList.get(i).price > pricepre1.price && pricepre1.price >
+			 * pricepre2.price && pricepre2.price > pricepre3.price) {
+			 * trendPositiveList.put(instrumentToken, 2); trendPositiveSqrOff = 1;
+			 * priceList.get(i).goldBuzzSignal.setSignal(2); } if (trendPositiveSqrOff == 1)
+			 * { String sql = "INSERT INTO " + quoteTable + "_Signal " +
+			 * "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey,SignalLevel) "
+			 * + "values(?,?,?,?,?,?,?,?)"; PreparedStatement prepStmt =
+			 * conn.prepareStatement(sql);
+			 * 
+			 * prepStmt.setTimestamp(1, new
+			 * Timestamp(Calendar.getInstance().getTime().getTime())); prepStmt.setString(2,
+			 * instrumentToken); String temp1 = lotSizeOnInstrumentToken(instrumentToken,
+			 * "SQUAREOFF", false); if (!"".equalsIgnoreCase(temp1)) { int q =
+			 * Integer.parseInt(temp1); if (q > 0) { prepStmt.setString(4, "SELLOFF");
+			 * prepStmt.setString(3, q + ""); } else if (q == 0) { temp1 = ""; } else {
+			 * prepStmt.setString(4, "BUYOFF"); prepStmt.setString(3, (q +
+			 * "").replaceAll("-", "")); } } prepStmt.setString(5, "active");
+			 * prepStmt.setDouble(6, priceList.get(i).price); prepStmt.setDouble(7,
+			 * priceList.get(i).id); prepStmt.setString(8, "directional"); if
+			 * (!"".equalsIgnoreCase(temp1)) { prepStmt.executeUpdate(); } prepStmt.close();
+			 * }
+			 * 
+			 * else if (trendPositiveList.containsKey(instrumentToken) &&
+			 * !forbiddenGoldBuzzList.contains(instrumentToken)) { if
+			 * (priceList.get(i).goldBuzzSignal.getSignal() == 2 &&
+			 * trendPositiveList.get(instrumentToken).intValue() == 0) {
+			 * forbiddenGoldBuzzList.add(instrumentToken);
+			 * trendPositiveList.remove(instrumentToken);
+			 * priceList.get(i).goldBuzzSignal.setSignal(-1); } else if
+			 * (priceList.get(i).goldBuzzSignal.getSignal() == 0 &&
+			 * trendPositiveList.get(instrumentToken).intValue() == 2) {
+			 * forbiddenGoldBuzzList.add(instrumentToken);
+			 * trendPositiveList.remove(instrumentToken);
+			 * priceList.get(i).goldBuzzSignal.setSignal(-1); } else if
+			 * (priceList.get(i).goldBuzzSignal.getSignal() == 2)
+			 * priceList.get(i).goldBuzzSignal.setSignal(0); else if
+			 * (priceList.get(i).goldBuzzSignal.getSignal() == 0)
+			 * priceList.get(i).goldBuzzSignal.setSignal(2); }
+			 */
+			price0 = priceList.get(i);
+			if (null != price0.goldBuzzSignal && (price0.goldBuzzSignal.getSignal() == 2
+					|| price0.goldBuzzSignal.getSignal() == 0 || price0.goldBuzzSignal.getSignal() == -1)) {
+				String sql = "INSERT INTO " + quoteTable + "_Signal "
+						+ "(time,instrumentToken,quantity,processSignal,status,TradePrice,signalParamKey,SignalLevel) "
+						+ "values(?,?,?,?,?,?,?,?)";
+				PreparedStatement prepStmt = conn.prepareStatement(sql);
+
+				prepStmt.setTimestamp(1, new Timestamp(Calendar.getInstance().getTime().getTime()));
+				prepStmt.setString(2, instrumentToken);
+				String temp1 = "";
+				if (price0.goldBuzzSignal.getSignal() == 2) {
+					prepStmt.setString(4, "BUY");
+					temp1 = lotSizeOnInstrumentToken(instrumentToken, "BUY", false);
+					prepStmt.setString(3, temp1);
+				} else if (price0.goldBuzzSignal.getSignal() == 0) {
+					prepStmt.setString(4, "SELL");
+					temp1 = lotSizeOnInstrumentToken(instrumentToken, "SELL", false);
+					prepStmt.setString(3, temp1);
+				} else if (price0.goldBuzzSignal.getSignal() == -1) {
+					temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", false);
+					if (!"".equalsIgnoreCase(temp1)) {
+						int q = Integer.parseInt(temp1);
+						if (q > 0) {
+							prepStmt.setString(4, "SELLOFF");
+							prepStmt.setString(3, q + "");
+						} else if (q == 0) {
+							temp1 = "";
+						} else {
+							prepStmt.setString(4, "BUYOFF");
+							prepStmt.setString(3, (q + "").replaceAll("-", ""));
+						}
+					}
+				}
+				prepStmt.setString(5, "active");
+				prepStmt.setDouble(6, price0.price);
+				prepStmt.setDouble(7, price0.id);
+				prepStmt.setString(8, price0.goldBuzzSignal.getSignalLevel());
+				if (forbiddenGoldBuzzList.contains(instrumentToken) && price0.goldBuzzSignal.getSignal() != -1)
+					temp1 = "";
+				if (!"".equalsIgnoreCase(temp1)) {
+					prepStmt.executeUpdate();
+				} else {
+					priceList.get(i).goldBuzzSignal.setSignal(1);
+				}
+				prepStmt.close();
+			}
 		}
 	}
 
@@ -609,6 +953,268 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		prepStmt.close();
 	}
 
+	private void executeBatchGoldBuzzStrategy(String instrumentToken) throws SQLException {
+		class PriceArray {
+			Integer id;
+			Double price;
+			GoldBuzzSignal goldBuzzSignal;
+		}
+		ArrayList<PriceArray> priceList = new ArrayList<PriceArray>();
+		String openSql = "SELECT close,id FROM " + quoteTable + "_SignalParams where InstrumentToken ='"
+				+ instrumentToken + "' ORDER BY id ASC ";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(openSql);
+		PriceArray priceArray;
+		while (rs.next()) {
+			priceArray = new PriceArray();
+			priceArray.price = rs.getDouble("close");
+			priceArray.id = rs.getInt("id");
+			priceList.add(priceArray);
+		}
+		stmt.close();
+		GoldBuzz goldBuzz = goldBuzzList.get(instrumentToken);
+		int lotSize = 0;
+		if (priceList.size() > 0) {
+
+			if (priceList.get(0).price > goldBuzz.getCamaPP() && priceList.get(0).price <= goldBuzz.getCamaH1()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(0, "106");
+			} else if (priceList.get(0).price > goldBuzz.getCamaH1()
+					&& priceList.get(0).price <= goldBuzz.getCamaH2()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(0, "107");
+			} else if (priceList.get(0).price > goldBuzz.getCamaH2()
+					&& priceList.get(0).price <= goldBuzz.getCamaH3()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(0, "108");
+			} else if (priceList.get(0).price > goldBuzz.getCamaH3()
+					&& priceList.get(0).price <= goldBuzz.getCamaH4()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(0, "109");
+			} else if (priceList.get(0).price > goldBuzz.getCamaH4()
+					&& priceList.get(0).price <= goldBuzz.getCamaH5()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(0, "110");
+			} else if (priceList.get(0).price > goldBuzz.getCamaH5()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(10, "111");
+
+			} else if (priceList.get(0).price < goldBuzz.getCamaPP()
+					&& priceList.get(0).price >= goldBuzz.getCamaL1()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(1, "105");
+			} else if (priceList.get(0).price < goldBuzz.getCamaL1()
+					&& priceList.get(0).price >= goldBuzz.getCamaL2()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(1, "104");
+			} else if (priceList.get(0).price < goldBuzz.getCamaL2()
+					&& priceList.get(0).price >= goldBuzz.getCamaL3()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(1, "103");
+			} else if (priceList.get(0).price < goldBuzz.getCamaL3()
+					&& priceList.get(0).price >= goldBuzz.getCamaL4()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(1, "102");
+			} else if (priceList.get(0).price < goldBuzz.getCamaL4()
+					&& priceList.get(0).price >= goldBuzz.getCamaL5()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(1, "101");
+			} else if (priceList.get(0).price < goldBuzz.getCamaL5()) {
+				priceList.get(0).goldBuzzSignal = new GoldBuzzSignal(-10, "100");
+			}
+
+			if (null != priceList.get(0).goldBuzzSignal) {
+				if (priceList.get(0).goldBuzzSignal.getSignal() == 2)
+					lotSize = 1;
+				else if (priceList.get(0).goldBuzzSignal.getSignal() == 0)
+					lotSize = -1;
+				else if (priceList.get(0).goldBuzzSignal.getSignal() == 10
+						&& !forbiddenGoldBuzzList.contains(instrumentToken))
+					lotSize = 1;
+				else if (priceList.get(0).goldBuzzSignal.getSignal() == -10
+						&& !forbiddenGoldBuzzList.contains(instrumentToken))
+					lotSize = -1;
+			}
+
+			if (null != priceList.get(0).goldBuzzSignal && priceList.get(0).goldBuzzSignal.getSignal() != 1
+					&& priceList.get(0).price != StreamingConfig.MAX_VALUE && priceList.get(0).price != 0.0) {
+
+				if (priceList.get(0).goldBuzzSignal.getSignal() != -10
+						&& priceList.get(0).goldBuzzSignal.getSignal() != 10)
+					saveGoldBuzzSignal(instrumentToken, priceList.get(0).goldBuzzSignal, priceList.get(0).price,
+							priceList.get(0).id);
+				else
+					saveGoldBuzzSignalOnDirectinalMove(instrumentToken, priceList.get(0).goldBuzzSignal,
+							priceList.get(0).price, priceList.get(0).id);
+			}
+		}
+
+		for (int i = 1; i < priceList.size(); i++) {
+
+			PriceArray firstClose = priceList.get(i);
+			PriceArray secondClose = priceList.get(i - 1);
+
+			if (firstClose.price > secondClose.price) {
+				if (firstClose.price > goldBuzz.getCamaPP() && firstClose.price <= goldBuzz.getCamaH1()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(0, "106");
+				} else if (firstClose.price > goldBuzz.getCamaH1() && firstClose.price <= goldBuzz.getCamaH2()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(0, "107");
+				} else if (firstClose.price > goldBuzz.getCamaH2() && firstClose.price <= goldBuzz.getCamaH3()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(0, "108");
+				} else if (firstClose.price > goldBuzz.getCamaH3() && firstClose.price <= goldBuzz.getCamaH4()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(0, "109");
+				} else if (firstClose.price > goldBuzz.getCamaH4() && firstClose.price <= goldBuzz.getCamaH5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(0, "110");
+				} else if (firstClose.price > goldBuzz.getCamaH5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(10, "111");
+
+				} else if (firstClose.price < goldBuzz.getCamaPP() && firstClose.price >= goldBuzz.getCamaL1()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "105");
+				} else if (firstClose.price < goldBuzz.getCamaL1() && firstClose.price >= goldBuzz.getCamaL2()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "104");
+				} else if (firstClose.price < goldBuzz.getCamaL2() && firstClose.price >= goldBuzz.getCamaL3()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "103");
+				} else if (firstClose.price < goldBuzz.getCamaL3() && firstClose.price >= goldBuzz.getCamaL4()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "102");
+				} else if (firstClose.price < goldBuzz.getCamaL4() && firstClose.price >= goldBuzz.getCamaL5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "101");
+				} else if (firstClose.price < goldBuzz.getCamaL5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(-10, "100");
+
+				} else
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "0");
+			} else if (secondClose.price > firstClose.price) {
+
+				if (firstClose.price > goldBuzz.getCamaPP() && firstClose.price <= goldBuzz.getCamaH1()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "106");
+				} else if (firstClose.price > goldBuzz.getCamaH1() && firstClose.price <= goldBuzz.getCamaH2()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "107");
+				} else if (firstClose.price > goldBuzz.getCamaH2() && firstClose.price <= goldBuzz.getCamaH3()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "108");
+				} else if (firstClose.price > goldBuzz.getCamaH3() && firstClose.price <= goldBuzz.getCamaH4()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "109");
+				} else if (firstClose.price > goldBuzz.getCamaH4() && firstClose.price <= goldBuzz.getCamaH5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "110");
+				} else if (firstClose.price > goldBuzz.getCamaH5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(10, "111");
+
+				} else if (firstClose.price < goldBuzz.getCamaPP() && firstClose.price >= goldBuzz.getCamaL1()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(2, "105");
+				} else if (firstClose.price < goldBuzz.getCamaL1() && firstClose.price >= goldBuzz.getCamaL2()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(2, "104");
+				} else if (firstClose.price < goldBuzz.getCamaL2() && firstClose.price >= goldBuzz.getCamaL3()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(2, "103");
+				} else if (firstClose.price < goldBuzz.getCamaL3() && firstClose.price >= goldBuzz.getCamaL4()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(2, "102");
+				} else if (firstClose.price < goldBuzz.getCamaL4() && firstClose.price >= goldBuzz.getCamaL5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(2, "101");
+				} else if (firstClose.price < goldBuzz.getCamaL5()) {
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(-10, "100");
+
+				} else
+					priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "0");
+			} else
+				priceList.get(i).goldBuzzSignal = new GoldBuzzSignal(1, "0");
+
+			String preSignal = "";
+			String preSignalLevel = "";
+			double tradePrice = 0.0;
+			String preSignal1 = "";
+			boolean runner = true;
+			for (int j = i - 1; j >= 0 && runner; j--) {
+				PriceArray prevPrice = priceList.get(j);
+				if (null != prevPrice.goldBuzzSignal && (prevPrice.goldBuzzSignal.getSignal() != 1
+						|| prevPrice.goldBuzzSignal.getSignalLevel() != "0")) {
+					preSignal = prevPrice.goldBuzzSignal.getSignal() + "";
+					preSignalLevel = prevPrice.goldBuzzSignal.getSignalLevel();
+					tradePrice = prevPrice.price;
+					runner = false;
+					boolean runner1 = true;
+					for (int k = j - 1; k >= 0 && runner1; k--) {
+						PriceArray prevPrice1 = priceList.get(k);
+						if (null != prevPrice1.goldBuzzSignal && (prevPrice1.goldBuzzSignal.getSignal() != 1
+								|| prevPrice1.goldBuzzSignal.getSignalLevel() != "0")) {
+							preSignal1 = prevPrice1.goldBuzzSignal.getSignal() + "";
+							runner1 = false;
+						}
+					}
+				}
+			}
+			int tempsignal = Integer.parseInt(priceList.get(i).goldBuzzSignal.getSignalLevel());
+
+			if (("".equalsIgnoreCase(preSignalLevel) && "".equalsIgnoreCase(preSignal)) || tradePrice == 0.0) {
+
+				if (forbiddenGoldBuzzList.contains(instrumentToken) && tempsignal != 100 && tempsignal != 111
+						&& tempsignal != 0)
+					forbiddenGoldBuzzList.remove(instrumentToken);
+
+			} else if (priceList.get(i).goldBuzzSignal.getSignal() != -10
+					&& priceList.get(i).goldBuzzSignal.getSignal() != 10) {
+
+				if (forbiddenGoldBuzzList.contains(instrumentToken) && tempsignal != 100 && tempsignal != 111
+						&& tempsignal != 0)
+					forbiddenGoldBuzzList.remove(instrumentToken);
+
+				if (tempsignal == Integer.parseInt(preSignalLevel) && ((preSignal.equalsIgnoreCase("2")
+						&& priceList.get(i).goldBuzzSignal.getSignal() == 2)
+						|| (preSignal.equalsIgnoreCase("0") && priceList.get(i).goldBuzzSignal.getSignal() == 0)))
+					priceList.get(i).goldBuzzSignal.setSignal(1);
+
+				if (preSignal.equalsIgnoreCase("2") && tempsignal == 1 + Integer.parseInt(preSignalLevel))
+					priceList.get(i).goldBuzzSignal.setSignal(2);
+				else if (preSignal.equalsIgnoreCase("0") && tempsignal + 1 == Integer.parseInt(preSignalLevel))
+					priceList.get(i).goldBuzzSignal.setSignal(0);
+
+				if ((preSignal.equalsIgnoreCase("2")
+						|| (preSignal.equalsIgnoreCase("-1") && preSignal1.equalsIgnoreCase("2")))
+						&& ((tempsignal != 0 && Math.abs(Integer.parseInt(preSignalLevel) - tempsignal) > 1)
+								|| firstClose.price >= tradePrice * 1.01 || firstClose.price <= tradePrice * 0.995))
+					priceList.get(i).goldBuzzSignal.setSignal(0);
+				else if ((preSignal.equalsIgnoreCase("0")
+						|| (preSignal.equalsIgnoreCase("-1") && preSignal1.equalsIgnoreCase("0")))
+						&& ((tempsignal != 0 && Math.abs(Integer.parseInt(preSignalLevel) - tempsignal) > 1)
+								|| firstClose.price <= tradePrice * 0.99 || firstClose.price >= tradePrice * 1.005))
+					priceList.get(i).goldBuzzSignal.setSignal(2);
+			} else if (forbiddenGoldBuzzList.contains(instrumentToken)) {
+
+				if (preSignal.equalsIgnoreCase("2") && preSignalLevel.equalsIgnoreCase("111") && tradePrice != 0.0
+						&& firstClose.price >= tradePrice * 1.02)
+					priceList.get(i).goldBuzzSignal.setSignal(-1);
+				else if (preSignal.equalsIgnoreCase("0") && preSignalLevel.equalsIgnoreCase("100") && tradePrice != 0.0
+						&& firstClose.price <= tradePrice * 0.98)
+					priceList.get(i).goldBuzzSignal.setSignal(-1);
+				else
+					priceList.get(i).goldBuzzSignal.setSignal(1);
+			}
+
+			if (priceList.get(i).goldBuzzSignal.getSignal() == -1)
+				lotSize = 0;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 0 && lotSize == -2)
+				priceList.get(i).goldBuzzSignal.setSignal(1);
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 2 && lotSize == 2)
+				priceList.get(i).goldBuzzSignal.setSignal(1);
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 0 && lotSize == 0)
+				lotSize = -1;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 2 && lotSize == 0)
+				lotSize = 1;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 0 && lotSize == -1)
+				lotSize = -2;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 2 && lotSize == 1)
+				lotSize = 2;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 0
+					|| priceList.get(i).goldBuzzSignal.getSignal() == 2)
+				lotSize = 0;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == 10
+					&& !forbiddenGoldBuzzList.contains(instrumentToken))
+				lotSize = 1;
+			else if (priceList.get(i).goldBuzzSignal.getSignal() == -10
+					&& !forbiddenGoldBuzzList.contains(instrumentToken))
+				lotSize = -1;
+
+			if (null != priceList.get(i).goldBuzzSignal && priceList.get(i).goldBuzzSignal.getSignal() != 1
+					&& priceList.get(i).price != StreamingConfig.MAX_VALUE && priceList.get(i).price != 0.0) {
+
+				if (priceList.get(i).goldBuzzSignal.getSignal() != -10
+						&& priceList.get(i).goldBuzzSignal.getSignal() != 10)
+					saveGoldBuzzSignal(instrumentToken, priceList.get(i).goldBuzzSignal, firstClose.price,
+							priceList.get(i).id);
+				else
+					saveGoldBuzzSignalOnDirectinalMove(instrumentToken, priceList.get(i).goldBuzzSignal,
+							firstClose.price, priceList.get(i).id);
+			}
+
+		}
+	}
+
 	private void executeGoldBuzzStrategy(String instrumentToken) throws SQLException {
 
 		int id = 0, firstRowId = 0, lastRowId = 0;
@@ -654,36 +1260,9 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 					&& signalClose.getSignal() != 1 && !firstRecord && firstClose != StreamingConfig.MAX_VALUE
 					&& firstClose != 0.0) {
 
-				if (signalClose.getSignal() != -10) {
+				if (signalClose.getSignal() != -10 && signalClose.getSignal() != 10)
 					saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
-					if (forbiddenGoldBuzzList.contains(instrumentToken))
-						forbiddenGoldBuzzList.remove(instrumentToken);
-				} else if (forbiddenGoldBuzzList.contains(instrumentToken)) {
-
-					stmt = conn.createStatement();
-					openSql = "SELECT ProcessSignal,TradePrice FROM " + quoteTable + "_Signal where InstrumentToken='"
-							+ instrumentToken + "' ORDER BY id DESC LIMIT 2";
-					ResultSet openRs = stmt.executeQuery(openSql);
-					String[] processSignal = new String[2];
-					double[] tradePrice = new double[2];
-					int i = 0;
-
-					while (openRs.next()) {
-						processSignal[i] = openRs.getString(1);
-						tradePrice[i] = openRs.getDouble(2);
-						i++;
-					}
-					if (processSignal[0].contains("BUY") && processSignal[1].contains("BUY")
-							&& firstClose >= tradePrice[1] * 1.005) {
-						signalClose.setSignal(0);
-						saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
-					} else if (processSignal[0].contains("SELL") && processSignal[1].contains("SELL")
-							&& firstClose <= tradePrice[1] * 0.995) {
-						signalClose.setSignal(2);
-						saveGoldBuzzSignal(instrumentToken, signalClose, firstClose, firstRowId);
-					}
-					stmt.close();
-				} else if (signalClose.getSignal() == -10)
+				else
 					saveGoldBuzzSignalOnDirectinalMove(instrumentToken, signalClose, firstClose, firstRowId);
 
 				Statement stmtForUpdate = conn.createStatement();
@@ -751,10 +1330,10 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		temp1 = lotSizeOnInstrumentToken(instrumentToken, "SQUAREOFF", true);
 
 		if (!"".equalsIgnoreCase(temp1)) {
-			if (signalClose.getSignalLevel().equalsIgnoreCase("L5")) {
+			if (signalClose.getSignalLevel().equalsIgnoreCase("100")) {
 				prepStmt.setString(4, "SELL");
 				prepStmt.setString(3, temp1);
-			} else if (signalClose.getSignalLevel().equalsIgnoreCase("H5")) {
+			} else if (signalClose.getSignalLevel().equalsIgnoreCase("111")) {
 				prepStmt.setString(4, "BUY");
 				prepStmt.setString(3, temp1);
 			}
@@ -821,133 +1400,127 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 
 		if (firstClose > secondClose) {
 			if (firstClose > goldBuzz.getCamaPP() && firstClose <= goldBuzz.getCamaH1()) {
-				signalClose = new GoldBuzzSignal(0, "H0");
+				signalClose = new GoldBuzzSignal(0, "106");
 			} else if (firstClose > goldBuzz.getCamaH1() && firstClose <= goldBuzz.getCamaH2()) {
-				signalClose = new GoldBuzzSignal(0, "H1");
+				signalClose = new GoldBuzzSignal(0, "107");
 			} else if (firstClose > goldBuzz.getCamaH2() && firstClose <= goldBuzz.getCamaH3()) {
-				signalClose = new GoldBuzzSignal(0, "H2");
+				signalClose = new GoldBuzzSignal(0, "108");
 			} else if (firstClose > goldBuzz.getCamaH3() && firstClose <= goldBuzz.getCamaH4()) {
-				signalClose = new GoldBuzzSignal(0, "H3");
+				signalClose = new GoldBuzzSignal(0, "109");
 			} else if (firstClose > goldBuzz.getCamaH4() && firstClose <= goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(0, "H4");
+				signalClose = new GoldBuzzSignal(0, "110");
 			} else if (firstClose > goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(-10, "H5");
+				signalClose = new GoldBuzzSignal(10, "111");
 
 			} else if (firstClose < goldBuzz.getCamaPP() && firstClose >= goldBuzz.getCamaL1()) {
-				signalClose = new GoldBuzzSignal(1, "L0");
+				signalClose = new GoldBuzzSignal(1, "105");
 			} else if (firstClose < goldBuzz.getCamaL1() && firstClose >= goldBuzz.getCamaL2()) {
-				signalClose = new GoldBuzzSignal(1, "L1");
+				signalClose = new GoldBuzzSignal(1, "104");
 			} else if (firstClose < goldBuzz.getCamaL2() && firstClose >= goldBuzz.getCamaL3()) {
-				signalClose = new GoldBuzzSignal(1, "L2");
+				signalClose = new GoldBuzzSignal(1, "103");
 			} else if (firstClose < goldBuzz.getCamaL3() && firstClose >= goldBuzz.getCamaL4()) {
-				signalClose = new GoldBuzzSignal(1, "L3");
+				signalClose = new GoldBuzzSignal(1, "102");
 			} else if (firstClose < goldBuzz.getCamaL4() && firstClose >= goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(1, "L4");
+				signalClose = new GoldBuzzSignal(1, "101");
 			} else if (firstClose < goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(-10, "L5");
+				signalClose = new GoldBuzzSignal(-10, "100");
 
 			} else
-				signalClose = new GoldBuzzSignal(1, "");
+				signalClose = new GoldBuzzSignal(1, "0");
 		} else if (secondClose > firstClose) {
 
 			if (firstClose > goldBuzz.getCamaPP() && firstClose <= goldBuzz.getCamaH1()) {
-				signalClose = new GoldBuzzSignal(1, "H0");
+				signalClose = new GoldBuzzSignal(1, "106");
 			} else if (firstClose > goldBuzz.getCamaH1() && firstClose <= goldBuzz.getCamaH2()) {
-				signalClose = new GoldBuzzSignal(1, "H1");
+				signalClose = new GoldBuzzSignal(1, "107");
 			} else if (firstClose > goldBuzz.getCamaH2() && firstClose <= goldBuzz.getCamaH3()) {
-				signalClose = new GoldBuzzSignal(1, "H2");
+				signalClose = new GoldBuzzSignal(1, "108");
 			} else if (firstClose > goldBuzz.getCamaH3() && firstClose <= goldBuzz.getCamaH4()) {
-				signalClose = new GoldBuzzSignal(1, "H3");
+				signalClose = new GoldBuzzSignal(1, "109");
 			} else if (firstClose > goldBuzz.getCamaH4() && firstClose <= goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(1, "H4");
+				signalClose = new GoldBuzzSignal(1, "110");
 			} else if (firstClose > goldBuzz.getCamaH5()) {
-				signalClose = new GoldBuzzSignal(-10, "H5");
+				signalClose = new GoldBuzzSignal(10, "111");
 
 			} else if (firstClose < goldBuzz.getCamaPP() && firstClose >= goldBuzz.getCamaL1()) {
-				signalClose = new GoldBuzzSignal(2, "L0");
+				signalClose = new GoldBuzzSignal(2, "105");
 			} else if (firstClose < goldBuzz.getCamaL1() && firstClose >= goldBuzz.getCamaL2()) {
-				signalClose = new GoldBuzzSignal(2, "L1");
+				signalClose = new GoldBuzzSignal(2, "104");
 			} else if (firstClose < goldBuzz.getCamaL2() && firstClose >= goldBuzz.getCamaL3()) {
-				signalClose = new GoldBuzzSignal(2, "L2");
+				signalClose = new GoldBuzzSignal(2, "103");
 			} else if (firstClose < goldBuzz.getCamaL3() && firstClose >= goldBuzz.getCamaL4()) {
-				signalClose = new GoldBuzzSignal(2, "L3");
+				signalClose = new GoldBuzzSignal(2, "102");
 			} else if (firstClose < goldBuzz.getCamaL4() && firstClose >= goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(2, "L4");
+				signalClose = new GoldBuzzSignal(2, "101");
 			} else if (firstClose < goldBuzz.getCamaL5()) {
-				signalClose = new GoldBuzzSignal(-10, "L5");
+				signalClose = new GoldBuzzSignal(-10, "100");
 
 			} else
-				signalClose = new GoldBuzzSignal(1, "");
+				signalClose = new GoldBuzzSignal(1, "0");
 		} else
-			signalClose = new GoldBuzzSignal(1, "");
+			signalClose = new GoldBuzzSignal(1, "0");
 
 		Statement stmt = conn.createStatement();
 
-		String openSql = "SELECT processSignal,SignalLevel FROM " + quoteTable + "_Signal  where instrumentToken='"
-				+ instrumentToken + "' order by id desc LIMIT 1";
+		String openSql = "SELECT processSignal,SignalLevel,TradePrice FROM " + quoteTable
+				+ "_Signal  where instrumentToken='" + instrumentToken + "' order by id desc LIMIT 1";
 		ResultSet openRs = stmt.executeQuery(openSql);
+
 		String preSignal = "";
 		String preSignalLevel = "";
+		double tradePrice = 0.0;
 
 		while (openRs.next()) {
 			preSignal = openRs.getString(1);
 			preSignalLevel = openRs.getString(2);
+			tradePrice = openRs.getDouble(3);
 		}
 		stmt.close();
 
-		if ((("".equalsIgnoreCase(preSignalLevel) && "".equalsIgnoreCase(preSignal))) 
-				|| signalClose.getSignal() == 1 || signalClose.getSignal() == -10) {
-			return signalClose;
-		} else {
-			int tempsignal1 = Integer.parseInt(preSignalLevel.substring(1));
-			int tempsignal2 = Integer.parseInt(signalClose.getSignalLevel().substring(1));
-			String tempsignalString1 = preSignalLevel.substring(0, 1);
-			String tempsignalString2 = signalClose.getSignalLevel().substring(0, 1);
-			int diff = Math.abs(tempsignal1 - tempsignal2);
+		int tempsignal = Integer.parseInt(signalClose.getSignalLevel());
 
-			if ((tempsignal2 == 3 || tempsignal2 == 4) && !preSignalLevel.equalsIgnoreCase(signalClose.getSignalLevel())
-					&& (diff == 1 || (diff == 0 && !tempsignalString1.equalsIgnoreCase(tempsignalString2)
-							&& (tempsignal1 == 0 || tempsignal2 == 0)))) {
+		if (("".equalsIgnoreCase(preSignalLevel) && "".equalsIgnoreCase(preSignal)) || tradePrice == 0.0) {
 
-				if (preSignal.equalsIgnoreCase("BUY")// ||preSignal.equalsIgnoreCase("SELLOFF")
-				)
-					signalClose.setSignal(2);
-				else if (preSignal.equalsIgnoreCase("SELL")// ||preSignal.equalsIgnoreCase("BUYOFF")
-				)
-					signalClose.setSignal(0);
+			if (forbiddenGoldBuzzList.contains(instrumentToken) && tempsignal != 100 && tempsignal != 111
+					&& tempsignal != 0)
+				forbiddenGoldBuzzList.remove(instrumentToken);
 
-				return signalClose;
-			} else if (!preSignalLevel.equalsIgnoreCase(signalClose.getSignalLevel())
-					&& (diff > 1 || (diff == 1 && !tempsignalString1.equalsIgnoreCase(tempsignalString2)
-							&& (tempsignal1 == 0 || tempsignal2 == 0)))) {
-				stmt = conn.createStatement();
-				openSql = "SELECT processSignal,SignalLevel FROM " + quoteTable + "_Signal  where instrumentToken='"
-						+ instrumentToken + "' order by id desc LIMIT 2";
-				openRs = stmt.executeQuery(openSql);
-				String[] preSignalArray = { "", "" };
-				String[] preSignalLevelArray = { "", "" };
-				int i = 0;
-				tempsignal1 = 0;
-				tempsignal2 = 0;
-				while (openRs.next()) {
-					preSignalArray[i] = openRs.getString(1);
-					preSignalLevelArray[i] = openRs.getString(2);
-					i++;
-				}
-				stmt.close();
+		} else if (signalClose.getSignal() != -10 && signalClose.getSignal() != 10) {
 
-				if (!"".equalsIgnoreCase(preSignalLevelArray[0]))
-					tempsignal1 = Integer.parseInt(preSignalLevelArray[0].substring(1));
-				if (!"".equalsIgnoreCase(preSignalLevelArray[1]))
-					tempsignal2 = Integer.parseInt(preSignalLevelArray[1].substring(1));
+			if (forbiddenGoldBuzzList.contains(instrumentToken) && tempsignal != 100 && tempsignal != 111
+					&& tempsignal != 0)
+				forbiddenGoldBuzzList.remove(instrumentToken);
 
-				if (preSignalArray[0].equalsIgnoreCase(preSignalArray[1]) && (tempsignal1 == 3 || tempsignal1 == 4))
-					signalClose.setSignal(-1);
+			if (tempsignal == Integer.parseInt(preSignalLevel)
+					&& ((preSignal.equalsIgnoreCase("BUY") && signalClose.getSignal() == 2)
+							|| (preSignal.equalsIgnoreCase("SELL") && signalClose.getSignal() == 0)))
+				signalClose.setSignal(1);
 
-				return signalClose;
-			} else
-				return null;
+			if (preSignal.equalsIgnoreCase("BUY") && tempsignal == 1 + Integer.parseInt(preSignalLevel))
+				signalClose.setSignal(2);
+			else if (preSignal.equalsIgnoreCase("SELL") && tempsignal + 1 == Integer.parseInt(preSignalLevel))
+				signalClose.setSignal(0);
+
+			if (preSignal.contains("BUY")
+					&& ((tempsignal != 0 && Math.abs(Integer.parseInt(preSignalLevel) - tempsignal) > 1)
+							|| firstClose >= tradePrice * 1.01 || firstClose <= tradePrice * 0.995))
+				signalClose.setSignal(0);
+			else if (preSignal.contains("SELL")
+					&& ((tempsignal != 0 && Math.abs(Integer.parseInt(preSignalLevel) - tempsignal) > 1)
+							|| firstClose <= tradePrice * 0.99 || firstClose >= tradePrice * 1.005))
+				signalClose.setSignal(2);
+		} else if (forbiddenGoldBuzzList.contains(instrumentToken)) {
+
+			if (preSignal.equalsIgnoreCase("BUY") && preSignalLevel.equalsIgnoreCase("111") && tradePrice != 0.0
+					&& firstClose >= tradePrice * 1.02)
+				signalClose.setSignal(-1);
+			else if (preSignal.equalsIgnoreCase("SELL") && preSignalLevel.equalsIgnoreCase("100") && tradePrice != 0.0
+					&& firstClose <= tradePrice * 0.98)
+				signalClose.setSignal(-1);
+			else
+				signalClose.setSignal(1);
 		}
+		return signalClose;
 	}
 
 	@Override
@@ -1316,24 +1889,24 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 						prepStmt.setDouble(24, instrument.getAvgWaitedOpen());
 						prepStmt.setDouble(25, instrument.getWaitedHighMinusLow());
 						prepStmt.setDouble(26, instrument.getHighMinusLow());
-						prepStmt.setDouble(27, (instrument.getAvgWaitedclose() + instrument.getAvgWaitedhigh()
-								+ instrument.getAvgWaitedlow()) / 3.0);
-						prepStmt.setDouble(28, instrument.getAvgWaitedclose()
-								+ instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H1);
-						prepStmt.setDouble(29, instrument.getAvgWaitedclose()
-								+ instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H2);
-						prepStmt.setDouble(30, instrument.getAvgWaitedclose()
-								+ instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H3);
-						prepStmt.setDouble(31, instrument.getAvgWaitedclose()
-								+ instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H4);
-						prepStmt.setDouble(32, instrument.getAvgWaitedclose()
-								- instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L1);
-						prepStmt.setDouble(33, instrument.getAvgWaitedclose()
-								- instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L2);
-						prepStmt.setDouble(34, instrument.getAvgWaitedclose()
-								- instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L3);
-						prepStmt.setDouble(35, instrument.getAvgWaitedclose()
-								- instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L4);
+						prepStmt.setDouble(27,
+								(instrument.getClose() + instrument.getHigh() + instrument.getLow()) / 3.0);
+						prepStmt.setDouble(28,
+								instrument.getClose() + instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H1);
+						prepStmt.setDouble(29,
+								instrument.getClose() + instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H2);
+						prepStmt.setDouble(30,
+								instrument.getClose() + instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H3);
+						prepStmt.setDouble(31,
+								instrument.getClose() + instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_H4);
+						prepStmt.setDouble(32,
+								instrument.getClose() - instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L1);
+						prepStmt.setDouble(33,
+								instrument.getClose() - instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L2);
+						prepStmt.setDouble(34,
+								instrument.getClose() - instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L3);
+						prepStmt.setDouble(35,
+								instrument.getClose() - instrument.getWaitedHighMinusLow() * StreamingConfig.CAMA_L4);
 
 						prepStmt.setString(36, instrument.getInstrumentName());
 
@@ -1353,6 +1926,37 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			}
 		} else {
 			LOGGER.info("StreamingQuoteStorageImpl.last10DaysOHLCData(): ERROR: DB conn is null !!!");
+		}
+	}
+
+	@Override
+	public void saveHistoryDataOfSelectedInstruments(List<HistoricalData> historyDataList, String instrumentToken) {
+
+		try {
+			HistoricalData historyData = null;
+
+			for (int count = 0; count < historyDataList.size(); count++) {
+				historyData = historyDataList.get(count);
+				String sql = "INSERT INTO " + quoteTable + "_signalParams "
+						+ "(Time,InstrumentToken,high,low,close,psar,timestampGrp) values(?,?,?,?,?,?,?)";
+				PreparedStatement prepStmtInsertSignalParams = conn.prepareStatement(sql);
+				prepStmtInsertSignalParams.setTimestamp(1,
+						new Timestamp(dtTmFmt.parse(dtTmFmt.format(Calendar.getInstance().getTime())).getTime()));
+				prepStmtInsertSignalParams.setTimestamp(7,
+						new Timestamp(histDataFmt.parse(historyData.timeStamp.split("'+'")[0]).getTime()));
+				prepStmtInsertSignalParams.setString(2, instrumentToken);
+				prepStmtInsertSignalParams.setDouble(3, historyData.high);
+				prepStmtInsertSignalParams.setDouble(4, historyData.low);
+				prepStmtInsertSignalParams.setDouble(5, historyData.close);
+				prepStmtInsertSignalParams.setDouble(6, historyData.open);
+				prepStmtInsertSignalParams.executeUpdate();
+				prepStmtInsertSignalParams.close();
+			}
+		} catch (SQLException | ParseException e) {
+			LOGGER.info(
+					"StreamingQuoteStorageImpl.calculateAndSaveStrategy(): ERROR: SQLException on fetching data from Table, cause: "
+							+ e.getMessage() + ">>" + e.getCause());
+			e.printStackTrace();
 		}
 	}
 }

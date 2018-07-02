@@ -10,7 +10,6 @@ import java.net.URL;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -21,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -107,7 +105,7 @@ public class GRSRuleEngine {
 			User userModel = kiteconnect.generateSession(request_token, StreamingConfig.API_SECRET_KEY);
 			kiteconnect.setAccessToken(userModel.accessToken);
 			kiteconnect.setPublicToken(userModel.publicToken);
-			startProcess();
+			bulkProcessSignal();
 		} catch (KiteException e) {
 			LOGGER.info("Error GRSRuleEngine.authRedirectWithTokenPost(): " + e.message + " >> " + e.code);
 			return "error";
@@ -121,7 +119,8 @@ public class GRSRuleEngine {
 		return "index";
 	}
 
-	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
+	// RequestMethod.GET })
 	public RedirectView localRedirect() {
 		RedirectView redirectView = new RedirectView();
 		redirectView.setUrl(url);
@@ -133,8 +132,8 @@ public class GRSRuleEngine {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolatilityScoreList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
-		for (int count = 0; count < StreamingConfig.nseVolatilityDataUrl.length; count++) {
-			HttpGet get = new HttpGet(StreamingConfig.nseVolatilityDataUrl[count]);
+		for (int count = 0; count < StreamingConfig.getNseVolatilityDataUrl().length; count++) {
+			HttpGet get = new HttpGet(StreamingConfig.getNseVolatilityDataUrl()[count]);
 			get.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 			get.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
 
@@ -168,9 +167,11 @@ public class GRSRuleEngine {
 						} else
 							firstLine = false;
 					} catch (Exception e) {
+						LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 					}
 				}
 			} catch (IOException e) {
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
 			}
 		}
 		streamingQuoteStorage.saveInstrumentVolatilityData(instrumentVolatilityScoreList);
@@ -280,8 +281,8 @@ public class GRSRuleEngine {
 		@SuppressWarnings({ "resource" })
 		HttpClient client = new DefaultHttpClient();
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentVolumeLast10DaysDataList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
-		for (int count = 0; count < StreamingConfig.last10DaysVolumeDataFileUrls.length; count++) {
-			HttpGet get = new HttpGet(StreamingConfig.last10DaysVolumeDataFileUrls[2]);
+		for (int count = 0; count < StreamingConfig.getLast10DaysVolumeDataFileUrls().length; count++) {
+			HttpGet get = new HttpGet(StreamingConfig.getLast10DaysVolumeDataFileUrls()[2]);
 			get.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 			get.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
 
@@ -323,44 +324,156 @@ public class GRSRuleEngine {
 		streamingQuoteStorage.saveInstrumentVolumeData(instrumentVolumeLast10DaysDataList);
 	}
 
+	@RequestMapping(value = "/start", method = { RequestMethod.POST, RequestMethod.GET })
+	public void bulkProcessSignal() {
+		/*
+		 * StreamingConfig.TEMP_TEST_DATE = "01012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "02012018"; startProcess();
+		 */
+		// StreamingConfig.TEMP_TEST_DATE = "03012018";
+		// startProcess();
+		StreamingConfig.TEMP_PRE_TEST_DATE = "03012018";
+		StreamingConfig.TEMP_TEST_DATE = "04012018";
+		startProcess();
+		/*
+		 * StreamingConfig.TEMP_TEST_DATE = "05012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "08012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "09012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "10012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "11012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "12012018"; startProcess(); /*
+		 * StreamingConfig.TEMP_TEST_DATE = "15012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "16012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "17012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "18012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "19012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "22012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "23012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "24012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "25012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "29012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "30012018"; startProcess();
+		 * StreamingConfig.TEMP_TEST_DATE = "31012018"; startProcess();
+		 */
+		System.out.println("ALL DONE !!");
+	}
+
 	// @RequestMapping(value = "/start", method = { RequestMethod.POST,
 	// RequestMethod.GET })
 	public void startProcess() {
 		try {
-			TimeZone.setDefault(TimeZone.getTimeZone("IST"));
-			todaysDate = dtFmt.format(Calendar.getInstance().getTime());
-			quoteStartTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_START_TIME;
-			quoteEndTime = todaysDate + " " + StreamingConfig.QUOTE_STREAMING_END_TIME;
-			quotePrioritySettingTime = todaysDate + " " + StreamingConfig.QUOTE_PRIORITY_SETTING_TIME;
-			dbConnectionClosingTime = todaysDate + " " + StreamingConfig.DB_CONNECTION_CLOSING_TIME;
-			timeStart = dtTmFmt.parse(quoteStartTime);
-			timeEnd = dtTmFmt.parse(quoteEndTime);
-			timeForPrioritySetting = dtTmFmt.parse(quotePrioritySettingTime);
-			timeDBConnectionClosing = dtTmFmt.parse(dbConnectionClosingTime);
-
+			System.out.println(StreamingConfig.TEMP_TEST_DATE);
+			StreamingConfig.TEMP_TEST_DATE = StreamingConfig.TEMP_TEST_DATE + "_hist";
+			StreamingConfig.TEMP_PRE_TEST_DATE = StreamingConfig.TEMP_PRE_TEST_DATE + "_hist";
+			nseTradableInstrumentSymbol = new HashSet<String>();
+			instrumentVolatilityScoreList = new ArrayList<InstrumentVolatilityScore>();
+			/*
+			 * TimeZone.setDefault(TimeZone.getTimeZone("IST")); todaysDate =
+			 * dtFmt.format(Calendar.getInstance().getTime()); quoteStartTime = todaysDate +
+			 * " " + StreamingConfig.QUOTE_STREAMING_START_TIME; quoteEndTime = todaysDate +
+			 * " " + StreamingConfig.QUOTE_STREAMING_END_TIME; quotePrioritySettingTime =
+			 * todaysDate + " " + StreamingConfig.QUOTE_PRIORITY_SETTING_TIME;
+			 * dbConnectionClosingTime = todaysDate + " " +
+			 * StreamingConfig.DB_CONNECTION_CLOSING_TIME; timeStart =
+			 * dtTmFmt.parse(quoteStartTime); timeEnd = dtTmFmt.parse(quoteEndTime);
+			 * timeForPrioritySetting = dtTmFmt.parse(quotePrioritySettingTime);
+			 * timeDBConnectionClosing = dtTmFmt.parse(dbConnectionClosingTime);
+			 */
 			createInitialDayTables();
-
-			if (checkAndLoadIfBackEndReady()) {
-				quoteStreamingInstrumentsArr = streamingQuoteStorage.getTopPrioritizedTokenList(tokenCountForTrade);
-				operatingTradingSymbolList = streamingQuoteStorage
-						.tradingSymbolListOnInstrumentTokenId(quoteStreamingInstrumentsArr);
-				liveStreamFirstRun = true;
-				backendReadyForProcessing = true;
-			} else {
-				fetchAndSaveInstrumentsInitialParamAndData();
-			}
-			startLiveStreamOfSelectedInstruments();
+			/*
+			 * if (checkAndLoadIfBackEndReady()) {
+			 */
+			quoteStreamingInstrumentsArr = streamingQuoteStorage.getTopPrioritizedTokenList(tokenCountForTrade);
+			/*
+			 * operatingTradingSymbolList = streamingQuoteStorage
+			 * .tradingSymbolListOnInstrumentTokenId(quoteStreamingInstrumentsArr);
+			 * liveStreamFirstRun = true; backendReadyForProcessing = true; } else {
+			 * fetchAndSaveInstrumentsInitialParamAndData(); }
+			 */
+			// startLiveStreamOfSelectedInstruments();
+			// startHistoryDataCollectorOfSelectedInstruments();
 
 			calculateStrategyAndSaveSignals();
 
-			placeOrdersBasedOnSignals();
+			// placeOrdersBasedOnSignals();
 
-			orderStatusSyncBetweenLocalAndMarket();
+			// orderStatusSyncBetweenLocalAndMarket();
 
-			dayClosingStocksRoundOffOperations();
+			// dayClosingStocksRoundOffOperations();
 
-		} catch (JSONException | ParseException e) {
+		} catch (JSONException e) {
 			LOGGER.info("Error GRSRuleEngine.startProcess(): " + e.getMessage() + " >> " + e.getCause());
+		}
+	}
+
+	private void startHistoryDataCollectorOfSelectedInstruments() {
+
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		Date from = new Date();
+		Date to = new Date();
+
+		String[] dateList = { "01012018", "02012018", "03012018", "04012018", "05012018", "08012018", "09012018",
+				"10012018", "11012018", "12012018", "15012018", "16012018", "17012018", "18012018", "19012018",
+				"22012018", "23012018", "24012018", "25012018", "29012018", "30012018", "31012018" };
+
+		String[] dateList2 = { "2018-01-01", "2018-01-02", "2018-01-03", "2018-01-04", "2018-01-05", "2018-01-08",
+				"2018-01-09", "2018-01-10", "2018-01-11", "2018-01-12", "2018-01-15", "2018-01-16", "2018-01-17",
+				"2018-01-18", "2018-01-19", "2018-01-22", "2018-01-23", "2018-01-24", "2018-01-25", "2018-01-29",
+				"2018-01-30", "2018-01-31" };
+
+		instrumentVolatilityScoreList = markInstrumentsTradable();
+
+		try {
+			tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
+		} catch (IOException | KiteException e) {
+			e.printStackTrace();
+		}
+
+		for (int count = 0; count < tempInstrumentList.size(); count++) {
+			Instrument temp = tempInstrumentList.get(count);
+			if (nseTradableInstrumentSymbol.contains(temp.getTradingsymbol()))
+				instrumentList.add(temp);
+		}
+		String[] QUOTE_STREAMING_TRADING_HOLIDAYS = { "25-12-2017", "26-01-2018", "13-02-2018", "02-03-2018",
+				"29-03-2018", "30-03-2018", "01-05-2018", "15-08-2018", "22-08-2018", "13-09-2018", "20-09-2018",
+				"02-10-2018", "18-10-2018", "07-11-2018", "08-11-2018", "23-11-2018", "25-12-2018" };
+
+		for (int index = 0; index < dateList.length; index++) {
+			StreamingConfig.TEMP_TEST_DATE = dateList[index] + "_hist";
+			createInitialDayTables();
+			StreamingConfig.last10DaysOHLCFileNames = StreamingConfig.last10DaysFileNameListString(
+					QUOTE_STREAMING_TRADING_HOLIDAYS, "cm", "bhav.csv.zip", "ddMMMyyyy", 10, true,
+					StreamingConfig.TEMP_TEST_DATE);
+
+			StreamingConfig.last10DaysVolumeDataFileNames = StreamingConfig.last10DaysFileNameListString(
+					QUOTE_STREAMING_TRADING_HOLIDAYS, "MTO_", ".DAT", "ddMMyyyy", 10, false,
+					StreamingConfig.TEMP_TEST_DATE);
+
+			StreamingConfig.nseVolatilityDataFileNames = StreamingConfig.last10DaysFileNameListString(
+					QUOTE_STREAMING_TRADING_HOLIDAYS, "CMVOLT_", ".CSV", "ddMMyyyy", 10, false,
+					StreamingConfig.TEMP_TEST_DATE);
+
+			// streamingQuoteStorage.saveInstrumentDetails(instrumentList,
+			// new Timestamp(Calendar.getInstance().getTime().getTime()));
+
+			saveLast10DaysOHLCData();
+			saveInstrumentVolumeData();
+			saveInstrumentVolatilityData();
+			streamingQuoteStorage.markInstrumentsTradable(instrumentVolatilityScoreList);
+
+			/*
+			 * for (int count = 0; count < instrumentList.size(); count++) { try { from =
+			 * formatter.parse(dateList2[index] + " 09:15:00"); to =
+			 * formatter.parse(dateList2[index] + " 15:30:00"); HistoricalData
+			 * historyDataList = kiteconnect.getHistoricalData(from, to,
+			 * String.valueOf(instrumentList.get(count).getInstrument_token()), "minute",
+			 * false); if (historyDataList.dataArrayList.size() > 0)
+			 * streamingQuoteStorage.saveHistoryDataOfSelectedInstruments(historyDataList.
+			 * dataArrayList,
+			 * String.valueOf(instrumentList.get(count).getInstrument_token())); } catch
+			 * (IOException | KiteException | ParseException e) { e.printStackTrace(); } }
+			 */
+			System.out.println(dateList[index]);
 		}
 	}
 
@@ -531,45 +644,26 @@ public class GRSRuleEngine {
 								for (int instrumentCount = 0; instrumentCount < operatingTradingSymbolList
 										.size(); instrumentCount++) {
 									/*
-									 * int totalQuantity = 0; for (int index =
-									 * 0; index < orderList.size(); index++) {
-									 * if (orderList.get(index).tradingSymbol
-									 * .equalsIgnoreCase(
-									 * operatingTradingSymbolList.get(
-									 * instrumentCount))) { if
-									 * (orderList.get(index).status.
-									 * equalsIgnoreCase("OPEN")) {
-									 * tradeOperations.cancelOrder(kiteconnect,
-									 * orderList.get(index));
-									 * needToWaitBeforeClosingThread = true; }
-									 * if (orderList.get(index).status.
-									 * equalsIgnoreCase("COMPLETE") &&
-									 * orderList.get(index).transactionType.
-									 * equalsIgnoreCase("BUY")) { totalQuantity
-									 * = totalQuantity +
-									 * Integer.parseInt(orderList.get(index).
-									 * quantity); } if
-									 * (orderList.get(index).status.
-									 * equalsIgnoreCase("COMPLETE") &&
-									 * orderList.get(index).transactionType.
-									 * equalsIgnoreCase("SELL")) { totalQuantity
-									 * = totalQuantity -
-									 * Integer.parseInt(orderList.get(index).
+									 * int totalQuantity = 0; for (int index = 0; index < orderList.size(); index++)
+									 * { if (orderList.get(index).tradingSymbol .equalsIgnoreCase(
+									 * operatingTradingSymbolList.get( instrumentCount))) { if
+									 * (orderList.get(index).status. equalsIgnoreCase("OPEN")) {
+									 * tradeOperations.cancelOrder(kiteconnect, orderList.get(index));
+									 * needToWaitBeforeClosingThread = true; } if (orderList.get(index).status.
+									 * equalsIgnoreCase("COMPLETE") && orderList.get(index).transactionType.
+									 * equalsIgnoreCase("BUY")) { totalQuantity = totalQuantity +
+									 * Integer.parseInt(orderList.get(index). quantity); } if
+									 * (orderList.get(index).status. equalsIgnoreCase("COMPLETE") &&
+									 * orderList.get(index).transactionType. equalsIgnoreCase("SELL")) {
+									 * totalQuantity = totalQuantity - Integer.parseInt(orderList.get(index).
 									 * quantity); } } } if (totalQuantity > 0) {
-									 * tradeOperations.placeOrder(kiteconnect,
-									 * operatingTradingSymbolList.get(
-									 * instrumentCount), "SELL",
-									 * String.valueOf(totalQuantity), "0.0",
-									 * "dayOff", streamingQuoteStorage);
-									 * needToWaitBeforeClosingThread = true; }
-									 * else if (totalQuantity < 0) {
-									 * tradeOperations.placeOrder(kiteconnect,
-									 * operatingTradingSymbolList.get(
-									 * instrumentCount), "BUY",
-									 * String.valueOf(totalQuantity).replaceAll(
-									 * "-", ""), "0.0", "dayOff",
-									 * streamingQuoteStorage);
-									 * needToWaitBeforeClosingThread = true; }
+									 * tradeOperations.placeOrder(kiteconnect, operatingTradingSymbolList.get(
+									 * instrumentCount), "SELL", String.valueOf(totalQuantity), "0.0", "dayOff",
+									 * streamingQuoteStorage); needToWaitBeforeClosingThread = true; } else if
+									 * (totalQuantity < 0) { tradeOperations.placeOrder(kiteconnect,
+									 * operatingTradingSymbolList.get( instrumentCount), "BUY",
+									 * String.valueOf(totalQuantity).replaceAll( "-", ""), "0.0", "dayOff",
+									 * streamingQuoteStorage); needToWaitBeforeClosingThread = true; }
 									 */}
 							if (!needToWaitBeforeClosingThread) {
 								runnable = false;
@@ -686,8 +780,9 @@ public class GRSRuleEngine {
 							runnable = true;
 							Thread.sleep(30 * seconds);
 						} else if (timeNow.compareTo(timeStart) >= 0 && timeNow.compareTo(timeEnd) <= 0
-								&& timeNow.compareTo(timeForPrioritySetting) >= 0) {
+								&& timeNow.compareTo(timeForPrioritySetting) >= 0 && runnable) {
 							try {
+								runnable = false;
 								instrumentVolatilityScoreList = markInstrumentsTradable();
 
 								tempInstrumentList = tradeOperations.getInstrumentsForExchange(kiteconnect, "NSE");
@@ -702,14 +797,10 @@ public class GRSRuleEngine {
 										new Timestamp(Calendar.getInstance().getTime().getTime()));
 
 								/*
-								 * instrumentList.addAll(tradeOperations
-								 * .getInstrumentsForExchange(kiteconnect,
-								 * "BSE"));
-								 * instrumentList.addAll(tradeOperations
-								 * .getInstrumentsForExchange(kiteconnect,
-								 * "NFO"));
-								 * instrumentList.addAll(tradeOperations
-								 * .getInstrumentsForExchange(kiteconnect,
+								 * instrumentList.addAll(tradeOperations .getInstrumentsForExchange(kiteconnect,
+								 * "BSE")); instrumentList.addAll(tradeOperations
+								 * .getInstrumentsForExchange(kiteconnect, "NFO"));
+								 * instrumentList.addAll(tradeOperations .getInstrumentsForExchange(kiteconnect,
 								 * "BFO"));
 								 */
 								saveLast10DaysOHLCData();
@@ -748,9 +839,9 @@ public class GRSRuleEngine {
 
 	private void saveLast10DaysOHLCData() {
 		HashMap<String, ArrayList<InstrumentOHLCData>> instrumentOHLCLast10DaysDataList = new HashMap<String, ArrayList<InstrumentOHLCData>>();
-		for (int index = 0; index < StreamingConfig.last10DaysOHLCFileUrls.length; index++) {
+		for (int index = 0; index < StreamingConfig.getLast10DaysOHLCFileUrls().length; index++) {
 			try {
-				URL website = new URL(StreamingConfig.last10DaysOHLCFileUrls[index]);
+				URL website = new URL(StreamingConfig.getLast10DaysOHLCFileUrls()[index]);
 				BufferedInputStream in = null;
 				FileOutputStream fout = null;
 
@@ -916,8 +1007,7 @@ public class GRSRuleEngine {
 	private void calculateStrategyAndSaveSignals() {
 
 		/*
-		 * Thread t = new Thread(new Runnable() { private boolean runnable =
-		 * true;
+		 * Thread t = new Thread(new Runnable() { private boolean runnable = true;
 		 * 
 		 * @Override public void run() {
 		 * 
@@ -933,12 +1023,12 @@ public class GRSRuleEngine {
 			for (int i = 0; i < instrumentList.size(); i++)
 				streamingQuoteStorage.calculateAndSaveStrategy(instrumentList.get(i).toString(), timeNow);
 		}
+		System.out.println("completed");
 		/*
 		 * } Thread.sleep(60 * seconds); } else { runnable = false; }
 		 * 
-		 * } catch (InterruptedException e) {
-		 * LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " +
-		 * e.getCause()); } catch (Exception e) {
+		 * } catch (InterruptedException e) { LOGGER.info("Error GRSRuleEngine :- " +
+		 * e.getMessage() + " >> " + e.getCause()); } catch (Exception e) {
 		 * LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " +
 		 * e.getCause()); } } } }); t.start();
 		 */

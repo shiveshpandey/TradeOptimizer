@@ -1,5 +1,7 @@
 package com.gold.buzzer.utils;
 
+import java.net.URI;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -14,7 +16,7 @@ public class StreamingConfig {
 	public static final String QUOTE_STREAMING_END_TIME = "15:15:00";
 	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";
 	public static final String DB_CONNECTION_CLOSING_TIME = "15:30:00";
-	public static final int tokenCountForTrade = 100;
+	public static final int tokenCountForTrade = 500;
 	public static final int secondsValue = 1000;
 	public static final int averagePerScriptInvestment = 50000;
 
@@ -36,15 +38,16 @@ public class StreamingConfig {
 			"02-10-2018", "18-10-2018", "07-11-2018", "08-11-2018", "23-11-2018", "25-12-2018" };
 
 	public static Object[] last10DaysOHLCFileNames = last10DaysFileNameListString(QUOTE_STREAMING_TRADING_HOLIDAYS,
-			"cm", "bhav.csv.zip", "ddMMMyyyy", 10, true);
+			"cm", "bhav.csv.zip", "ddMMMyyyy", 10, true, null);
 
 	public static Object[] last10DaysVolumeDataFileNames = last10DaysFileNameListString(
-			QUOTE_STREAMING_TRADING_HOLIDAYS, "MTO_", ".DAT", "ddMMyyyy", 10, false);
+			QUOTE_STREAMING_TRADING_HOLIDAYS, "MTO_", ".DAT", "ddMMyyyy", 10, false, null);
 
 	public static Object[] nseVolatilityDataFileNames = last10DaysFileNameListString(QUOTE_STREAMING_TRADING_HOLIDAYS,
-			"CMVOLT_", ".CSV", "ddMMyyyy", 10, false);
+			"CMVOLT_", ".CSV", "ddMMyyyy", 10, false, null);
 
 	public static String[] stockListCollectingUrls = {
+
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopVolume1.json",
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/most_active/allTopValue1.json",
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/niftyGainers1.json",
@@ -60,41 +63,46 @@ public class StreamingConfig {
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/gainers/jrNiftyGainers1.json",
 			"https://www.nseindia.com/live_market/dynaContent/live_analysis/losers/jrNiftyLosers1.json" };
 
-	public static String[] last10DaysOHLCFileUrls = {
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[0],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[1],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[2],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[3],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[4],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[5],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[6],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[7],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[8],
-			"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[9] };
+	public static String[] getLast10DaysOHLCFileUrls() {
+		return new String[] { "https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[0],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[1],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[2],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[3],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[4],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[5],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[6],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[7],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[8],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[9] };
+	}
 
-	public static String[] last10DaysVolumeDataFileUrls = {
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[0],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[1],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[2],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[3],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[4],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[5],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[6],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[7],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[8],
-			"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[9] };
+	public static String[] getLast10DaysVolumeDataFileUrls() {
+		return new String[] { "https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[0],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[1],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[2],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[3],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[4],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[5],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[6],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[7],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[8],
+				"https://www.nseindia.com/archives/equities/mto/" + last10DaysVolumeDataFileNames[9] };
+	}
 
-	public static String[] nseVolatilityDataUrl = {
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[0],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[1],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[2],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[3],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[4],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[5],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[6],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[7],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[8],
-			"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[9] };
+	public static String[] getNseVolatilityDataUrl() {
+		return new String[] { "https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[0],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[1],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[2],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[3],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[4],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[5],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[6],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[7],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[8],
+				"https://www.nseindia.com/archives/nsccl/volt/" + nseVolatilityDataFileNames[9] };
+	}
+
+	public static String TEMP_TEST_DATE, TEMP_PRE_TEST_DATE;
 
 	public static final String USER_AGENT_VALUE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36";
 	public static final Double MAX_VALUE = 9999999999.0000000000;
@@ -108,7 +116,7 @@ public class StreamingConfig {
 	public static final double CAMA_H3 = 0.29;
 	public static final double CAMA_H4 = 0.38;
 	public static final double CAMA_H5 = 0.55;
-	
+
 	public static final double CAMA_L1 = 0.11;
 	public static final double CAMA_L2 = 0.2;
 	public static final double CAMA_L3 = 0.29;
@@ -121,17 +129,23 @@ public class StreamingConfig {
 	}
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
-		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER + date;
+		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER
+				+ TEMP_TEST_DATE;
 	}
 
 	@SuppressWarnings("deprecation")
 	public static Object[] last10DaysFileNameListString(String[] holidayList, String prefix, String postfix,
-			String dateFormatString, int noOfDays, boolean prefixYearMonth) {
+			String dateFormatString, int noOfDays, boolean prefixYearMonth, String yearmonthdate) {
 		TimeZone.setDefault(TimeZone.getTimeZone("IST"));
 		DateFormat dateFormat = new SimpleDateFormat(dateFormatString);
 		TimeZone timeZone = TimeZone.getTimeZone("IST");
 		dateFormat.setTimeZone(timeZone);
 		Calendar cal = Calendar.getInstance();
+		if (null != yearmonthdate)
+			cal.set(Integer.parseInt(yearmonthdate.substring(4, 8)),
+					Integer.parseInt(yearmonthdate.substring(2, 4)) - 1,
+					Integer.parseInt(yearmonthdate.substring(0, 2)));
+
 		ArrayList<String> dateList = new ArrayList<String>();
 
 		for (int i = 0; dateList.size() < noOfDays && i < 100; i++) {
@@ -165,6 +179,16 @@ public class StreamingConfig {
 			}
 		}
 		return dateList.toArray();
+	}
+
+	public static URI getGoogleFinanceUrl(Object object, Timestamp timestamp) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static String getPreStreamingQuoteTbNameAppendFormat(String format) {
+		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER
+				+ TEMP_PRE_TEST_DATE;
 	}
 
 }

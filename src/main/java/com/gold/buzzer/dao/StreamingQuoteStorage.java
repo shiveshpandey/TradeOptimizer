@@ -10,6 +10,7 @@ import java.util.Map;
 
 import com.gold.buzzer.models.InstrumentOHLCData;
 import com.gold.buzzer.models.InstrumentVolatilityScore;
+import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Order;
 import com.zerodhatech.models.Tick;
@@ -52,4 +53,6 @@ public interface StreamingQuoteStorage {
 	void saveLast10DaysOHLCData(HashMap<String, ArrayList<InstrumentOHLCData>> stocksSymbolArray);
 
 	void executeGoldBuzzStrategyCloseRoundOff(String instrumentToken) throws SQLException;
+
+	void saveHistoryDataOfSelectedInstruments(List<HistoricalData> dataArrayList, String instrumentToken);
 }
