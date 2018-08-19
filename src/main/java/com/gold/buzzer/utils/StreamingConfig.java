@@ -25,7 +25,7 @@ public class StreamingConfig {
 	public static final String API_SECRET_KEY = "67s1q1k5yl9il439f80nrv6f@bunmwhq6";
 	public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
 
-	public static final String last10DaysOHLCZipFilePath = "C:/Users/shiva/Downloads/";
+	public static final String last10DaysOHLCZipFilePath = "C:/Users/shpande/Downloads/";
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";
@@ -38,13 +38,14 @@ public class StreamingConfig {
 			"02-10-2018", "18-10-2018", "07-11-2018", "08-11-2018", "23-11-2018", "25-12-2018" };
 
 	public static Object[] last10DaysOHLCFileNames = last10DaysFileNameListString(QUOTE_STREAMING_TRADING_HOLIDAYS,
-			"cm", "bhav.csv.zip", "ddMMMyyyy", 10, true, null);
-
+			"cm", "bhav.csv.zip", "ddMMMyyyy", 30, true, null);
+	public static Object[] last10DaysDates = last10DaysFileNameListString(QUOTE_STREAMING_TRADING_HOLIDAYS, "", "",
+			"ddMMyyyy", 30, false, null);
 	public static Object[] last10DaysVolumeDataFileNames = last10DaysFileNameListString(
-			QUOTE_STREAMING_TRADING_HOLIDAYS, "MTO_", ".DAT", "ddMMyyyy", 10, false, null);
+			QUOTE_STREAMING_TRADING_HOLIDAYS, "MTO_", ".DAT", "ddMMyyyy", 30, false, null);
 
 	public static Object[] nseVolatilityDataFileNames = last10DaysFileNameListString(QUOTE_STREAMING_TRADING_HOLIDAYS,
-			"CMVOLT_", ".CSV", "ddMMyyyy", 10, false, null);
+			"CMVOLT_", ".CSV", "ddMMyyyy", 30, false, null);
 
 	public static String[] stockListCollectingUrls = {
 
@@ -73,7 +74,29 @@ public class StreamingConfig {
 				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[6],
 				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[7],
 				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[8],
-				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[9] };
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[9],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[10],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[11],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[12],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[13],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[14],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[15],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[16],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[17],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[18],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[19],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[20],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[21],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[22],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[23],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[24],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[25],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[26],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[27],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[28],
+				"https://www.nseindia.com/content/historical/EQUITIES/" + last10DaysOHLCFileNames[29],
+
+		};
 	}
 
 	public static String[] getLast10DaysVolumeDataFileUrls() {
@@ -129,8 +152,7 @@ public class StreamingConfig {
 	}
 
 	public static String getStreamingQuoteTbNameAppendFormat(String date) {
-		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + QUOTE_STREAMING_DB_TABLE_NAME_POST_APPENDER
-				+ TEMP_TEST_DATE;
+		return QUOTE_STREAMING_DB_TABLE_NAME_PRE_APPENDER + "_OHLCV_Data";
 	}
 
 	@SuppressWarnings("deprecation")
