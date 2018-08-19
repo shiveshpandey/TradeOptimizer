@@ -56,7 +56,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			String sql;
 			try {
 				sql = "CREATE TABLE " + quoteTable + "_instrumentDetails "
-						+ "(ID int NOT NULL AUTO_INCREMENT,dt varchar(32), tradingsymbol varchar(32),open DECIMAL(20,4),"
+						+ "(ID int NOT NULL AUTO_INCREMENT,dt varchar(32), tradingsymbol varchar(32), series varchar(32), open DECIMAL(20,4),"
 						+ "close DECIMAL(20,4),high DECIMAL(20,4),low DECIMAL(20,4),deliveryToTradeRatio DECIMAL(20,4),"
 						+ "lastDeliveryQt DECIMAL(20,4),lastTradedQt DECIMAL(20,4),openminusclose DECIMAL(20,4),"
 						+ "highminuslow DECIMAL(20,4),insertdt timestamp, PRIMARY KEY (ID)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
@@ -79,7 +79,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 			try {
 				String sql = "UPDATE " + quoteTable
 						+ "_instrumentDetails SET lastTradedQt = ?, lastDeliveryQt = ?, deliveryToTradeRatio = ? "
-						+ " where tradingSymbol = ? and dt=?";
+						+ " where tradingSymbol = ? and dt = ? and series = ?";
 
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 				Object[] keyList = stocksSymbolArray.keySet().toArray();
@@ -94,6 +94,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							prepStmt.setDouble(3, instrument.getLow());
 							prepStmt.setString(4, instrument.getInstrumentName());
 							prepStmt.setString(5, instrument.getDt());
+							prepStmt.setString(6, instrument.getSeries());
 							prepStmt.executeUpdate();
 						}
 					} catch (SQLException e) {
@@ -119,8 +120,8 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 		if (conn != null && stocksSymbolArray != null && stocksSymbolArray.size() > 0) {
 			try {
 				String sql = "INSERT INTO " + quoteTable + "_instrumentDetails "
-						+ "(close,high,low,open,tradingsymbol,highminuslow,openminusclose,dt,insertdt) "
-						+ "values(?,?,?,?,?,?,?,?,?)";
+						+ "(close,high,low,open,tradingsymbol,highminuslow,openminusclose,dt,insertdt,series) "
+						+ "values(?,?,?,?,?,?,?,?,?,?)";
 
 				PreparedStatement prepStmt = conn.prepareStatement(sql);
 				Object[] keyList = stocksSymbolArray.keySet().toArray();
@@ -138,6 +139,7 @@ public class StreamingQuoteStorageImpl implements StreamingQuoteStorage {
 							prepStmt.setDouble(7, instrument.getOpen() - instrument.getClose());
 							prepStmt.setString(8, instrument.getDt());
 							prepStmt.setTimestamp(9, new Timestamp(Calendar.getInstance().getTime().getTime()));
+							prepStmt.setString(10, instrument.getSeries());
 							prepStmt.executeUpdate();
 						}
 					} catch (SQLException e) {

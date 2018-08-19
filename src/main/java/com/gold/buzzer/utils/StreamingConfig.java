@@ -25,7 +25,7 @@ public class StreamingConfig {
 	public static final String API_SECRET_KEY = "67s1q1k5yl9il439f80nrv6f@bunmwhq6";
 	public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
 
-	public static final String last10DaysOHLCZipFilePath = "C:/Users/shpande/Downloads/";
+	public static final String last10DaysOHLCZipFilePath = "C:/Users/shiva/Downloads/";
 
 	public static final String QUOTE_STREAMING_DB_URL = "jdbc:mysql://localhost:3306/StreamQuoteDB";
 	public static final String QUOTE_STREAMING_DB_USER = "root";

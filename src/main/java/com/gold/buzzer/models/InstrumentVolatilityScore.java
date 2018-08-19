@@ -8,6 +8,7 @@ public class InstrumentVolatilityScore {
 	private Double currentVolatility;
 	private String instrumentName;
 	private String tradable;
+	private String series;
 	private double price;
 	private int lotSize;
 
@@ -106,6 +107,14 @@ public class InstrumentVolatilityScore {
 
 	public void setLotSize(int lotSize) {
 		this.lotSize = lotSize;
+	}
+
+	public String getSeries() {
+		return series;
+	}
+
+	public void setSeries(String series) {
+		this.series = series;
 	}
 
 }

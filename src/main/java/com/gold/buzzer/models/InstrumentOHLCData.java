@@ -8,6 +8,7 @@ public class InstrumentOHLCData {
 	private double highMinusLow;
 	private String dt;
 	private String instrumentName;
+	private String series;
 
 	
 	public double getOpen() {
@@ -64,6 +65,14 @@ public class InstrumentOHLCData {
 
 	public void setDt(String dt) {
 		this.dt = dt;
+	}
+
+	public String getSeries() {
+		return series;
+	}
+
+	public void setSeries(String series) {
+		this.series = series;
 	}
 
 }
