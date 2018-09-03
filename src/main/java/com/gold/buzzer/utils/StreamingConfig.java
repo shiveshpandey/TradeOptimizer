@@ -12,6 +12,13 @@ import java.util.TimeZone;
 
 public class StreamingConfig {
 
+	public static final String ALPHAVANTAGE_TIMESERIES_URL = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=";
+	public static final String ALPHAVANTAGE_1MIN_TIMESERIES = "&interval=1min&outputsize=full&apikey=PLGM9XNLB9DAUTER";
+	public static final String ALPHAVANTAGE_15MIN_TIMESERIES = "&interval=15min&outputsize=full&apikey=PLGM9XNLB9DAUTER";
+	public static final String ALPHAVANTAGE_5MIN_TIMESERIES = "&interval=5min&outputsize=full&apikey=PLGM9XNLB9DAUTER";
+	public static final String ALPHAVANTAGE_30MIN_TIMESERIES = "&interval=30min&outputsize=full&apikey=PLGM9XNLB9DAUTER";
+	public static final String ALPHAVANTAGE_60MIN_TIMESERIES = "&interval=60min&outputsize=full&apikey=PLGM9XNLB9DAUTER";
+	
 	public static final String QUOTE_STREAMING_START_TIME = "09:00:00";
 	public static final String QUOTE_STREAMING_END_TIME = "15:15:00";
 	public static final String QUOTE_PRIORITY_SETTING_TIME = "09:22:00";

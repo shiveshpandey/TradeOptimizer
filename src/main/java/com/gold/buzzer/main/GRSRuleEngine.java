@@ -27,6 +27,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -82,7 +83,7 @@ public class GRSRuleEngine {
 						instrumentVolatilityScore.setTradable("tradable");
 
 						instrumentVolatilityScoreList.add(instrumentVolatilityScore);
-						nseTradableInstrumentSymbol.add(readData[2]+readData[3]);
+						nseTradableInstrumentSymbol.add(readData[2] + readData[3]);
 					}
 					firstLine = false;
 				} catch (Exception e) {
@@ -122,7 +123,7 @@ public class GRSRuleEngine {
 							instrumentOHLCData.setHigh(Double.parseDouble(readData[5]));
 							instrumentOHLCData.setLow(Double.parseDouble(readData[6]));
 							instrumentOHLCData.setDt(StreamingConfig.last10DaysDates[count].toString());
-							if (nseTradableInstrumentSymbol.contains(readData[2]+readData[3])) {
+							if (nseTradableInstrumentSymbol.contains(readData[2] + readData[3])) {
 								if (instrumentVolumeLast10DaysDataList.containsKey(readData[2]))
 									instrumentVolumeLast10DaysDataList.get(readData[2]).add(instrumentOHLCData);
 								else {
@@ -153,9 +154,11 @@ public class GRSRuleEngine {
 			nseTradableInstrumentSymbol = new HashSet<String>();
 			createInitialDayTables();
 
-			markInstrumentsTradable();
-			saveLast10DaysOHLCData();
-			saveInstrumentVolumeData();
+			// markInstrumentsTradable();
+			// saveLast10DaysOHLCData();
+			// saveInstrumentVolumeData();
+			// saveDaysOHLCV1MinuteData();
+			streamingQuoteStorage.saveAndGenerateSignal("");
 		} catch (JSONException e) {
 			LOGGER.info("Error GRSRuleEngine.startProcess(): " + e.getMessage() + " >> " + e.getCause());
 		}
@@ -221,7 +224,7 @@ public class GRSRuleEngine {
 								instrumentOHLCData.setLow(Double.parseDouble(readData[4]));
 								instrumentOHLCData.setOpen(Double.parseDouble(readData[2]));
 								instrumentOHLCData.setDt(StreamingConfig.last10DaysDates[index].toString());
-								if (nseTradableInstrumentSymbol.contains(readData[0]+readData[1])) {
+								if (nseTradableInstrumentSymbol.contains(readData[0] + readData[1])) {
 									if (instrumentOHLCLast10DaysDataList.containsKey(readData[0]))
 										instrumentOHLCLast10DaysDataList.get(readData[0]).add(instrumentOHLCData);
 									else {
@@ -243,5 +246,59 @@ public class GRSRuleEngine {
 			}
 		}
 		streamingQuoteStorage.saveLast10DaysOHLCData(instrumentOHLCLast10DaysDataList);
+	}
+
+	public void saveDaysOHLCV1MinuteData() {
+		@SuppressWarnings({ "resource" })
+		HttpClient client = new DefaultHttpClient();
+		int j = 0;
+		for (int count = 0; count < instrumentVolatilityScoreList.size(); count++) {
+			try {
+				HttpGet post = new HttpGet(StreamingConfig.ALPHAVANTAGE_TIMESERIES_URL
+						+ instrumentVolatilityScoreList.get(count).getInstrumentName() + ".NS"
+						+ StreamingConfig.ALPHAVANTAGE_1MIN_TIMESERIES);
+				post.addHeader(StreamingConfig.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+				post.addHeader("user-agent", StreamingConfig.USER_AGENT_VALUE);
+				ArrayList<InstrumentOHLCData> instrumentOHLCDataList = new ArrayList<InstrumentOHLCData>();
+				try {
+					HttpResponse response = client.execute(post);
+					BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+					String line = "", lineAll = "";
+
+					while ((line = rd.readLine()) != null)
+						lineAll = lineAll + line;
+
+					JSONObject obj = new JSONObject(lineAll);
+					JSONObject obj2 = obj.getJSONObject("Time Series (1min)");
+					Object[] arr = obj2.keySet().toArray();
+					if (null != arr)
+						for (int i = 0; i < arr.length; i++) {
+							try {
+								JSONObject obj3 = obj2.getJSONObject(arr[i].toString());
+
+								InstrumentOHLCData instrumentOHLCData = new InstrumentOHLCData();
+								instrumentOHLCData.setInstrumentName(
+										instrumentVolatilityScoreList.get(count).getInstrumentName());
+								instrumentOHLCData.setOpen(Double.parseDouble(obj3.getString("1. open")));
+								instrumentOHLCData.setHigh(Double.parseDouble(obj3.getString("2. high")));
+								instrumentOHLCData.setLow(Double.parseDouble(obj3.getString("3. low")));
+								instrumentOHLCData.setClose(Double.parseDouble(obj3.getString("4. close")));
+								instrumentOHLCData.setHighMinusLow(Double.parseDouble(obj3.getString("5. volume")));
+								instrumentOHLCData.setDt(arr[i].toString());
+								instrumentOHLCData.setSeries(instrumentVolatilityScoreList.get(count).getSeries());
+								instrumentOHLCDataList.add(instrumentOHLCData);
+							} catch (Exception e) {
+								LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
+							}
+						}
+				} catch (IOException e) {
+					LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
+				}
+				streamingQuoteStorage.saveDaysOHLCVMinuteData(instrumentOHLCDataList);
+				LOGGER.info(++j + " >> " + instrumentVolatilityScoreList.get(count).getInstrumentName());
+			} catch (Exception e) {
+				LOGGER.info("Error GRSRuleEngine :- " + e.getMessage() + " >> " + e.getCause());
+			}
+		}
 	}
 }

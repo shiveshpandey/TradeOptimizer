@@ -9,7 +9,14 @@ public class InstrumentOHLCData {
 	private String dt;
 	private String instrumentName;
 	private String series;
-
+	private double slowEma;
+	private double fastEma;
+	private double slowSma;
+	private double fastSma;
+	private double slowEmaLow;
+	private double fastEmaLow;
+	private double slowSmaLow;
+	private double fastSmaLow;
 	
 	public double getOpen() {
 		return open;
@@ -73,6 +80,70 @@ public class InstrumentOHLCData {
 
 	public void setSeries(String series) {
 		this.series = series;
+	}
+
+	public double getSlowEma() {
+		return slowEma;
+	}
+
+	public void setSlowEma(double slowEma) {
+		this.slowEma = slowEma;
+	}
+
+	public double getFastEma() {
+		return fastEma;
+	}
+
+	public void setFastEma(double fastEma) {
+		this.fastEma = fastEma;
+	}
+
+	public double getSlowSma() {
+		return slowSma;
+	}
+
+	public void setSlowSma(double slowSma) {
+		this.slowSma = slowSma;
+	}
+
+	public double getFastSma() {
+		return fastSma;
+	}
+
+	public void setFastSma(double fastSma) {
+		this.fastSma = fastSma;
+	}
+
+	public double getSlowEmaLow() {
+		return slowEmaLow;
+	}
+
+	public void setSlowEmaLow(double slowEmaLow) {
+		this.slowEmaLow = slowEmaLow;
+	}
+
+	public double getFastEmaLow() {
+		return fastEmaLow;
+	}
+
+	public void setFastEmaLow(double fastEmaLow) {
+		this.fastEmaLow = fastEmaLow;
+	}
+
+	public double getSlowSmaLow() {
+		return slowSmaLow;
+	}
+
+	public void setSlowSmaLow(double slowSmaLow) {
+		this.slowSmaLow = slowSmaLow;
+	}
+
+	public double getFastSmaLow() {
+		return fastSmaLow;
+	}
+
+	public void setFastSmaLow(double fastSmaLow) {
+		this.fastSmaLow = fastSmaLow;
 	}
 
 }

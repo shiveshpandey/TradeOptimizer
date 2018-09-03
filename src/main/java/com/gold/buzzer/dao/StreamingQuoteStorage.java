@@ -15,4 +15,8 @@ public interface StreamingQuoteStorage {
 	void saveInstrumentVolumeData(HashMap<String, ArrayList<InstrumentOHLCData>> stocksSymbolArray);
 
 	void saveLast10DaysOHLCData(HashMap<String, ArrayList<InstrumentOHLCData>> stocksSymbolArray);
+
+	void saveDaysOHLCVMinuteData(ArrayList<InstrumentOHLCData> instrumentOHLCDataList);
+
+	void saveAndGenerateSignal(String symbol);
 }
